@@ -1,3 +1,9 @@
+## Fork of ElunaTrinityWotlk - Build Status
+master 
+:------------:
+![master Build Status](https://travis-ci.org/RedSkull-666/ElunaTrinityWotlk.svg?branch=master)
+
+
 # ![logo](https://community.trinitycore.org/public/style_images/1_trinitycore.png) TrinityCore (3.3.5)
 
 [![Average time to resolve an issue](https://isitmaintained.com/badge/resolution/TrinityCore/TrinityCore.svg)](https://isitmaintained.com/project/TrinityCore/TrinityCore "Average time to resolve an issue") [![Percentage of issues still open](https://isitmaintained.com/badge/open/TrinityCore/TrinityCore.svg)](https://isitmaintained.com/project/TrinityCore/TrinityCore "Percentage of issues still open")
