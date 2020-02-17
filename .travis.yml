@@ -25,7 +25,7 @@ services:
   - mysql
 
 before_install:
-  - git config user.email "60255796+RedSkull-666@users.noreply.github.com" && git config user.name "RedSkull666"
+  - git config user.email "60255796+RedSkull-666@users.noreply.github.com" && git config user.name "RedSkull-666"
   - git tag -a -m "Travis build" init
 
 install:
