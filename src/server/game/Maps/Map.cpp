@@ -3573,7 +3573,9 @@ uint32 Map::GetPlayersCountExceptGMs() const
             }
             else
             //end npcbot
-            ++count;
+            {
+                ++count;
+            }
     return count;
 }
 

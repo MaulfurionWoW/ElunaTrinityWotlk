@@ -50,7 +50,7 @@ public:
             GetInPosition(force, u);
         }
 
-        void DoPetActions(uint32 diff)
+        void DoPetActions(uint32 /*diff*/)
         {
         }
 

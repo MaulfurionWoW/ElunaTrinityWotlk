@@ -1938,7 +1938,7 @@ public:
             cooldown = std::max<int32>((float(cooldown) * (1.0f - pctbonus)) - timebonus, 0);
         }
 
-        void ApplyClassSpellGlobalCooldownMods(SpellInfo const* spellInfo, float& cooldown) const override
+        void ApplyClassSpellGlobalCooldownMods(SpellInfo const* /*spellInfo*/, float& cooldown) const override
         {
             //cooldown is in milliseconds
             //uint32 spellId = spellInfo->Id;
