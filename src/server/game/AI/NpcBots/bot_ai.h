@@ -30,7 +30,7 @@ class bot_ai : public CreatureAI
         void DamageDealt(Unit* victim, uint32& damage, DamageEffectType damageType) override;
         void DamageTaken(Unit* /*attacker*/, uint32& /*damage*/) override { }
         void ReceiveEmote(Player* player, uint32 emote) override;
-        void EnterEvadeMode(EvadeReason why = EVADE_REASON_OTHER) override { }
+        void EnterEvadeMode(EvadeReason /*why = EVADE_REASON_OTHER*/) override { }
 
         virtual void OnBotSummon(Creature* /*summon*/) {}
         virtual void OnBotDespawn(Creature* /*summon*/) {}
