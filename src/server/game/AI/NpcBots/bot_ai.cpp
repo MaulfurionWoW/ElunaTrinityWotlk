@@ -9898,7 +9898,7 @@ void bot_ai::_AddItemTemplateLink(Player const* forPlayer, ItemTemplate const* i
 void bot_ai::_AddItemLink(Player const* forPlayer, Item const* item, std::ostringstream &str, bool addIcon) const
 {
     ItemTemplate const* proto = item->GetTemplate();
-    ItemRandomSuffixEntry const* item_rand = sItemRandomSuffixStore.LookupEntry(abs(item->GetItemRandomPropertyId()));
+    //ItemRandomSuffixEntry const* item_rand = sItemRandomSuffixStore.LookupEntry(abs(item->GetItemRandomPropertyId()));
     uint32 g1 = 0, g2 = 0, g3 = 0;
     //uint32 bpoints = 0;
     std::string name = proto->Name1;
@@ -11619,13 +11619,13 @@ bool bot_ai::GossipHello(Player* player)
 {
     return OnGossipHello(player, 0);
 }
-bool bot_ai::GossipSelect(Player* player, uint32 menuId, uint32 gossipListId)
+bool bot_ai::GossipSelect(Player* player, uint32 /*menuId*/, uint32 gossipListId)
 {
     uint32 sender = player->PlayerTalkClass->GetGossipOptionSender(gossipListId);
     uint32 action = player->PlayerTalkClass->GetGossipOptionAction(gossipListId);
     return OnGossipSelect(player, me, sender, action);
 }
-bool bot_ai::GossipSelectCode(Player* player, uint32 menuId, uint32 gossipListId, char const* code)
+bool bot_ai::GossipSelectCode(Player* player, uint32 /*menuId*/, uint32 gossipListId, char const* code)
 {
     uint32 sender = player->PlayerTalkClass->GetGossipOptionSender(gossipListId);
     uint32 action = player->PlayerTalkClass->GetGossipOptionAction(gossipListId);

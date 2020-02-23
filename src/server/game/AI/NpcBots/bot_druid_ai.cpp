@@ -1309,7 +1309,7 @@ public:
             return false;
         }
 
-        bool BuffTarget(Unit* target, uint32 diff) override
+        bool BuffTarget(Unit* target, uint32 /*diff*/) override
         {
             if (me->IsInCombat() && !master->GetMap()->IsRaid()) return false;
 
@@ -1722,7 +1722,7 @@ public:
             damage = int32(fdamage * (1.0f + pctbonus));
         }
 
-        void ApplyClassSpellCritMultiplierAll(Unit const* victim, float& crit_chance, SpellInfo const* spellInfo, SpellSchoolMask /*schoolMask*/, WeaponAttackType /*attackType*/) const override
+        void ApplyClassSpellCritMultiplierAll(Unit const* /*victim*/, float& crit_chance, SpellInfo const* spellInfo, SpellSchoolMask /*schoolMask*/, WeaponAttackType /*attackType*/) const override
         {
             //uint32 spellId = spellInfo->Id;
             uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
@@ -2034,7 +2034,7 @@ public:
             uint32 spellId = spellInfo->Id;
             //uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
             //SpellSchool school = GetFirstSchoolInMask(spellInfo->GetSchoolMask());
-            uint8 lvl = me->GetLevel();
+            //uint8 lvl = me->GetLevel();
             float flatbonus = 0.0f;
             float pctbonus = 0.0f;
 
@@ -2053,7 +2053,7 @@ public:
         void ApplyClassSpellRangeMods(SpellInfo const* spellInfo, float& maxrange) const override
         {
             //uint32 spellId = spellInfo->Id;
-            uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
+            //uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
             //SpellSchool school = GetFirstSchoolInMask(spellInfo->GetSchoolMask());
             uint8 lvl = me->GetLevel();
             float flatbonus = 0.0f;

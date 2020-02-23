@@ -52,7 +52,7 @@ public:
             GetInPosition(force, u);
         }
 
-        void DoPetActions(uint32 diff)
+        void DoPetActions(uint32 /*diff*/)
         {
         }
 
@@ -83,12 +83,12 @@ public:
             DoPetAttack(diff);
         }
 
-        void DoPetAttack(uint32 diff)
+        void DoPetAttack(uint32 /*diff*/)
         {
             StartAttack(opponent, IsPetMelee());
         }
 
-        void ApplyClassDamageMultiplierSpell(int32& damage, SpellNonMeleeDamage& damageinfo, SpellInfo const* spellInfo, WeaponAttackType /*attackType*/, bool crit) const override
+        void ApplyClassDamageMultiplierSpell(int32& damage, SpellNonMeleeDamage& /*damageinfo*/, SpellInfo const* spellInfo, WeaponAttackType /*attackType*/, bool /*crit*/) const override
         {
             uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
             float fdamage = float(damage);

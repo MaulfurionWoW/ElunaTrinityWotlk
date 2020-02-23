@@ -299,7 +299,7 @@ public:
             }
         }
 
-        bool BuffTarget(Unit* target, uint32 diff) override
+        bool BuffTarget(Unit* target, uint32 /*diff*/) override
         {
             if (me->IsInCombat() && !master->GetMap()->IsRaid()) return false;
 
@@ -819,7 +819,7 @@ public:
                 return;
         }
 
-        void ApplyClassSpellCritMultiplierAll(Unit const* /*victim*/, float& crit_chance, SpellInfo const* spellInfo, SpellSchoolMask schoolMask, WeaponAttackType /*attackType*/) const override
+        void ApplyClassSpellCritMultiplierAll(Unit const* /*victim*/, float& crit_chance, SpellInfo const* spellInfo, SpellSchoolMask /*schoolMask*/, WeaponAttackType /*attackType*/) const override
         {
             uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
             uint8 lvl = me->GetLevel();
@@ -1335,7 +1335,7 @@ public:
 
         void SpellHit(Unit* caster, SpellInfo const* spell) override
         {
-            uint32 spellId = spell->Id;
+            //uint32 spellId = spell->Id;
 
             //Ward helper
             if (!canFrostWard && (spell->GetSchoolMask() & SPELL_SCHOOL_MASK_FROST) &&

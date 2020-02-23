@@ -650,7 +650,7 @@ public:
             }
         }
 
-        bool HOPTarget(Unit* target, uint32 diff)
+        bool HOPTarget(Unit* target, uint32 /*diff*/)
         {
             if (target == me ||
                 (target->GetTypeId() == TYPEID_PLAYER ? target->GetClass() == BOT_CLASS_PALADIN :
@@ -746,7 +746,7 @@ public:
             }
         }
 
-        bool HOFTarget(Unit* target, uint32 diff)
+        bool HOFTarget(Unit* target, uint32 /*diff*/)
         {
             if (target->HasAuraType(SPELL_AURA_MECHANIC_IMMUNITY))
             {
@@ -841,7 +841,7 @@ public:
             }
         }
 
-        bool HOSTarget(Unit* target, uint32 diff)
+        bool HOSTarget(Unit* target, uint32 /*diff*/)
         {
             if (target->HasAuraTypeWithFamilyFlags(SPELL_AURA_PERIODIC_TRIGGER_SPELL_WITH_VALUE, SPELLFAMILY_PALADIN, 0x100))
                 return false;
@@ -1184,7 +1184,7 @@ public:
             }
         }
 
-        bool BuffTarget(Unit* target, uint32 diff) override
+        bool BuffTarget(Unit* target, uint32 /*diff*/) override
         {
             if (me->IsInCombat() && !master->GetMap()->IsRaid()) return false;
 
@@ -1674,7 +1674,7 @@ public:
             }
         }
 
-        void ApplyClassDamageMultiplierMelee(int32& damage, SpellNonMeleeDamage& /*damageinfo*/, SpellInfo const* spellInfo, WeaponAttackType /*attackType*/, bool crit) const override
+        void ApplyClassDamageMultiplierMelee(int32& damage, SpellNonMeleeDamage& /*damageinfo*/, SpellInfo const* spellInfo, WeaponAttackType /*attackType*/, bool /*crit*/) const override
         {
             uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
             uint8 lvl = me->GetLevel();
@@ -1705,7 +1705,7 @@ public:
             damage = int32(fdamage * (1.0f + pctbonus));
         }
 
-        void ApplyClassDamageMultiplierSpell(int32& damage, SpellNonMeleeDamage& /*damageinfo*/, SpellInfo const* spellInfo, WeaponAttackType /*attackType*/, bool crit) const override
+        void ApplyClassDamageMultiplierSpell(int32& damage, SpellNonMeleeDamage& /*damageinfo*/, SpellInfo const* spellInfo, WeaponAttackType /*attackType*/, bool /*crit*/) const override
         {
             uint32 spellId = spellInfo->Id;
             uint8 lvl = me->GetLevel();
@@ -1941,9 +1941,9 @@ public:
         void ApplyClassSpellGlobalCooldownMods(SpellInfo const* spellInfo, float& cooldown) const override
         {
             //cooldown is in milliseconds
-            uint32 spellId = spellInfo->Id;
+            //uint32 spellId = spellInfo->Id;
             //SpellSchool school = GetFirstSchoolInMask(spellInfo->GetSchoolMask());
-            uint8 lvl = me->GetLevel();
+            //uint8 lvl = me->GetLevel();
             float timebonus = 0.0f;
             float pctbonus = 0.0f;
 

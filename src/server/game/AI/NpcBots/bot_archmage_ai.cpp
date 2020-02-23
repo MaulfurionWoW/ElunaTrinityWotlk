@@ -182,10 +182,10 @@ public:
             }
         }
 
-        void ApplyClassDamageMultiplierSpell(int32& damage, SpellNonMeleeDamage& damageinfo, SpellInfo const* spellInfo, WeaponAttackType /*attackType*/, bool crit) const override
+        void ApplyClassDamageMultiplierSpell(int32& damage, SpellNonMeleeDamage& /*damageinfo*/, SpellInfo const* spellInfo, WeaponAttackType /*attackType*/, bool crit) const override
         {
             uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
-            uint8 lvl = me->GetLevel();
+            //uint8 lvl = me->GetLevel();
             float fdamage = float(damage);
 
             //apply bonus damage mods
@@ -213,7 +213,7 @@ public:
                 SummonBotPet();
         }
 
-        void SpellHitTarget(Unit* target, SpellInfo const* spell) override
+        void SpellHitTarget(Unit* /*target*/, SpellInfo const* /*spell*/) override
         {
         }
 
@@ -248,7 +248,7 @@ public:
             bot_ai::DamageDealt(victim, damage, damageType);
         }
 
-        void DamageTaken(Unit* u, uint32& damage) override
+        void DamageTaken(Unit* u, uint32& /*damage*/) override
         {
             if (!u)
                 return;

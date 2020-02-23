@@ -162,7 +162,7 @@ public:
         if (!*args)
             return false;
 
-        float speed = 1.f;
+        //float speed = 1.f;
         uint32 num = 0;
 
         num = atoi((char*)args);

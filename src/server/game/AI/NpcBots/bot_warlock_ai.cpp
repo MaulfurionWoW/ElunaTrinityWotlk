@@ -535,7 +535,7 @@ public:
             }
         }
 
-        bool BuffTarget(Unit* target, uint32 diff) override
+        bool BuffTarget(Unit* target, uint32 /*diff*/) override
         {
             if (target->GetTypeId() != TYPEID_PLAYER) return false;
             if (me->IsInCombat() && !master->GetMap()->IsRaid()) return false;
@@ -919,7 +919,7 @@ public:
                 return;
         }
 
-        void ApplyClassSpellCritMultiplierAll(Unit const* victim, float& crit_chance, SpellInfo const* spellInfo, SpellSchoolMask schoolMask, WeaponAttackType /*attackType*/) const override
+        void ApplyClassSpellCritMultiplierAll(Unit const* victim, float& crit_chance, SpellInfo const* spellInfo, SpellSchoolMask /*schoolMask*/, WeaponAttackType /*attackType*/) const override
         {
             //victim can be NULL
             uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
@@ -1202,9 +1202,9 @@ public:
         void ApplyClassSpellCooldownMods(SpellInfo const* spellInfo, uint32& cooldown) const override
         {
             //cooldown is in milliseconds
-            uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
+            //uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
             //SpellSchool school = GetFirstSchoolInMask(spellInfo->GetSchoolMask());
-            uint8 lvl = me->GetLevel();
+            //uint8 lvl = me->GetLevel();
             int32 timebonus = 0;
             float pctbonus = 0.0f;
 

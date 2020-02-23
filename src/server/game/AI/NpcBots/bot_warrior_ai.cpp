@@ -1582,7 +1582,7 @@ public:
 
         void ApplyClassSpellMaxTargetsMods(SpellInfo const* spellInfo, uint32& targets) const override
         {
-            uint32 bonusTargets = 0;
+            //uint32 bonusTargets = 0;
             uint8 lvl = me->GetLevel();
 
             //Improved Revenge: +1 target (actually 2 in dbc)

@@ -63,7 +63,7 @@ class bot_ai : public CreatureAI
         bool SetBotOwner(Player* newowner);
         uint8 GetBotClass() const { return _botclass; }
         uint32 GetLastDiff() const { return lastdiff; }
-        virtual void UpdateDeadAI(uint32 diff) {}
+        virtual void UpdateDeadAI(uint32 /*diff*/) {}
         void ReturnHome() { _atHome = false; }
         void CommonTimers(uint32 diff);
         void ResetBotAI(uint8 resetType);

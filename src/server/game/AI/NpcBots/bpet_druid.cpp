@@ -80,7 +80,7 @@ public:
             DoPetAttack(diff);
         }
 
-        void DoPetAttack(uint32 diff)
+        void DoPetAttack(uint32 /*diff*/)
         {
             StartAttack(opponent, IsPetMelee());
         }

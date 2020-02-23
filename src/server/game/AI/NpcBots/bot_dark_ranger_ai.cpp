@@ -245,11 +245,11 @@ public:
             }
         }
 
-        void ApplyClassSpellCritMultiplierAll(Unit const* victim, float& crit_chance, SpellInfo const* spellInfo, SpellSchoolMask schoolMask, WeaponAttackType /*attackType*/) const override
+        void ApplyClassSpellCritMultiplierAll(Unit const* /*victim*/, float& /*crit_chance*/, SpellInfo const* /*spellInfo*/, SpellSchoolMask /*schoolMask*/, WeaponAttackType /*attackType*/) const override
         {
         }
 
-        void ApplyClassDamageMultiplierMelee(int32& damage, SpellNonMeleeDamage& damageinfo, SpellInfo const* spellInfo, WeaponAttackType /*attackType*/, bool crit) const override
+        void ApplyClassDamageMultiplierMelee(int32& damage, SpellNonMeleeDamage& damageinfo, SpellInfo const* spellInfo, WeaponAttackType /*attackType*/, bool /*crit*/) const override
         {
             uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
             float flat_mod = 0.f;
@@ -263,10 +263,10 @@ public:
             damage = int32(damage * pctbonus + flat_mod);
         }
 
-        void ApplyClassDamageMultiplierSpell(int32& damage, SpellNonMeleeDamage& damageinfo, SpellInfo const* spellInfo, WeaponAttackType /*attackType*/, bool crit) const override
+        void ApplyClassDamageMultiplierSpell(int32& damage, SpellNonMeleeDamage& /*damageinfo*/, SpellInfo const* spellInfo, WeaponAttackType /*attackType*/, bool /*crit*/) const override
         {
-            uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
-            uint8 lvl = me->GetLevel();
+            //uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
+            //uint8 lvl = me->GetLevel();
             float fdamage = float(damage);
             float flat_mod = 0.f;
 
@@ -316,7 +316,7 @@ public:
             value = value * pctbonus;
         }
 */
-        void OnClassSpellGo(SpellInfo const* spellInfo) override
+        void OnClassSpellGo(SpellInfo const* /*spellInfo*/) override
         {
             //uint32 spellId = spellInfo->Id;
             //uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
@@ -335,8 +335,8 @@ public:
             if (target == me)
                 return;
 
-            uint32 baseId = spell->GetFirstRankSpell()->Id;
-            uint8 lvl = me->GetLevel();
+            //uint32 baseId = spell->GetFirstRankSpell()->Id;
+            //uint8 lvl = me->GetLevel();
 
             //if (baseId == HUNTERS_MARK_1)
             //{
@@ -379,7 +379,7 @@ public:
             OnSpellHit(caster, spell);
         }
 
-        void OnBotDamageDealt(Unit* victim, uint32 damage, CleanDamage const* cleanDamage, DamageEffectType damagetype, SpellInfo const* spellInfo) override
+        void OnBotDamageDealt(Unit* victim, uint32 damage, CleanDamage const* /*cleanDamage*/, DamageEffectType /*damagetype*/, SpellInfo const* spellInfo) override
         {
             //black arrow affection -> spawn skeleton (mark)
             if (damage && me->IsAlive() && victim->GetTypeId() == TYPEID_UNIT && damage >= victim->GetHealth() &&
@@ -572,7 +572,7 @@ public:
                 threat->GetEffect(0)->ChangeAmount(-100);
         }
 
-        void ReduceCD(uint32 diff) override
+        void ReduceCD(uint32 /*diff*/) override
         {
             //if (trapTimer > diff)                   trapTimer -= diff;
         }
@@ -584,7 +584,7 @@ public:
 
         void InitSpells() override
         {
-            uint8 lvl = me->GetLevel();
+            //uint8 lvl = me->GetLevel();
             InitSpellMap(AUTO_SHOT_1);
             InitSpellMap(BLACK_ARROW_1);
             InitSpellMap(DRAIN_LIFE_1);
