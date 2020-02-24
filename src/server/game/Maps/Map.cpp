@@ -3558,6 +3558,7 @@ uint32 Map::GetPlayersCountExceptGMs() const
     uint32 count = 0;
     for (MapRefManager::const_iterator itr = m_mapRefManager.begin(); itr != m_mapRefManager.end(); ++itr)
         if (!itr->GetSource()->IsGameMaster())
+        {
             //npcbot - count npcbots as group members (event if not in group)
             if (itr->GetSource()->HaveBot() && BotMgr::LimitBots(this))
             {
@@ -3573,9 +3574,8 @@ uint32 Map::GetPlayersCountExceptGMs() const
             }
             else
             //end npcbot
-            {
                 ++count;
-            }
+        }
     return count;
 }
 
