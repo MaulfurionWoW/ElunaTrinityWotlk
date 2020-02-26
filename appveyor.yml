@@ -47,7 +47,6 @@ configuration: RelWithDebInfo
 build:
   parallel: true                  # enable MSBuild parallel builds
   project: TrinityCore.sln        # path to Visual Studio solution or project
-  logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
 
   # MSBuild verbosity level
   verbosity: minimal
