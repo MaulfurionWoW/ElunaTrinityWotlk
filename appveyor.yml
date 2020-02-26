@@ -12,6 +12,10 @@
 # version format
 version: 1.0.{build}
 
+# Stabilize first
+pull_requests:
+  do_not_increment_build_number: true
+
 # Maximum number of concurrent jobs for the project
 max_jobs: 2
 
