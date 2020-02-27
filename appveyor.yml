@@ -65,10 +65,10 @@ build:
 
 # build scripts
 build_script:
-  cmd: git config user.email "appveyor@build.bot" && git config user.name "AppVeyor"
-  cmd: git tag -a -m "AppVeyor build" init
-  cmd: md build && cd build
-  cmd: cmake -G"Visual Studio 15 2017 Win64" -DSCRIPTS=dynamic -DTOOLS=True -DCMAKE_CXX_FLAGS=" /DWIN32 /D_WINDOWS /W3 /GR /EHsc /WX" -DCMAKE_C_FLAGS="/DWIN32 /D_WINDOWS /W3 /WX" ..
+  - git config user.email "appveyor@build.bot" && git config user.name "AppVeyor"
+  - git tag -a -m "AppVeyor build" init
+  - md build && cd build
+  - cmake -G"Visual Studio 15 2017 Win64" -DSCRIPTS=dynamic -DTOOLS=True -DCMAKE_CXX_FLAGS=" /DWIN32 /D_WINDOWS /W3 /GR /EHsc /WX" -DCMAKE_C_FLAGS="/DWIN32 /D_WINDOWS /W3 /WX" ..
   cmd: "%programfiles(x86)%\Microsoft Visual Studio\2017\Community\MSBuild\15.0\Bin\amd64\MsBuild.exe" /nologo /m:2 /p:Configuration=RelWithDebInfo /p:Platform="X64" /verbosity:minimal /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll" "TrinityCore.sln"
 
 # scripts to run after build (working directory and environment changes are persisted from the previous steps)
