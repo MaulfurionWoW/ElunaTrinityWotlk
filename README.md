@@ -1,7 +1,7 @@
-## Fork of ElunaTrinityWotlk - Build Status
+## Fork from Eluna Lua Engine merged with Trinity 3.3.5 + Trinity Bots - Build Status
 master 
-:------------:
-![master Build Status](https://travis-ci.org/RedSkull-666/ElunaTrinityWotlk.svg?branch=master)
+:------------: | :------------:
+[![Travis Build Status](https://travis-ci.org/RedSkull-666/ElunaTrinityWotlk.svg?branch=master)](https://travis-ci.org/RedSkull-666/ElunaTrinityWotlk) | [![AppVeyor Build status](https://ci.appveyor.com/api/projects/status/github/RedSkull-666/elunatrinitywotlk?branch=master&svg=true)](https://ci.appveyor.com/project/RedSkull-666/elunatrinitywotlk)
 
 
 # ![logo](https://community.trinitycore.org/public/style_images/1_trinitycore.png) TrinityCore (3.3.5)

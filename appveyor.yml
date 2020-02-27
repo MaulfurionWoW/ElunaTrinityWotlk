@@ -23,7 +23,7 @@ pull_requests:
 # Build worker image (VM template)
 image: Visual Studio 2017
 
-# environment
+# environment variables
 environment:
   CMAKE_GENERATOR: "Visual Studio 15 2017 Win64"
   BOOST_ROOT: C:\Libraries\boost_1_67_0
@@ -40,9 +40,9 @@ clone_depth: 1                      # clone entire repository history if not def
 # fetch repository as zip archive
 shallow_clone: true
 
-# clone script
+# clone script - use of --recursive for LuaEngine
 clone_script:
-  - cmd: git clone -q --depth=1 --branch=master https://github.com/RedSkull-666/ElunaTrinityWotlk.git C:\projects\ElunaTrinityWotlk
+  - cmd: git clone -q --recursive --depth=1 --branch=master https://github.com/RedSkull-666/ElunaTrinityWotlk.git C:\projects\ElunaTrinityWotlk
 
 #---------------------------------#
 #       build configuration       #
@@ -63,22 +63,32 @@ build:
   # MSBuild verbosity level
   verbosity: minimal
 
+# scripts to run before build (working directory and environment changes are persisted from the previous steps)
+before_build:
+- cmd: >-
+    git config user.email "appveyor@build.bot" && git config user.name "AppVeyor"
+
+    git tag -a -m "AppVeyor build" init
+
+    md build && cd build
+
+    cmake -G"Visual Studio 15 Win64" -DSCRIPTS=dynamic -DTOOLS=True -DCMAKE_CXX_FLAGS=" /DWIN32 /D_WINDOWS /W3 /GR /EHsc /WX" -DCMAKE_C_FLAGS="/DWIN32 /D_WINDOWS /W3 /WX" ..
+
 # build scripts
 build_script:
-  - cmd: git config user.email "appveyor@build.bot" && git config user.name "AppVeyor"
-  - cmd: git tag -a -m "AppVeyor build" init
-  - cmd: md build && cd build
-  - cmd: cmake -G"Visual Studio 15 2017 Win64" -DSCRIPTS=dynamic -DTOOLS=True -DCMAKE_CXX_FLAGS=" /DWIN32 /D_WINDOWS /W3 /GR /EHsc /WX" -DCMAKE_C_FLAGS="/DWIN32 /D_WINDOWS /W3 /WX" ..
-  - cmd: "%programfiles(x86)%\\Microsoft Visual Studio\\2017\\Community\\MSBuild\\15.0\\Bin\\amd64\\MsBuild.exe" /nologo /m:2 /p:Configuration=RelWithDebInfo /p:Platform="X64" /verbosity:minimal /logger:"C:\\Program Files\\AppVeyor\\BuildAgent\Appveyor.MSBuildLogger.dll" "TrinityCore.sln"
+- cmd: >-
+    "%programfiles(x86)%\Microsoft Visual Studio\2017\Community\MSBuild\15.0\Bin\amd64\MsBuild.exe" /nologo /m:2 /p:Configuration=RelWithDebInfo /p:Platform="X64" /verbosity:minimal /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll" "TrinityCore.sln"
 
 # scripts to run after build (working directory and environment changes are persisted from the previous steps)
 after_build:
-  - cmd: cd bin\RelWithDebInfo\
-  - cmd: copy "C:\Program Files\MySQL\MySQL Server 5.7\lib\libmysql.dll" libmysql.dll
-  - cmd: copy "C:\Program Files\MySQL\MySQL Server 5.7\lib\libmysql.dll" libmysql.dll
-copy "%OPENSSL_ROOT_DIR%\ssleay32.dll" ssleay32.dll
-  - cmd: copy "C:\Program Files\MySQL\MySQL Server 5.7\lib\libmysql.dll" libmysql.dll
-copy "%OPENSSL_ROOT_DIR%\libeay32.dll" libeay32.dll
+- cmd: >-
+    cd bin\RelWithDebInfo\
+
+    copy "C:\Program Files\MySQL\MySQL Server 5.7\lib\libmysql.dll" libmysql.dll
+
+    copy "%OPENSSL_ROOT_DIR%\ssleay32.dll" ssleay32.dll
+
+    copy "%OPENSSL_ROOT_DIR%\libeay32.dll" libeay32.dll
 
 #---------------------------------#
 #      artifacts configuration    #
@@ -86,5 +96,5 @@ copy "%OPENSSL_ROOT_DIR%\libeay32.dll" libeay32.dll
 
 artifacts:
   # pushing a single file
-  path: build\bin\RelWithDebInfo\
-  name: ElunaTrinityWotlkWin64VS2017
+- path: build\bin\RelWithDebInfo
+  name: ElunaTrinityWotlkWin64VS2017.zip
