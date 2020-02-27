@@ -16,9 +16,6 @@ version: 1.0.{build}
 pull_requests:
   do_not_increment_build_number: true
 
-# Maximum number of concurrent jobs for the project
-max_jobs: 2
-
 #---------------------------------#
 #    environment configuration    #
 #---------------------------------#
@@ -43,6 +40,10 @@ clone_depth: 1                      # clone entire repository history if not def
 # fetch repository as zip archive
 shallow_clone: true
 
+# clone script
+clone_script:
+  cmd: git clone -q --depth=1 --branch=master https://github.com/RedSkull-666/ElunaTrinityWotlk.git C:\projects\ElunaTrinityWotlk
+
 #---------------------------------#
 #       build configuration       #
 #---------------------------------#
@@ -64,11 +65,14 @@ build:
 
 # scripts to run before build
 before_build:
+  - git config user.email "appveyor@build.bot" && git config user.name "AppVeyor"
+  - git tag -a -m "AppVeyor build" init
   - md build && cd build
   - cmake -G"Visual Studio 15 2017 Win64" -DSCRIPTS=dynamic -DTOOLS=True -DCMAKE_CXX_FLAGS=" /DWIN32 /D_WINDOWS /W3 /GR /EHsc /WX" -DCMAKE_C_FLAGS="/DWIN32 /D_WINDOWS /W3 /WX" ..
 
-# to run your custom scripts instead of automatic MSBuild
+# build scripts
 build_script:
+  cmd: "%programfiles(x86)%\Microsoft Visual Studio\2017\Community\MSBuild\15.0\Bin\amd64\MsBuild.exe" /nologo /m:2 /p:Configuration=RelWithDebInfo /p:Platform="X64" /verbosity:minimal /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll" "TrinityCore.sln"
 
 # scripts to run after build (working directory and environment changes are persisted from the previous steps)
 after_build:
@@ -77,15 +81,11 @@ after_build:
   - copy "%OPENSSL_ROOT_DIR%\ssleay32.dll" ssleay32.dll
   - copy "%OPENSSL_ROOT_DIR%\libeay32.dll" libeay32.dll
 
-# scripts to run *after* solution is built and *before* automatic packaging occurs (web apps, NuGet packages, Azure Cloud Services)
-before_package:
-
-
 #---------------------------------#
 #      artifacts configuration    #
 #---------------------------------#
 
 artifacts:
-
   # pushing a single file
-  - path: ElunaTrinityWotlkWin64VS2017.zip
+  path: build\bin\RelWithDebInfo\
+  name: ElunaTrinityWotlkWin64VS2017
