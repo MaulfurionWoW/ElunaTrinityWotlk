@@ -1,3 +1,6 @@
 [submodule "src/LuaEngine"]
 	path = src/server/game/LuaEngine
-	url = https://github.com/ElunaLuaEngine/Eluna.git
+#	url = https://github.com/ElunaLuaEngine/Eluna.git
+#   branch = master
+	url = https://github.com/RedSkull-666/Eluna.git
+    branch = patch-2
