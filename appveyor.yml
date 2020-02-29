@@ -97,4 +97,4 @@ after_build:
 artifacts:
   # pushing a single file
 - path: build\bin\RelWithDebInfo
-  name: ElunaTrinityWotlkWin64VS2017.zip
+  name: ElunaTrinityWotlkWin64VS2017
