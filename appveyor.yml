@@ -64,9 +64,10 @@ build:
   verbosity: minimal
 
 # scripts to run before build (working directory and environment changes are persisted from the previous steps)
+#   git config user.email "appveyor@build.bot" && git config user.name "AppVeyor"
 before_build:
 - cmd: >-
-    git config user.email "appveyor@build.bot" && git config user.name "AppVeyor"
+    git config user.email "60255796+RedSkull-666@users.noreply.github.com" && git config user.name "RedSkull-666"
 
     git tag -a -m "AppVeyor build" init
 
