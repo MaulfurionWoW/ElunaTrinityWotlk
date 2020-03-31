@@ -183,7 +183,7 @@ void BotDataMgr::AddNpcBotData(uint32 entry, uint16 roles, uint32 faction)
         NpcBotData* botData = new NpcBotData(roles, faction);
         _botsData[entry] = botData;
 
-        PreparedStatement* bstmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_NPCBOT);
+        CharacterDatabasePreparedStatement* bstmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_NPCBOT);
         //"INSERT INTO characters_npcbot (entry, roles) VALUES (?, ?)", CONNECTION_ASYNCH
         bstmt->setUInt32(0, entry);
         bstmt->setUInt16(1, roles);
@@ -207,7 +207,7 @@ void BotDataMgr::UpdateNpcBotData(uint32 entry, NpcBotDataUpdateType updateType,
     if (itr == _botsData.end())
         return;
 
-    PreparedStatement* bstmt;
+    CharacterDatabasePreparedStatement* bstmt;
     switch (updateType)
     {
         case NPCBOT_UPDATE_OWNER:
@@ -241,12 +241,12 @@ void BotDataMgr::UpdateNpcBotData(uint32 entry, NpcBotDataUpdateType updateType,
             int8 id = 1;
             EquipmentInfo const* einfo = sObjectMgr->GetEquipmentInfo(entry, id);
 
-            SQLTransaction trans = CharacterDatabase.BeginTransaction();
+            CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
 
             bstmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_NPCBOT_EQUIP);
             //"UPDATE character_npcbot SET equipMhEx = ?, equipOhEx = ?, equipRhEx = ?, equipHead = ?, equipShoulders = ?, equipChest = ?, equipWaist = ?, equipLegs = ?,
             //equipFeet = ?, equipWrist = ?, equipHands = ?, equipBack = ?, equipBody = ?, equipFinger1 = ?, equipFinger2 = ?, equipTrinket1 = ?, equipTrinket2 = ?, equipNeck = ? WHERE entry = ?", CONNECTION_ASYNC
-            PreparedStatement* stmt;
+            CharacterDatabasePreparedStatement* stmt;
             uint8 k;
             for (k = BOT_SLOT_MAINHAND; k != BOT_INVENTORY_SIZE; ++k)
             {
@@ -336,7 +336,7 @@ void BotDataMgr::UpdateNpcBotData(uint32 entry, NpcBotDataUpdateType updateType,
 }
 void BotDataMgr::UpdateNpcBotDataAll(uint32 playerGuid, NpcBotDataUpdateType updateType, void* data)
 {
-    PreparedStatement* bstmt;
+    CharacterDatabasePreparedStatement* bstmt;
     switch (updateType)
     {
         case NPCBOT_UPDATE_OWNER:

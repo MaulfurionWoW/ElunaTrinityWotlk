@@ -704,7 +704,7 @@ public:
             return false;
         }
 
-        PreparedStatement* stmt = WorldDatabase.GetPreparedStatement(WORLD_SEL_CREATURE_BY_ID);
+        WorldDatabasePreparedStatement* stmt = WorldDatabase.GetPreparedStatement(WORLD_SEL_CREATURE_BY_ID);
         //"SELECT guid FROM creature WHERE id = ?", CONNECTION_SYNCH
         stmt->setUInt32(0, id);
         PreparedQueryResult res2 = WorldDatabase.Query(stmt);

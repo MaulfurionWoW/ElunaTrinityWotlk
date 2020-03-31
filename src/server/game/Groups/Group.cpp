@@ -594,7 +594,7 @@ bool Group::RemoveMember(ObjectGuid guid, RemoveMethod const& method /*= GROUP_R
         // Remove bot from group in DB
         if (!isBGGroup() && !isBFGroup())
         {
-            PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_GROUP_MEMBER);
+            CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_GROUP_MEMBER);
             stmt->setUInt32(0, guid.GetCounter());
             CharacterDatabase.Execute(stmt);
             DelinkMember(guid);

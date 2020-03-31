@@ -8237,7 +8237,7 @@ bool bot_ai::_unequip(uint8 slot)
             //MailHnadler::HandleSendMail()
             item->SetOwnerGUID(master->GetGUID());
 
-            SQLTransaction trans = CharacterDatabase.BeginTransaction();
+            CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
             item->SaveToDB(trans);
             MailDraft(iistr.str(), "").AddItem(item).SendMailTo(trans, MailReceiver(master), MailSender(me));
             CharacterDatabase.CommitTransaction(trans);
@@ -9654,7 +9654,7 @@ void bot_ai::InitEquips()
     NpcBotData const* npcBotData = BotDataMgr::SelectNpcBotData(me->GetEntry());
     ASSERT(npcBotData && "bot_ai::InitEquips(): data not found!");
 
-    PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_NPCBOT_EQUIP_BY_ITEM_INSTANCE);
+    CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_NPCBOT_EQUIP_BY_ITEM_INSTANCE);
     //                    0                   1         2            3           4         5                6                    7              8             9        10       11            12             13
     //SELECT ii.creatorGuid, ii.giftCreatorGuid, ii.count, ii.duration, ii.charges, ii.flags, ii.enchantments, ii.randomPropertyId, ii.durability, ii.playedTime, ii.text, ii.guid, ii.itemEntry, ii.owner_guid "
     //  "FROM item_instance ii JOIN characters_npcbot cn ON ii.guid IN "
