@@ -1,88 +1,23 @@
-
-# Notes:
-#   - Minimal appveyor.yml file is an empty file. All sections are optional.
-#   - Indent each level of configuration with 2 spaces. Do not use tabs!
-#   - All section names are case-sensitive.
-#   - Section names should be unique on each level.
-
-#---------------------------------#
-#      general configuration      #
-#---------------------------------#
-
-# version format
 version: 1.0.{build}
-
-# Stabilize first
-pull_requests:
-  do_not_increment_build_number: true
-
-#---------------------------------#
-#    environment configuration    #
-#---------------------------------#
-
-# Build worker image (VM template)
-image: Visual Studio 2017
-
-# environment variables
+image: Visual Studio 2019
+clone_depth: 1
+init:
+- ps: ''
 environment:
-  CMAKE_GENERATOR: "Visual Studio 15 2017 Win64"
-  BOOST_ROOT: C:\Libraries\boost_1_67_0
-  BOOST_INCLUDEDIR: C:\Libraries\boost_1_67_0\boost
-  BOOST_LIBRARYDIR: C:\Libraries\boost_1_67_0\lib64-msvc-14.1
+  BOOST_ROOT: C:\Libraries\boost_1_71_0
   OPENSSL_ROOT_DIR: C:\OpenSSL-Win64
-
-# clone directory
-clone_folder: c:\projects\ElunaTrinityWotlk
-
-# set clone depth
-clone_depth: 1                      # clone entire repository history if not defined
-
-# fetch repository as zip archive
-shallow_clone: true
-
-# clone script - use of --recursive for LuaEngine
-clone_script:
-  - cmd: git clone -q --recursive --depth=1 --branch=master https://github.com/RedSkull-666/ElunaTrinityWotlk.git C:\projects\ElunaTrinityWotlk
-
-#---------------------------------#
-#       build configuration       #
-#---------------------------------#
-
-# build platform, i.e. x86, x64, Any CPU. This setting is optional.
-platform: x64
-
-# build Configuration, i.e. Debug, Release, etc.
-configuration: RelWithDebInfo
-
-# Build settings, not to be confused with "before_build" and "after_build".
-# "project" is relative to the original build directory and not influenced by directory changes in "before_build".
-build:
-  parallel: true                  # enable MSBuild parallel builds
-  project: TrinityCore.sln        # path to Visual Studio solution or project
-
-  # MSBuild verbosity level
-  verbosity: minimal
-
-# scripts to run before build (working directory and environment changes are persisted from the previous steps)
-#   git config user.email "appveyor@build.bot" && git config user.name "AppVeyor"
-before_build:
+build_script:
 - cmd: >-
-    git config user.email "60255796+RedSkull-666@users.noreply.github.com" && git config user.name "RedSkull-666"
+    git config user.email "appveyor@build.bot" && git config user.name "AppVeyor"
 
     git tag -a -m "AppVeyor build" init
 
     md build && cd build
 
-    cmake -G"Visual Studio 15 Win64" -DSCRIPTS=dynamic -DTOOLS=True -DCMAKE_CXX_FLAGS=" /DWIN32 /D_WINDOWS /W3 /GR /EHsc /WX" -DCMAKE_C_FLAGS="/DWIN32 /D_WINDOWS /W3 /WX" ..
+    cmake -G"Visual Studio 16 2019" -A x64 -DSCRIPTS=dynamic -DTOOLS=True -DCMAKE_CXX_FLAGS=" /DWIN32 /D_WINDOWS /W3 /GR /EHsc /WX" -DCMAKE_C_FLAGS="/DWIN32 /D_WINDOWS /W3 /WX" ..
 
-# build scripts
-build_script:
-- cmd: >-
-    "%programfiles(x86)%\Microsoft Visual Studio\2017\Community\MSBuild\15.0\Bin\amd64\MsBuild.exe" /nologo /m:2 /p:Configuration=RelWithDebInfo /p:Platform="X64" /verbosity:minimal /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll" "TrinityCore.sln"
+    "%programfiles(x86)%\Microsoft Visual Studio\2019\Community\MSBuild\Current\Bin\amd64\MsBuild.exe" /nologo /m:2 /p:Configuration=RelWithDebInfo /p:Platform="X64" /verbosity:minimal /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll" "TrinityCore.sln"
 
-# scripts to run after build (working directory and environment changes are persisted from the previous steps)
-after_build:
-- cmd: >-
     cd bin\RelWithDebInfo\
 
     copy "C:\Program Files\MySQL\MySQL Server 5.7\lib\libmysql.dll" libmysql.dll
@@ -90,12 +25,7 @@ after_build:
     copy "%OPENSSL_ROOT_DIR%\ssleay32.dll" ssleay32.dll
 
     copy "%OPENSSL_ROOT_DIR%\libeay32.dll" libeay32.dll
-
-#---------------------------------#
-#      artifacts configuration    #
-#---------------------------------#
-
+test: off
 artifacts:
-  # pushing a single file
-- path: build\bin\RelWithDebInfo
-  name: ElunaTrinityWotlkWin64VS2017
+- path: build\bin\RelWithDebInfo\
+  name: TrinityCoreWin64VS2019
