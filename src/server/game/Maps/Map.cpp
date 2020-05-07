@@ -3036,6 +3036,7 @@ bool Map::CheckRespawn(RespawnInfo* info)
 void Map::Respawn(RespawnInfo* info, CharacterDatabaseTransaction dbTrans)
 {
     info->respawnTime = GameTime::GetGameTime();
+    _respawnTimes.increase(info->handle);
     SaveRespawnInfoDB(*info, dbTrans);
 }
 
