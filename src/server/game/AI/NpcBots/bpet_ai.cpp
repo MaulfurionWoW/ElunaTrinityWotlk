@@ -2113,6 +2113,8 @@ bool bot_pet_ai::GlobalUpdate(uint32 diff)
 
     Regenerate();
 
+    CheckAttackState();
+
     //update flags
     if (!me->IsInCombat())
     {
