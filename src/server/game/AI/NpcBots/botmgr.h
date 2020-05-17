@@ -55,10 +55,16 @@ class BotMgr
 
         static bool IsNpcBotModEnabled();
         static bool IsNpcBotDungeonFinderEnabled();
+        static bool DisplayEquipment();
         static bool ShowEquippedCloak();
         static bool ShowEquippedHelm();
         static bool IsClassEnabled(uint8 m_class);
         static bool IsBotStatsLimitsEnabled();
+        static bool IsPvPEnabled();
+        static bool IsFoodInterruptedByMovement();
+        static uint8 GetMaxClassBots();
+        static uint8 GetHealTargetIconFlags();
+        static uint32 GetBaseUpdateDelay();
         static float GetBotStatLimitDodge();
         static float GetBotStatLimitParry();
         static float GetBotStatLimitBlock();
@@ -76,6 +82,7 @@ class BotMgr
         static float GetBotDamageTakenMod(Creature const* bot, bool magic);
         static float GetBotDamageModPhysical();
         static float GetBotDamageModSpell();
+        static float GetBotHealingMod();
 
         void Update(uint32 diff);
 
@@ -98,7 +105,7 @@ class BotMgr
         void OnTeleportFar(uint32 mapId, float x, float y, float z, float ori = 0.f);
         void OnOwnerSetGameMaster(bool on);
         void ReviveAllBots();
-        void SendBotCommandState(CommandStates state);
+        void SendBotCommandState(uint8 state);
         void RecallAllBots();
         void RecallBot(Creature* bot);
         void KillAllBots();

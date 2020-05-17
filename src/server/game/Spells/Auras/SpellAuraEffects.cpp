@@ -1863,7 +1863,7 @@ void AuraEffect::HandleAuraModShapeshift(AuraApplication const* aurApp, uint8 mo
     if (target->GetTypeId() == TYPEID_PLAYER)
         target->ToPlayer()->InitDataForForm();
     //npcbot: skip bots (handled inside AI)
-    else if (target->GetTypeId() == TYPEID_UNIT && (target->ToCreature()->IsNPCBot() || target->ToCreature()->IsNPCBotPet()))
+    else if (target->GetTypeId() == TYPEID_UNIT && target->ToCreature()->IsNPCBotOrPet())
     {}
     //end npcbot
     else
@@ -2749,7 +2749,7 @@ void AuraEffect::HandleAuraModTotalThreat(AuraApplication const* aurApp, uint8 m
 
     //npcbot: handle for bots
     if (target->IsAlive() && target->GetTypeId() == TYPEID_UNIT &&
-        (target->ToCreature()->IsNPCBot() || target->ToCreature()->IsNPCBotPet()))
+        target->ToCreature()->IsNPCBotOrPet())
     {
         Unit* caster = GetCaster();
         if (caster && caster->IsAlive())
@@ -5129,7 +5129,7 @@ void AuraEffect::HandlePeriodicDamageAurasTick(Unit* target, Unit* caster) const
     if (GetAuraType() == SPELL_AURA_PERIODIC_DAMAGE)
     {
         //npcbot: Black Arrow damage on targets below 20%
-        if (GetSpellInfo()->SpellFamilyName == SPELLFAMILY_WARLOCK && (GetSpellInfo()->SpellFamilyFlags[0] & 0x1) &&
+        if (GetSpellInfo()->SpellFamilyName == SPELLFAMILY_WARLOCK && (GetSpellInfo()->SpellFamilyFlags[1] & 0x4) &&
             target->HasAuraState(AURA_STATE_HEALTHLESS_20_PERCENT))
         {
             damage *= 5;

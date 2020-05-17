@@ -789,7 +789,7 @@ class NearbyHostileUnitInConeCheck
 {
     public:
         explicit NearbyHostileUnitInConeCheck(Unit const* unit, float maxdist, bot_ai const* m_ai) :
-        me(unit), max_range(maxdist), cone(float(M_PI_2)), ai(m_ai)
+        me(unit), max_range(maxdist), ai(m_ai), cone(float(M_PI_2))
         {
             free = ai->IAmFree();
         }
@@ -880,7 +880,7 @@ class FarTauntUnitCheck
 {
     public:
         explicit FarTauntUnitCheck(Unit const* unit, float maxdist, bool ally, bot_ai const* m_ai) :
-        me(unit), max_range(maxdist), ai(m_ai), targetAlly(ally)
+        me(unit), max_range(maxdist), targetAlly(ally), ai(m_ai)
         {
             free = ai->IAmFree();
         }

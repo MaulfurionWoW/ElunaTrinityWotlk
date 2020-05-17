@@ -24010,6 +24010,11 @@ bool Player::isHonorOrXPTarget(Unit* victim) const
 
     if (Creature const* creature = victim->ToCreature())
     {
+        //npcbot: count npcbots at xp targets
+        if (victim->ToCreature()->IsNPCBotOrPet())
+            return true;
+        //end npcbots
+
         if (!creature->CanGiveExperience())
             return false;
     }

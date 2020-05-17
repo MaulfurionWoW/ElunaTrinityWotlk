@@ -12,7 +12,7 @@
 /*
 Priest NpcBot (reworked by Trickerer onlysuffering@gmail.com)
 Complete - Around 90%
-TODO: Mana Burn, Binding Heal, Lightwell, Shadowfiend (crashes client)
+TODO: Mana Burn, Binding Heal, Lightwell
 */
 
 enum PriestBaseSpells
@@ -251,7 +251,7 @@ public:
                 uint8 LHPcount = 0;
                 for (GroupReference const* itr = gr->GetFirstMember(); itr != nullptr; itr = itr->next())
                 {
-                    //uint8 lowestPCT = 100;
+                    uint8 lowestPCT = 100;
                     Player* tPlayer = itr->GetSource();
                     if (!tPlayer || me->GetMap() != tPlayer->FindMap() || tPlayer->isPossessed() || tPlayer->IsCharmed())
                         continue;
@@ -419,9 +419,8 @@ public:
 
         void StartAttack(Unit* u, bool force = false)
         {
-            if (GetBotCommandState() == COMMAND_ATTACK && !force) return;
-            SetBotCommandState(COMMAND_ATTACK);
-            OnStartAttack(u);
+            if (!bot_ai::StartAttack(u, force))
+                return;
             GetInPosition(force, u);
         }
 
@@ -590,6 +589,7 @@ public:
                             return;
                 }
                 if (IsSpellReady(DEVOURING_PLAGUE_1, diff) && canShadow && !Devcheck && Rand() < 80 &&
+                    (_spec == BOT_SPEC_PRIEST_SHADOW || opponent->IsControlledByPlayer()) &&
                     opponent->GetHealth() > me->GetMaxHealth()/2 * (1 + opponent->getAttackers().size()) &&
                     !(opponent->GetTypeId() == TYPEID_UNIT && (opponent->ToCreature()->GetCreatureTemplate()->MechanicImmuneMask & (1<<(MECHANIC_INFECTED-1)))) &&
                     !opponent->GetAuraEffect(SPELL_AURA_PERIODIC_LEECH, SPELLFAMILY_PRIEST, 0x02000000, 0x0, 0x0, me->GetGUID()) &&
@@ -623,7 +623,7 @@ public:
                 if (shot->GetSpellInfo()->Id == SHOOT_WAND && shot->m_targets.GetUnitTarget() != opponent)
                     me->InterruptSpell(CURRENT_AUTOREPEAT_SPELL);
             }
-            else if (IsSpellReady(SHOOT_WAND, diff, false) && me->GetDistance(opponent) < 30 && GetEquips(BOT_SLOT_RANGED) &&
+            else if (IsSpellReady(SHOOT_WAND, diff) && me->GetDistance(opponent) < 30 && GetEquips(BOT_SLOT_RANGED) &&
                 doCast(opponent, SHOOT_WAND))
                 return;
         }
@@ -833,13 +833,16 @@ public:
 
         void CheckDispel(uint32 diff)
         {
+            if (HasRole(BOT_ROLE_HEAL) && !HasRole(BOT_ROLE_DPS))
+                return;
+
             if (DispelcheckTimer > diff || IsCasting() || Rand() > 35)
                 return;
 
             DispelcheckTimer = urand(750, 1000);
 
             uint32 DM = GetSpell(DISPEL_MAGIC_1);
-            uint32 MD = GetSpell(MASS_DISPEL_1);
+            uint32 MD = (_spec == BOT_SPEC_PRIEST_DISCIPLINE) ? GetSpell(MASS_DISPEL_1) : 0;
 
             if (!DM && !MD)
                 return;
@@ -1147,16 +1150,19 @@ public:
             if (lvl >= 10 && (schoolMask & SPELL_SCHOOL_MASK_HOLY))
                 crit_chance += 5.f;
             //Mind Melt (part 1): 4% additional critical chance for Mind Blast, Mind Flay and Mind Sear
-            if (lvl >= 35 && ((spellInfo->SpellFamilyFlags[0] & 0x802000) || (spellInfo->SpellFamilyFlags[1] & 0x80000)))
+            if ((_spec == BOT_SPEC_PRIEST_SHADOW) &&
+                lvl >= 35 && ((spellInfo->SpellFamilyFlags[0] & 0x802000) || (spellInfo->SpellFamilyFlags[1] & 0x80000)))
                 crit_chance += 4.f;
             //Mind Melt (part 2): 6% additional critical chance for Vampiric Touch, Devouring Plague and SW: Pain
-            if (lvl >= 35 && ((spellInfo->SpellFamilyFlags[0] & 0x2008000) || (spellInfo->SpellFamilyFlags[1] & 0x400)))
+            if ((_spec == BOT_SPEC_PRIEST_SHADOW) &&
+                lvl >= 35 && ((spellInfo->SpellFamilyFlags[0] & 0x2008000) || (spellInfo->SpellFamilyFlags[1] & 0x400)))
                 crit_chance += 6.f;
             //Improved Flash Heal (part 2): 10% additional critical chance on targets at or below 50% hp for Flash Heal
-            if (lvl >= 40 && baseId == FLASH_HEAL_1 && GetHealthPCT(victim) <= 50)
+            if ((_spec == BOT_SPEC_PRIEST_DISCIPLINE) && lvl >= 40 && baseId == FLASH_HEAL_1 && GetHealthPCT(victim) <= 50)
                 crit_chance += 10.f;
             //Renewed Hope part 1: 4% additional critical chance on targets affected by Weakened Soul for Flash Heal, Greater Heal and Penance (Heal)
-            if (lvl >= 45 && (baseId == FLASH_HEAL_1 || baseId == HEAL || baseId == PENANCE_HEAL_1) &&
+            if ((_spec == BOT_SPEC_PRIEST_DISCIPLINE) &&
+                lvl >= 45 && (baseId == FLASH_HEAL_1 || baseId == HEAL || baseId == PENANCE_HEAL_1) &&
                 victim->HasAuraTypeWithFamilyFlags(SPELL_AURA_MECHANIC_IMMUNITY, SPELLFAMILY_PRIEST, 0x20000000))
                 crit_chance += 4.f;
         }
@@ -1199,16 +1205,16 @@ public:
             if (lvl >= 15 && baseId == SW_PAIN_1)
                 pctbonus += 0.06f;
             //Focused Power part 1: 4% bonus damage for all spells
-            if (lvl >= 35)
+            if ((_spec == BOT_SPEC_PRIEST_DISCIPLINE) && lvl >= 35)
                 pctbonus += 0.04f;
             //Improved Devouring Plague part 1: 15% bonus damage Devouring Plague
-            if (lvl >= 35 && baseId == DEVOURING_PLAGUE_1)
+            if ((_spec == BOT_SPEC_PRIEST_SHADOW) && lvl >= 35 && baseId == DEVOURING_PLAGUE_1)
                 pctbonus += 0.15f;
             //Shadowform: 15% bonus damage for shadow spells (handled)
             //if (lvl >= 40 && (spellInfo->GetSchoolMask() & SPELL_SCHOOL_MASK_SHADOW) && me->GetShapeshiftForm() == FORM_SHADOW)
             //    pctbonus += 0.15f;
             //Misery part 3: 15% bonus damage (from spellpower) for Mind Blast, Mind Flay and Mind Sear
-            if (lvl >= 45)
+            if ((_spec == BOT_SPEC_PRIEST_SHADOW) && lvl >= 45)
             {
                 if (baseId == MIND_BLAST_1 || baseId == MIND_FLAY_DAMAGE || baseId == MIND_SEAR_DAMAGE_1)
                     fdamage += me->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_MAGIC) * 0.15f * me->CalculateDefaultCoefficient(spellInfo, DIRECT_DAMAGE) * me->CalculateSpellpowerCoefficientLevelPenalty(spellInfo);
@@ -1222,7 +1228,7 @@ public:
                 if (baseId == MIND_FLAY_DAMAGE)
                     pctbonus += 0.1f;
                 //Twisted Faith (part 1): 10% bonus damage for Mind Blast and Mind Flay
-                if (lvl >= 55)
+                if ((_spec == BOT_SPEC_PRIEST_SHADOW) && lvl >= 55)
                     pctbonus += 0.1f;
             }
 
@@ -1239,7 +1245,7 @@ public:
                 //if (lvl >= 60) //buffed
                 //    pctbonus -= 0.95f;
                 //Pain and Suffering (part 2): 30% reduced backlash damage
-                if (lvl >= 50)
+                if ((_spec == BOT_SPEC_PRIEST_SHADOW) && lvl >= 50)
                     pctbonus -= 0.3f;
             }
 
@@ -1268,16 +1274,16 @@ public:
             if (lvl >= 10 && baseId == RENEW_1)
                 pctbonus += 0.15f;
             //Focused Power part 2: 4% bonus heal for all spells
-            if (lvl >= 35)
+            if ((_spec == BOT_SPEC_PRIEST_DISCIPLINE) && lvl >= 35)
                 pctbonus += 0.04f;
             //Spiritual Healing: 10% bonus healing for all spells
-            if (lvl >= 35)
+            if ((_spec == BOT_SPEC_PRIEST_HOLY) && lvl >= 35)
                 pctbonus += 0.15f;
             //Blessend Resilience part 1: 3% bonus healing for all spells
-            if (lvl >= 40)
+            if ((_spec == BOT_SPEC_PRIEST_HOLY) && lvl >= 40)
                 pctbonus += 0.03f;
             //Empowered Healing: 40% bonus (from spellpower) for Greater Heal and 20% bonus (from spellpower) for Flash Heal and Binding Heal
-            if (lvl >= 45)
+            if ((_spec == BOT_SPEC_PRIEST_HOLY) && lvl >= 45)
             {
                 if (baseId == HEAL)
                     flat_mod += me->SpellBaseHealingBonusDone(SPELL_SCHOOL_MASK_MAGIC) * 0.4f * me->CalculateDefaultCoefficient(spellInfo, damagetype) * 1.88f * me->CalculateSpellpowerCoefficientLevelPenalty(spellInfo) * stack;
@@ -1285,13 +1291,13 @@ public:
                     flat_mod += me->SpellBaseHealingBonusDone(SPELL_SCHOOL_MASK_MAGIC) * 0.2f * me->CalculateDefaultCoefficient(spellInfo, damagetype) * 1.88f * me->CalculateSpellpowerCoefficientLevelPenalty(spellInfo) * stack;
             }
             //Empowered Renew (heal bonus part): 15% bonus healing (from spellpower) for Renew
-            if (lvl >= 50 && baseId == RENEW_1)
+            if ((_spec == BOT_SPEC_PRIEST_HOLY) && lvl >= 50 && baseId == RENEW_1)
                 flat_mod += me->SpellBaseHealingBonusDone(SPELL_SCHOOL_MASK_MAGIC) * 0.15f * me->CalculateDefaultCoefficient(spellInfo, damagetype) * 1.88f * me->CalculateSpellpowerCoefficientLevelPenalty(spellInfo) * stack;
             //Test of Faith: 12% bonus healing on targets at or below 50% health
-            if (lvl >= 50 && GetHealthPCT(victim) <= 50)
+            if ((_spec == BOT_SPEC_PRIEST_HOLY) && lvl >= 50 && GetHealthPCT(victim) <= 50)
                 pctbonus += 0.12f;
             //Divine Providence: 10% bonus healing for Circle of Healing, Binding Heal, Holy Nova, Prayer of Healing, Divine Hymn and Prayer of Mending
-            if (lvl >= 55 &&
+            if ((_spec == BOT_SPEC_PRIEST_HOLY) && lvl >= 55 &&
                 ((spellInfo->SpellFamilyFlags[0] & 0x18000200) ||
                 (spellInfo->SpellFamilyFlags[1] & 0x4) ||
                 (spellInfo->SpellFamilyFlags[2] & 0x4)))
@@ -1335,26 +1341,29 @@ public:
             if (lvl >= 15 && (spellInfo->GetSchoolMask() & SPELL_SCHOOL_MASK_SHADOW))
                 pctbonus += 0.06f;
             //Absolution:
-            if (lvl >= 25 && (spellInfo->SpellFamilyFlags[1] & 0x81))
+            if ((_spec == BOT_SPEC_PRIEST_DISCIPLINE) && lvl >= 25 && (spellInfo->SpellFamilyFlags[1] & 0x81))
                 pctbonus += 0.15f;
             //Mental Agility:
-            if (lvl >= 25 && !spellInfo->CastTimeEntry)
+            if ((_spec == BOT_SPEC_PRIEST_DISCIPLINE) && lvl >= 25 && !spellInfo->CastTimeEntry)
                 pctbonus += 0.1f;
             //Improved Healing:
-            if (lvl >= 25 && (baseId == HEAL || baseId == DIVINE_HYMN_1 || baseId == PENANCE_HEAL_1))
+            if ((_spec == BOT_SPEC_PRIEST_HOLY) &&
+                lvl >= 25 && (baseId == HEAL || baseId == DIVINE_HYMN_1 || baseId == PENANCE_HEAL_1))
                 pctbonus += 0.15f;
             //Soul Warding part 2
-            if (lvl >= 30 && baseId == PW_SHIELD_1)
+            if ((_spec == BOT_SPEC_PRIEST_DISCIPLINE) && lvl >= 30 && baseId == PW_SHIELD_1)
                 pctbonus += 0.15f;
             //Healing Prayers:
-            if (lvl >= 30 && (baseId == PRAYER_OF_HEALING_1 || baseId == PRAYER_OF_MENDING_1))
+            if ((_spec == BOT_SPEC_PRIEST_HOLY) &&
+                lvl >= 30 && (baseId == PRAYER_OF_HEALING_1 || baseId == PRAYER_OF_MENDING_1))
                 pctbonus += 0.2f;
             //Focused Mind
-            if (lvl >= 30 && (baseId == MIND_BLAST_1 || baseId == MIND_FLAY_1 ||
+            if ((_spec == BOT_SPEC_PRIEST_SHADOW) &&
+                lvl >= 30 && (baseId == MIND_BLAST_1 || baseId == MIND_FLAY_1 ||
                 baseId == MIND_SEAR_1/* || baseId == MIND_CONTROL_1*/))
                 pctbonus += 0.15f;
             //Improved Flash Heal part 1
-            if (lvl >= 40 && baseId == FLASH_HEAL_1)
+            if ((_spec == BOT_SPEC_PRIEST_HOLY) && lvl >= 40 && baseId == FLASH_HEAL_1)
                 pctbonus += 0.15f;
 
             //Glyph of Fading
@@ -1418,7 +1427,7 @@ public:
             if (lvl >= 15 && (baseId == HEAL || baseId == SMITE_1 || baseId == HOLY_FIRE_1))
                 timebonus += 500;
             //Focused Power part 3
-            if (lvl >= 35 && baseId == MASS_DISPEL_1)
+            if ((_spec == BOT_SPEC_PRIEST_DISCIPLINE) && lvl >= 35 && baseId == MASS_DISPEL_1)
                 timebonus += 1000;
             //Improved Mana Burn
             //if (lvl >= 35 && baseId == MANA_BURN_1)
@@ -1442,7 +1451,8 @@ public:
 
             //pct mods
             //Aspiration
-            if (lvl >= 45 && (baseId == INNER_FOCUS_1 || baseId == POWER_INFUSION_1 || baseId == PAIN_SUPPRESSION_1))
+            if ((_spec == BOT_SPEC_PRIEST_DISCIPLINE) &&
+                lvl >= 45 && (baseId == INNER_FOCUS_1 || baseId == POWER_INFUSION_1 || baseId == PAIN_SUPPRESSION_1))
                 pctbonus += 0.2f;
 
             //flat mods
@@ -1470,10 +1480,10 @@ public:
 
             //pct mods
             //Aspiration
-            if (lvl >= 45 && baseId == PENANCE_1)
+            if ((_spec == BOT_SPEC_PRIEST_DISCIPLINE) && lvl >= 45 && baseId == PENANCE_1)
                 pctbonus += 0.2f;
             //Divine Providence:
-            if (lvl >= 55 && baseId == PRAYER_OF_MENDING_1)
+            if ((_spec == BOT_SPEC_PRIEST_HOLY) && lvl >= 55 && baseId == PRAYER_OF_MENDING_1)
                 pctbonus += 0.3f;
 
             //flat mods
@@ -1488,10 +1498,10 @@ public:
             if (lvl >= 20 && baseId == MIND_BLAST_1)
                 timebonus += 2500;
             //Veiled Shadows part 1
-            if (lvl >= 25 && baseId == FADE_1)
+            if ((_spec == BOT_SPEC_PRIEST_SHADOW) && lvl >= 25 && baseId == FADE_1)
                 timebonus += 6000;
             //Soul Warding part 1
-            if (lvl >= 30 && baseId == PW_SHIELD_1)
+            if ((_spec == BOT_SPEC_PRIEST_DISCIPLINE) && lvl >= 30 && baseId == PW_SHIELD_1)
                 timebonus += 4000;
 
             //Glyph of Fade
@@ -1527,7 +1537,8 @@ public:
 
             //pct mods
             //Holy Reach
-            if (lvl >= 25 && ((spellInfo->SpellFamilyFlags[0] & 0x18400200) || (spellInfo->SpellFamilyFlags[2] & 0x4)))
+            if ((_spec == BOT_SPEC_PRIEST_HOLY) &&
+                lvl >= 25 && ((spellInfo->SpellFamilyFlags[0] & 0x18400200) || (spellInfo->SpellFamilyFlags[2] & 0x4)))
                 pctbonus += 0.2f;
 
             //flat mods
@@ -1548,13 +1559,13 @@ public:
 
             //pct mods
             //Shadow Reach: +20% range for Shadow Spells
-            if (lvl >= 25 &&
+            if ((_spec == BOT_SPEC_PRIEST_SHADOW) && lvl >= 25 &&
                 ((spellInfo->SpellFamilyFlags[0] & 0x682A004) ||
                 (spellInfo->SpellFamilyFlags[1] & 0x300502) ||
                 (spellInfo->SpellFamilyFlags[2] & 0x2040)))
                 pctbonus += 0.2f;
             //Holy Reach: +20% range for Holy Spells
-            if (lvl >= 25 && (spellInfo->SpellFamilyFlags[0] & 0x100080))
+            if ((_spec == BOT_SPEC_PRIEST_HOLY) && lvl >= 25 && (spellInfo->SpellFamilyFlags[0] & 0x100080))
                 pctbonus += 0.2f;
 
             //flat mods
@@ -1620,7 +1631,7 @@ public:
             }
 
             //Improved Mind Blast part 2
-            if (lvl >= 20 && baseId == MIND_BLAST_1)
+            if ((_spec == BOT_SPEC_PRIEST_SHADOW) && lvl >= 20 && baseId == MIND_BLAST_1)
                 me->CastSpell(target, IMPROVED_MIND_BLAST_DEBUFF, true);
 
             if (lvl >= 15 && baseId == PW_FORTITUDE_1)
@@ -1634,7 +1645,7 @@ public:
                 {
                     float amount = float(eff->GetAmount());
                     //Borrowed Time: +40% of spellpower
-                    if (lvl >= 55)
+                    if ((_spec == BOT_SPEC_PRIEST_DISCIPLINE) && lvl >= 55)
                         amount += me->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_MAGIC) * 0.4f;
                     //Improved PWSH: +15% effect
                     eff->ChangeAmount(int32(amount * 1.15f));
@@ -1651,7 +1662,7 @@ public:
                 }
             }
             //Pain and Suffering (part 1): 100% to refresh Shadow Word: Pain on target hit by Mind Flay
-            if (lvl >= 50 && baseId == MIND_FLAY_1 && GetSpell(SW_PAIN_1))
+            if ((_spec == BOT_SPEC_PRIEST_SHADOW) && lvl >= 50 && baseId == MIND_FLAY_1 && GetSpell(SW_PAIN_1))
                 if (Aura* pain = target->GetAura(GetSpell(SW_PAIN_1), me->GetGUID()))
                     pain->RefreshDuration();
             if (baseId == FEAR_WARD_1)
@@ -1706,7 +1717,7 @@ public:
                 }
             }
             //Improved Vampiric Embrace
-            if (lvl >= 30 && baseId == VAMPIRIC_EMBRACE_1)
+            if ((_spec == BOT_SPEC_PRIEST_SHADOW) && lvl >= 30 && baseId == VAMPIRIC_EMBRACE_1)
             {
                 if (AuraEffect* vamp = me->GetAuraEffect(spellId, 0))
                     vamp->ChangeAmount(vamp->GetAmount() + 10); //67% is essentially this
@@ -1766,7 +1777,8 @@ public:
             botPet = myPet;
 
             myPet->Attack(target, true);
-            myPet->GetMotionMaster()->MoveChase(target);
+            if (!HasBotCommandState(BOT_COMMAND_STAY))
+                myPet->GetMotionMaster()->MoveChase(target);
         }
 
         void UnsummonAll() override
@@ -1832,22 +1844,18 @@ public:
         void InitSpells() override
         {
             uint8 lvl = me->GetLevel();
+            bool isDisc = _spec == BOT_SPEC_PRIEST_DISCIPLINE;
+            bool isHoly = _spec == BOT_SPEC_PRIEST_HOLY;
+            bool isShad = _spec == BOT_SPEC_PRIEST_SHADOW;
 
             InitSpellMap(DISPEL_MAGIC_1);
             InitSpellMap(MASS_DISPEL_1);
             InitSpellMap(CURE_DISEASE_1);
             InitSpellMap(ABOLISH_DISEASE_1);
             InitSpellMap(FEAR_WARD_1);
-  /*Talent*/lvl >= 50 ? InitSpellMap(PAIN_SUPPRESSION_1) : RemoveSpell(PAIN_SUPPRESSION_1);
             InitSpellMap(PSYCHIC_SCREAM_1);
             InitSpellMap(FADE_1);
-  /*Talent*/lvl >= 50 ? InitSpellMap(PSYCHIC_HORROR_1) : RemoveSpell(PSYCHIC_HORROR_1);
-  /*Talent*/lvl >= 30 ? InitSpellMap(SILENCE_1) : RemoveSpell(SILENCE_1);
-  /*Talent*/lvl >= 60 ? InitSpellMap(PENANCE_1) : RemoveSpell(PENANCE_1);
-  /*Talent*/lvl >= 30 ? InitSpellMap(VAMPIRIC_EMBRACE_1) : RemoveSpell(VAMPIRIC_EMBRACE_1);
-  /*Talent*/lvl >= 60 ? InitSpellMap(DISPERSION_1) : RemoveSpell(DISPERSION_1);
             InitSpellMap(MIND_SEAR_1);
-  /*Talent*/lvl >= 60 ? InitSpellMap(GUARDIAN_SPIRIT_1) : RemoveSpell(GUARDIAN_SPIRIT_1);
             InitSpellMap(SHACKLE_UNDEAD_1);
             InitSpellMap(GREATER_HEAL_1);
             InitSpellMap(NORMAL_HEAL_1);
@@ -1855,7 +1863,6 @@ public:
             InitSpellMap(RENEW_1);
             InitSpellMap(FLASH_HEAL_1);
             InitSpellMap(PRAYER_OF_HEALING_1);
-  /*Talent*/lvl >= 50 ? InitSpellMap(CIRCLE_OF_HEALING_1) : RemoveSpell(CIRCLE_OF_HEALING_1);
             InitSpellMap(DIVINE_HYMN_1);
             InitSpellMap(PRAYER_OF_MENDING_1);
             InitSpellMap(RESURRECTION_1);
@@ -1870,17 +1877,26 @@ public:
             InitSpellMap(MIND_BLAST_1);
             InitSpellMap(SW_DEATH_1);
             InitSpellMap(DEVOURING_PLAGUE_1);
-  /*Talent*/lvl >= 20 ? InitSpellMap(MIND_FLAY_1) : RemoveSpell(MIND_FLAY_1);
-  /*Talent*/lvl >= 50 ? InitSpellMap(VAMPIRIC_TOUCH_1) : RemoveSpell(VAMPIRIC_TOUCH_1);
-  /*Talent*/lvl >= 40 ? InitSpellMap(SHADOWFORM_1) : RemoveSpell(SHADOWFORM_1);
-  /*Talent*/lvl >= 20 ? InitSpellMap(INNER_FOCUS_1) : RemoveSpell(INNER_FOCUS_1);
-  /*Talent*/lvl >= 20 ? InitSpellMap(DESPERATE_PRAYER_1) : RemoveSpell(DESPERATE_PRAYER_1);
-  /*Talent*/lvl >= 40 ? InitSpellMap(POWER_INFUSION_1) : RemoveSpell(POWER_INFUSION_1);
             InitSpellMap(HYMN_OF_HOPE_1);
-
             InitSpellMap(LEVITATE_1);
-
             InitSpellMap(SHADOWFIEND_1); //not casted
+
+  /*Talent*/lvl >= 20 && isDisc ? InitSpellMap(INNER_FOCUS_1) : RemoveSpell(INNER_FOCUS_1);
+  /*Talent*/lvl >= 40 && isDisc ? InitSpellMap(POWER_INFUSION_1) : RemoveSpell(POWER_INFUSION_1);
+  /*Talent*/lvl >= 50 && isDisc ? InitSpellMap(PAIN_SUPPRESSION_1) : RemoveSpell(PAIN_SUPPRESSION_1);
+  /*Talent*/lvl >= 60 && isDisc ? InitSpellMap(PENANCE_1) : RemoveSpell(PENANCE_1);
+
+  /*Talent*/lvl >= 20 && isHoly ? InitSpellMap(DESPERATE_PRAYER_1) : RemoveSpell(DESPERATE_PRAYER_1);
+  /*Talent*/lvl >= 50 && isHoly ? InitSpellMap(CIRCLE_OF_HEALING_1) : RemoveSpell(CIRCLE_OF_HEALING_1);
+  /*Talent*/lvl >= 60 && isHoly ? InitSpellMap(GUARDIAN_SPIRIT_1) : RemoveSpell(GUARDIAN_SPIRIT_1);
+
+  /*Talent*/lvl >= 20 && isShad ? InitSpellMap(MIND_FLAY_1) : RemoveSpell(MIND_FLAY_1);
+  /*Talent*/lvl >= 30 && isShad ? InitSpellMap(SILENCE_1) : RemoveSpell(SILENCE_1);
+  /*Talent*/lvl >= 30 && isShad ? InitSpellMap(VAMPIRIC_EMBRACE_1) : RemoveSpell(VAMPIRIC_EMBRACE_1);
+  /*Talent*/lvl >= 40 && isShad ? InitSpellMap(SHADOWFORM_1) : RemoveSpell(SHADOWFORM_1);
+  /*Talent*/lvl >= 50 && isShad ? InitSpellMap(VAMPIRIC_TOUCH_1) : RemoveSpell(VAMPIRIC_TOUCH_1);
+  /*Talent*/lvl >= 50 && isShad ? InitSpellMap(PSYCHIC_HORROR_1) : RemoveSpell(PSYCHIC_HORROR_1);
+  /*Talent*/lvl >= 60 && isShad ? InitSpellMap(DISPERSION_1) : RemoveSpell(DISPERSION_1);
 
             HEAL = GetSpell(GREATER_HEAL_1) ? GREATER_HEAL_1 :
                 GetSpell(NORMAL_HEAL_1) ? NORMAL_HEAL_1 :
@@ -1890,34 +1906,39 @@ public:
         void ApplyClassPassives() const override
         {
             uint8 level = master->GetLevel();
+            bool isDisc = _spec == BOT_SPEC_PRIEST_DISCIPLINE;
+            bool isHoly = _spec == BOT_SPEC_PRIEST_HOLY;
+            bool isShad = _spec == BOT_SPEC_PRIEST_SHADOW;
 
             RefreshAura(UNBREAKABLE_WILL, level >= 10 ? 1 : 0);
-            RefreshAura(SPIRIT_TAP, level >= 10 ? 1 : 0);
-            RefreshAura(IMPROVED_SPIRIT_TAP, level >= 10 ? 1 : 0);
             RefreshAura(MEDITATION, level >= 20 ? 1 : 0);
-            RefreshAura(INSPIRATION3, level >= 25 ? 1 : 0);
-            RefreshAura(INSPIRATION2, level >= 23 && level < 25 ? 1 : 0);
-            RefreshAura(INSPIRATION1, level >= 20 && level < 23 ? 1 : 0);
-            RefreshAura(SHADOW_WEAVING3, level >= 30 ? 1 : 0);
-            RefreshAura(SHADOW_WEAVING2, level >= 28 && level < 30 ? 1 : 0);
-            RefreshAura(SHADOW_WEAVING1, level >= 25 && level < 28 ? 1 : 0);
-            RefreshAura(SURGE_OF_LIGHT, level >= 35 ? 1 : 0);
-            RefreshAura(IMPROVED_DEVOURING_PLAGUE, level >= 35 ? 1 : 0);
-            RefreshAura(HOLY_CONCENTRATION, level >= 40 ? 1 : 0);
-            RefreshAura(RENEWED_HOPE, level >= 45 ? 1 : 0);
-            RefreshAura(RAPTURE, level >= 45 ? 1 : 0);
-            RefreshAura(BODY_AND_SOUL1, level >= 45 ? 1 : 0);
-            RefreshAura(SERENDIPITY, level >= 45 ? 1 : 0);
-            RefreshAura(IMPROVED_SHADOWFORM, level >= 45 ? 1 : 0);
-            RefreshAura(MISERY3, level >= 50 ? 1 : 0);
-            RefreshAura(MISERY2, level >= 48 && level < 50 ? 1 : 0);
-            RefreshAura(MISERY1, level >= 45 && level < 48 ? 1 : 0);
-            RefreshAura(DIVINE_AEGIS, level >= 50 ? 1 : 0);
-            RefreshAura(GRACE, level >= 50 ? 1 : 0);
-            RefreshAura(EMPOWERED_RENEW3, level >= 55 ? 1 : 0);
-            RefreshAura(EMPOWERED_RENEW2, level >= 53 && level < 55 ? 1 : 0);
-            RefreshAura(EMPOWERED_RENEW1, level >= 50 && level < 53 ? 1 : 0);
-            RefreshAura(BORROWED_TIME, level >= 55 ? 1 : 0);
+            RefreshAura(RENEWED_HOPE, isDisc && level >= 45 ? 1 : 0);
+            RefreshAura(RAPTURE, isDisc && level >= 45 ? 1 : 0);
+            RefreshAura(DIVINE_AEGIS, isDisc && level >= 50 ? 1 : 0);
+            RefreshAura(GRACE, isDisc && level >= 50 ? 1 : 0);
+            RefreshAura(BORROWED_TIME, isDisc && level >= 55 ? 1 : 0);
+
+            RefreshAura(INSPIRATION3, isHoly && level >= 25 ? 1 : 0);
+            RefreshAura(INSPIRATION2, isHoly && level >= 23 && level < 25 ? 1 : 0);
+            RefreshAura(INSPIRATION1, isHoly && level >= 20 && level < 23 ? 1 : 0);
+            RefreshAura(SURGE_OF_LIGHT, isHoly && level >= 35 ? 1 : 0);
+            RefreshAura(HOLY_CONCENTRATION, isHoly && level >= 40 ? 1 : 0);
+            RefreshAura(BODY_AND_SOUL1, isHoly && level >= 45 ? 1 : 0);
+            RefreshAura(SERENDIPITY, isHoly && level >= 45 ? 1 : 0);
+            RefreshAura(EMPOWERED_RENEW3, isHoly && level >= 55 ? 1 : 0);
+            RefreshAura(EMPOWERED_RENEW2, isHoly && level >= 53 && level < 55 ? 1 : 0);
+            RefreshAura(EMPOWERED_RENEW1, isHoly && level >= 50 && level < 53 ? 1 : 0);
+
+            RefreshAura(SPIRIT_TAP, isShad && level >= 10 ? 1 : 0);
+            RefreshAura(IMPROVED_SPIRIT_TAP, isShad && level >= 10 ? 1 : 0);
+            RefreshAura(SHADOW_WEAVING3, isShad && level >= 30 ? 1 : 0);
+            RefreshAura(SHADOW_WEAVING2, isShad && level >= 28 && level < 30 ? 1 : 0);
+            RefreshAura(SHADOW_WEAVING1, isShad && level >= 25 && level < 28 ? 1 : 0);
+            RefreshAura(IMPROVED_DEVOURING_PLAGUE, isShad && level >= 35 ? 1 : 0);
+            RefreshAura(IMPROVED_SHADOWFORM, isShad && level >= 45 ? 1 : 0);
+            RefreshAura(MISERY3, isShad && level >= 50 ? 1 : 0);
+            RefreshAura(MISERY2, isShad && level >= 48 && level < 50 ? 1 : 0);
+            RefreshAura(MISERY1, isShad && level >= 45 && level < 48 ? 1 : 0);
 
             //RefreshAura(GLYPH_SW_PAIN, level >= 15 ? 1 : 0);
             RefreshAura(GLYPH_PW_SHIELD, level >= 15 ? 1 : 0);

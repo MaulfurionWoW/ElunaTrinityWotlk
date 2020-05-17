@@ -16,8 +16,8 @@ and damaging summoned units in 20 yards area, every dispelled effect restores 20
 3) Shadow Blast: 125 mana empowered attack, splash damage (6.25% of base mana)
 4) Shadow Armor (passive, custom): restores mana equal to a percentage of damage taken
 5) Drain Mana: leech all mana from a friendly target (up to 100% of od's max mana)
-6) Replenish Mana: restores 1% of max mana to up to 10 surrounding allies within 15yds at cost of all mana
-7) Replenish Life: restores 1% of max hp to up to 10 surrounding allies within 15yds at cost of all mana
+6) Replenish Mana: restores 2% of max mana to up to 10 surrounding allies within 25yds at cost of all mana
+7) Replenish Life: restores 3% of max hp to up to 10 surrounding allies within 25yds at cost of all mana
 Complete - 100%
 TODO:
 */
@@ -111,9 +111,8 @@ public:
 
         void StartAttack(Unit* u, bool force = false)
         {
-            if (GetBotCommandState() == COMMAND_ATTACK && !force) return;
-            SetBotCommandState(COMMAND_ATTACK);
-            OnStartAttack(u);
+            if (!bot_ai::StartAttack(u, force))
+                return;
             GetInPosition(force, u);
         }
 
@@ -241,7 +240,7 @@ public:
 
                 if (player->IsInCombat())
                     partycombat++;
-                else
+                else if (player->IsAlive())
                     partynocombat++;
 
                 if (!haveHp && player->IsAlive() && me->GetDistance(player) < 15 &&
@@ -258,9 +257,9 @@ public:
                     if (!bot->IsInWorld())
                         continue;
 
-                    if (!partycombat && bot->IsInCombat())
+                    if (bot->IsInCombat())
                         partycombat++;
-                    else
+                    else if (bot->IsAlive())
                         partynocombat++;
 
                     if (!haveHp && bot != me && bot->IsInWorld() && bot->IsAlive() && me->GetDistance(bot) < 15 &&
@@ -270,7 +269,7 @@ public:
             }
 
             if (haveHp && (!me->IsInCombat() || partycombat > partynocombat) &&
-                doCast(me, GetSpell(REPLENISH_HEALTH_1), true))
+                doCast(me, GetSpell(REPLENISH_HEALTH_1)))
                 return;
         }
 
@@ -296,7 +295,7 @@ public:
 
                 if (player->IsInCombat())
                     partycombat++;
-                else
+                else if (player->IsAlive())
                     partynocombat++;
 
                 if (!haveMana && player->IsAlive() && me->GetDistance(player) < 15 &&
@@ -313,9 +312,9 @@ public:
                     if (!bot->IsInWorld())
                         continue;
 
-                    if (!partycombat && bot->IsInCombat())
+                    if (bot->IsInCombat())
                         partycombat++;
-                    else
+                    else if (bot->IsAlive())
                         partynocombat++;
 
                     if (!haveMana && bot->IsInWorld() && bot->IsAlive() && me->GetDistance(bot) < 15 &&
@@ -326,11 +325,11 @@ public:
             }
 
             if (haveMana && (!me->IsInCombat() || partycombat > partynocombat) &&
-                doCast(me, GetSpell(REPLENISH_MANA_1), true))
+                doCast(me, GetSpell(REPLENISH_MANA_1)))
                 return;
         }
 
-        void ApplyClassDamageMultiplierSpell(int32& damage, SpellNonMeleeDamage& /*damageinfo*/, SpellInfo const* spellInfo, WeaponAttackType /*attackType*/, bool crit) const override
+        void ApplyClassDamageMultiplierSpell(int32& damage, SpellNonMeleeDamage& damageinfo, SpellInfo const* spellInfo, WeaponAttackType /*attackType*/, bool crit) const override
         {
             uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
             //uint8 lvl = me->getLevel();
@@ -404,7 +403,7 @@ public:
             if (baseId == REPLENISH_HEALTH_1)
                 me->SendPlaySpellVisual(21); //empty cast finish anim
 
-            if (baseId == REPLENISH_MANA_1)
+            if (baseId == REPLENISH_MANA_1 || baseId == REPLENISH_HEALTH_1)
                 me->SetPower(POWER_MANA, 0);
         }
 
@@ -438,27 +437,6 @@ public:
 
         void SpellHit(Unit* caster, SpellInfo const* spell) override
         {
-            if (spell->GetMaxDuration() >= 1000 && caster->IsControlledByPlayer())
-            {
-                //bots of W3 classes will not be easily CCed
-                if (spell->HasAura(SPELL_AURA_MOD_STUN) || spell->HasAura(SPELL_AURA_MOD_CONFUSE) ||
-                    spell->HasAura(SPELL_AURA_MOD_PACIFY) || spell->HasAura(SPELL_AURA_MOD_ROOT))
-                {
-                    if (Aura* cont = me->GetAura(spell->Id, caster->GetGUID()))
-                    {
-                        if (AuraApplication const* aurApp = cont->GetApplicationOfTarget(me->GetGUID()))
-                        {
-                            if (!aurApp->IsPositive())
-                            {
-                                int32 dur = std::max<int32>(cont->GetMaxDuration() / 3, 1000);
-                                cont->SetDuration(dur);
-                                cont->SetMaxDuration(dur);
-                            }
-                        }
-                    }
-                }
-            }
-
             OnSpellHit(caster, spell);
         }
 
@@ -512,13 +490,6 @@ public:
 
         void CheckAttackState() override
         {
-            if (me->GetVictim())
-            {
-                //if (HasRole(BOT_ROLE_DPS))
-                //    DoMeleeAttackIfReady();
-            }
-            else
-                Evade();
         }
 
         void Reset() override

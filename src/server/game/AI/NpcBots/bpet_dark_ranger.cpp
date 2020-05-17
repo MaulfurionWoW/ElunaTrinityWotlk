@@ -50,13 +50,12 @@ public:
 
         void StartAttack(Unit* u, bool force = false)
         {
-            if (GetBotCommandState() == COMMAND_ATTACK && !force) return;
-            SetBotCommandState(COMMAND_ATTACK);
-            OnStartAttack(u);
+            if (!bot_pet_ai::StartAttack(u, force))
+                return;
             GetInPosition(force, u);
         }
 
-        void DoPetActions(uint32 /*diff*/)
+        void DoPetActions(uint32 diff)
         {
             //if (threatGenTimer < diff)
             //{
@@ -135,7 +134,7 @@ public:
             bot_pet_ai::DamageDealt(victim, damage, damageType);
         }
 
-        void DamageTaken(Unit* u, uint32& /*damage*/) override
+        void DamageTaken(Unit* u, uint32& damage) override
         {
             if (!u)
                 return;

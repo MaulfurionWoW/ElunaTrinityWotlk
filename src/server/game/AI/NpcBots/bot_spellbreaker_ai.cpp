@@ -95,9 +95,8 @@ public:
 
         void StartAttack(Unit* u, bool force = false)
         {
-            if (GetBotCommandState() == COMMAND_ATTACK && !force) return;
-            SetBotCommandState(COMMAND_ATTACK);
-            OnStartAttack(u);
+            if (!bot_ai::StartAttack(u, force))
+                return;
             GetInPosition(force, u);
         }
 
@@ -136,9 +135,11 @@ public:
             Attack(diff);
         }
 
-        void Attack(uint32 /*diff*/)
+        void Attack(uint32 diff)
         {
             StartAttack(opponent, IsMelee());
+
+            MoveBehind(opponent);
         }
 
         void CheckDispel(uint32 diff)
@@ -153,6 +154,23 @@ public:
             SetSpellCooldown(SPELLSTEAL_1, 500); //fail
         }
 
+        void ApplyClassDamageMultiplierMelee(uint32& /*damage*/, CalcDamageInfo& damageinfo) const override
+        {
+            float pctbonus = 1.0f;
+
+            if (damageinfo.Target && damageinfo.Target->GetPowerType() == POWER_MANA && damageinfo.Target->GetMaxPower(POWER_MANA) > 1 &&
+                damageinfo.Target->GetPower(POWER_MANA) < me->GetWeaponDamageRange(BASE_ATTACK, MAXDAMAGE))
+            {
+                pctbonus *= 3.f;
+                if (_doCrit == false && urand(1,100) < 2 * GetBotCritChance())
+                    const_cast<spellbreaker_botAI*>(this)->_doCrit = true;
+            }
+            else if (_doCrit == true)
+                const_cast<spellbreaker_botAI*>(this)->_doCrit = false;
+
+            damageinfo.Damages[0].Damage *= pctbonus;
+        }
+
         void ApplyClassEffectMods(SpellInfo const* spellInfo, uint8 effIndex, float& value) const override
         {
             uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
@@ -163,6 +181,11 @@ public:
                 value += me->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_MAGIC) * 0.5f * me->CalculateDefaultCoefficient(spellInfo, SPELL_DIRECT_DAMAGE) * me->CalculateSpellpowerCoefficientLevelPenalty(spellInfo);
 
             value = value * pctbonus;
+        }
+
+        MeleeHitOutcome GetNextAttackMeleeOutCome() const override
+        {
+            return _doCrit ? MELEE_HIT_CRIT : bot_ai::GetNextAttackMeleeOutCome();
         }
 
         void OnClassSpellGo(SpellInfo const* spellInfo) override
@@ -183,27 +206,6 @@ public:
 
         void SpellHit(Unit* caster, SpellInfo const* spell) override
         {
-            if (spell->GetMaxDuration() >= 1000 && caster->IsControlledByPlayer())
-            {
-                //bots of W3 classes will not be easily CCed
-                if (spell->HasAura(SPELL_AURA_MOD_STUN) || spell->HasAura(SPELL_AURA_MOD_CONFUSE) ||
-                    spell->HasAura(SPELL_AURA_MOD_PACIFY) || spell->HasAura(SPELL_AURA_MOD_ROOT))
-                {
-                    if (Aura* cont = me->GetAura(spell->Id, caster->GetGUID()))
-                    {
-                        if (AuraApplication const* aurApp = cont->GetApplicationOfTarget(me->GetGUID()))
-                        {
-                            if (!aurApp->IsPositive())
-                            {
-                                int32 dur = std::max<int32>(cont->GetMaxDuration() / 3, 1000);
-                                cont->SetDuration(dur);
-                                cont->SetMaxDuration(dur);
-                            }
-                        }
-                    }
-                }
-            }
-
             OnSpellHit(caster, spell);
         }
 
@@ -228,7 +230,7 @@ public:
             bot_ai::DamageDealt(victim, damage, damageType);
         }
 
-        void DamageTaken(Unit* u, uint32& /*damage*/) override
+        void DamageTaken(Unit* u, uint32& damage) override
         {
             if (!u)
                 return;
@@ -246,10 +248,12 @@ public:
 
         void Reset() override
         {
+            _doCrit = false;
+
             DefaultInit();
         }
 
-        void ReduceCD(uint32 /*diff*/) override
+        void ReduceCD(uint32 diff) override
         {
         }
 
@@ -279,6 +283,8 @@ public:
         }
 
     private:
+
+        bool _doCrit;
 
         void ProcessSpellsteal(Unit* target)
         {

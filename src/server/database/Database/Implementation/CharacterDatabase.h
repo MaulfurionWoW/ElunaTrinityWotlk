@@ -532,6 +532,7 @@ enum CharacterDatabaseStatements : uint32
     CHAR_DEL_NPCBOT,
     CHAR_INS_NPCBOT,
     CHAR_UPD_NPCBOT_FACTION,
+    CHAR_UPD_NPCBOT_SPEC,
     // End NPCBot
 
     MAX_CHARACTERDATABASE_STATEMENTS

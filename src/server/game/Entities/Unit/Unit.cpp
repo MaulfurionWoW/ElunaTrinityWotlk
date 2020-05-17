@@ -1006,7 +1006,7 @@ void Unit::CalculateSpellDamageTaken(SpellNonMeleeDamage* damageInfo, int32 dama
             case SPELL_DAMAGE_CLASS_MELEE:
             {
                 //NpcBot mod: apply bot damage mods
-                if (GetTypeId() == TYPEID_UNIT && (ToCreature()->IsNPCBot() || ToCreature()->IsNPCBotPet()))
+                if (GetTypeId() == TYPEID_UNIT && ToCreature()->IsNPCBotOrPet())
                 {
                     //TODO: rename to ApplyBotDamageMultiplierPhysical
                     ToCreature()->ApplyBotDamageMultiplierMelee(damage, *damageInfo, spellInfo, attackType, crit);
@@ -1080,7 +1080,7 @@ void Unit::CalculateSpellDamageTaken(SpellNonMeleeDamage* damageInfo, int32 dama
             case SPELL_DAMAGE_CLASS_MAGIC:
             {
                 //NpcBot mod: apply bot damage mods
-                if (GetTypeId() == TYPEID_UNIT && (ToCreature()->IsNPCBot() || ToCreature()->IsNPCBotPet()))
+                if (GetTypeId() == TYPEID_UNIT && ToCreature()->IsNPCBotOrPet())
                 {
                     ToCreature()->ApplyBotDamageMultiplierSpell(damage, *damageInfo, spellInfo, attackType, crit);
                     if (damageSchoolMask & SPELL_SCHOOL_MASK_NORMAL)
@@ -1235,7 +1235,7 @@ void Unit::CalculateMeleeDamage(Unit* victim, CalcDamageInfo* damageInfo, Weapon
         sScriptMgr->ModifyMeleeDamage(damageInfo->Target, damageInfo->Attacker, damage);
 
         //NpcBot mod: apply bot damage mods
-        if (GetTypeId() == TYPEID_UNIT && (ToCreature()->IsNPCBot() || ToCreature()->IsNPCBotPet()))
+        if (GetTypeId() == TYPEID_UNIT && ToCreature()->IsNPCBotOrPet())
         {
             damageInfo->Damages[i].Damage = damage;
             //damage is unused. TODO: remove this redundant argument
@@ -2263,7 +2263,7 @@ MeleeHitOutcome Unit::RollMeleeOutcomeAgainst(Unit const* victim, WeaponAttackTy
     // 4. GLANCING
     // Max 40% chance to score a glancing blow against mobs that are higher level (can do only players and pets and not with ranged weapon)
     //npcbot: no glances on npcbots and their pets
-    if (!(victim->GetTypeId() == TYPEID_UNIT && (victim->ToCreature()->IsNPCBot() || victim->ToCreature()->IsNPCBotPet())))
+    if (!(victim->GetTypeId() == TYPEID_UNIT && victim->ToCreature()->IsNPCBotOrPet()))
     //end npcbot
     if ((GetTypeId() == TYPEID_PLAYER || IsPet()) &&
         victim->GetTypeId() != TYPEID_PLAYER && !victim->IsPet() &&
@@ -5690,7 +5690,7 @@ bool Unit::Attack(Unit* victim, bool meleeAttack)
 
     if (creature && !IsControlledByPlayer())
     //npcbot - not for npcbots either
-    if (!creature->IsNPCBot() && !creature->IsNPCBotPet())
+    if (!creature->IsNPCBotOrPet())
     //end npcbot
     {
         EngageWithTarget(victim); // ensure that anything we're attacking has threat
@@ -6714,7 +6714,7 @@ float Unit::SpellDamagePctDone(Unit* victim, SpellInfo const* spellProto, Damage
     float DoneTotalMod = 1.0f;
 
     //npcbot: do not affect bots
-    if (GetTypeId() == TYPEID_UNIT && (ToCreature()->IsNPCBot() || ToCreature()->IsNPCBotPet()))
+    if (GetTypeId() == TYPEID_UNIT && ToCreature()->IsNPCBotOrPet())
     { /*do nothing*/ }
     else
     //end npcbot
@@ -7126,7 +7126,7 @@ float Unit::SpellCritChanceDone(SpellInfo const* spellInfo, SpellSchoolMask scho
     //! Mobs can't crit with spells. (Except player controlled)
     if (GetTypeId() == TYPEID_UNIT && !GetSpellModOwner())
         //npcbot - allow bots to crit
-        if (!ToCreature()->IsNPCBot() && !ToCreature()->IsNPCBotPet())
+        if (!ToCreature()->IsNPCBotOrPet())
         //end npcbot
         return 0.0f;
 
@@ -9004,7 +9004,7 @@ bool Unit::ApplyDiminishingToDuration(SpellInfo const* auraSpellInfo, bool trigg
 
         //npcbot: limit duration if casted by npcbots
         if (target->GetTypeId() == TYPEID_PLAYER && source->GetTypeId() == TYPEID_UNIT &&
-            (source->ToCreature()->IsNPCBot() || source->ToCreature()->IsNPCBotPet()))
+            source->ToCreature()->IsNPCBotOrPet())
             duration = limitDuration;
         //end npcbots
     }
@@ -10817,7 +10817,7 @@ uint32 Unit::GetCastingTimeForBonus(SpellInfo const* spellProto, DamageEffectTyp
     // Not apply this to creature cast spells with casttime == 0
     if (CastingTime == 0 && GetTypeId() == TYPEID_UNIT && !IsPet())
         //npcbot - skip bots
-        if (!ToCreature()->IsNPCBot() && !ToCreature()->IsNPCBotPet())
+        if (!ToCreature()->IsNPCBotOrPet())
         //end npcbot
         return 3500;
 
@@ -12723,7 +12723,7 @@ uint32 Unit::GetModelForForm(ShapeshiftForm form, uint32 spellId) const
                         case 1:
                         case 2:
                         case 3:
-                            return 29412;
+                           return 29412;
                         default: // original - Grey
                             return 8571;
                     }
@@ -12743,10 +12743,10 @@ uint32 Unit::GetModelForForm(ShapeshiftForm form, uint32 spellId) const
                         case 0: // Green
                         case 1: // Light Green
                         case 2: // Dark Green
-                            return 29413; // 29415?
+                           return 29413; // 29415?
                         case 6: // Dark Blue
                             return 29414;
-                        case 4: // White
+                       case 4: // White
                             return 29416;
                         case 3: // Light Blue
                             return 29417;

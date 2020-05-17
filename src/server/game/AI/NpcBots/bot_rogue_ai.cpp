@@ -206,9 +206,8 @@ public:
 
         void StartAttack(Unit* u, bool force = false)
         {
-            if (GetBotCommandState() == COMMAND_ATTACK && !force) return;
-            SetBotCommandState(COMMAND_ATTACK);
-            OnStartAttack(u);
+            if (!bot_ai::StartAttack(u, force))
+                return;
             GetInPosition(force, u);
         }
 
@@ -237,8 +236,6 @@ public:
 
             if (!GlobalUpdate(diff))
                 return;
-
-            CheckRacials(diff);
 
             if (IsPotionReady())
             {
@@ -394,7 +391,8 @@ public:
                     getenergy();
             }
             //Sprint (no GCD)
-            if (IsSpellReady(SPRINT_1, diff, false) && ((me->GetLevel() >= 20 && CCed(me, true) && Rand() < 35) ||
+            if (IsSpellReady(SPRINT_1, diff, false) && !HasBotCommandState(BOT_COMMAND_STAY) &&
+                ((me->GetLevel() >= 20 && CCed(me, true) && Rand() < 35) ||
                 (Rand() < (25 + 10*stealthed + 40*shadowdance) && dist > (20 - (5*stealthed + 10*shadowdance)))) &&
                 !me->GetAuraEffect(SPELL_AURA_MOD_INCREASE_SPEED, SPELLFAMILY_ROGUE, 0x40, 0x0, 0x0))
             {
@@ -412,7 +410,7 @@ public:
             //Deadly Throw
             if (IsSpellReady(DEADLY_THROW_1, diff) && !stealthed && !shadowdance && HasRole(BOT_ROLE_DPS) &&
                 comboPoints > 0 && Rand() < 55 && dist < 30 && dist > 5 && energy >= ecost(DEADLY_THROW_1) &&
-                opponent->IsNonMeleeSpellCast(false,false,true))
+                ((_spec != BOT_SPEC_ROGUE_COMBAT) || opponent->IsNonMeleeSpellCast(false,false,true)))
             {
                 Item const* thrown = GetEquips(BOT_SLOT_RANGED);
                 if (thrown && thrown->GetTemplate()->Class == ITEM_CLASS_WEAPON &&
@@ -656,7 +654,7 @@ public:
             }
             //Sinister Strike: tank mode
             if (GetSpell(SINISTER_STRIKE_1) && comboPoints < 5 &&
-                (!isdaggerMH || IsTank() || (opponent->GetVictim() && energy >= 60 && opponent->HasInArc(float(M_PI), me)) || !GetSpell(BACKSTAB_1)) &&
+                (!isdaggerMH || IsTank() || (opponent->GetVictim() == me && energy >= 60 && opponent->HasInArc(float(M_PI), me)) || !GetSpell(BACKSTAB_1)) &&
                 energy >= ecost(SINISTER_STRIKE_1))
             {
                 if (doCast(opponent, GetSpell(SINISTER_STRIKE_1)))
@@ -678,7 +676,7 @@ public:
             if (me->IsInCombat() && Rand() < 25)
             {
                 bool canVanish = IsSpellReady(VANISH_1, diff, false);
-                bool canSprint = me->GetLevel() >= 25 && IsSpellReady(SPRINT_1, diff, false);
+                bool canSprint = (_spec == BOT_SPEC_ROGUE_COMBAT) && me->GetLevel() >= 25 && !HasBotCommandState(BOT_COMMAND_STAY) && IsSpellReady(SPRINT_1, diff, false);
                 if ((canVanish || canSprint) && me->HasAuraWithMechanic((1<<MECHANIC_SNARE)|(1<<MECHANIC_ROOT)))
                 {
                     uint32 Spanish = canSprint ? SPRINT_1 : VANISH_1;
@@ -777,7 +775,7 @@ public:
             if (GetHealthPCT(me) < 30 + 20*me->getAttackers().size() ||
                 (!IAmFree() && GetHealthPCT(me) < 70 && master->GetNpcBotsCount() > 1))
             {
-                //Unit* victim = me->GetVictim();
+                Unit* victim = me->GetVictim();
                 if (doCast(me, GetSpell(VANISH_1)))
                     return;
             }
@@ -852,7 +850,7 @@ public:
                 me->GetAuraEffect(SPELL_AURA_MOD_MELEE_HASTE, SPELLFAMILY_ROGUE, 0x40000000, 0x800, 0x0))
                 return;
 
-            Unit* u = FindStunTarget(15); //improved always (base 34, improved 15)
+            Unit* u = FindStunTarget(15); //improved always (base 10, improved 15)
             if (!u)
                 u = FindCastingTarget(15, 0, BLIND_1);
 
@@ -929,7 +927,7 @@ public:
 
         void CheckSprint(uint32 diff)
         {
-            if (!IsSpellReady(SPRINT_1, diff, false) || GetBotCommandState() != COMMAND_FOLLOW ||
+            if (!IsSpellReady(SPRINT_1, diff, false) || !HasBotCommandState(BOT_COMMAND_FOLLOW) ||
                 me->GetVictim() || me->IsMounted() || IAmFree() || Rand() > 15)
                 return;
 
@@ -969,7 +967,7 @@ public:
             if (lvl >= 15 && baseId == EVISCERATE_1)
                 crit_chance += 10.f;
             //Improved Ambush: 50% additional critical chance for Ambush
-            if (baseId == AMBUSH_1)
+            if ((_spec == BOT_SPEC_ROGUE_SUBTLETY) && lvl >= 25 && baseId == AMBUSH_1)
                 crit_chance += 50.f;
             //Turn the Tables:
             if (lvl >= 50 &&
@@ -1006,7 +1004,7 @@ public:
             if (lvl >= 60 && baseId == EVISCERATE_1)
                 pctbonus += 0.15f;
             //Find Weakness: 6% bonus damage to all abilities
-            if (lvl >= 45)
+            if ((_spec == BOT_SPEC_ROGUE_ASSASINATION) && lvl >= 45)
                 pctbonus += 0.06f;
             //Improved Eviscerate: 20% damage bonus for Eviscerate
             if (lvl >= 10 && baseId == EVISCERATE_1)
@@ -1017,7 +1015,8 @@ public:
                 baseId == MUTILATE_DAMAGE_OFFHAND_1 || baseId == GARROTE_1 || baseId == AMBUSH_1))
                 pctbonus += 0.2f;
             //Aggression: 15% damage bonus for Sinister Strike, Backstab and Eviscerate
-            if (lvl >= 25 && (baseId == SINISTER_STRIKE_1 || baseId == BACKSTAB_1 || baseId == EVISCERATE_1))
+            if ((_spec == BOT_SPEC_ROGUE_COMBAT) &&
+                lvl >= 25 && (baseId == SINISTER_STRIKE_1 || baseId == BACKSTAB_1 || baseId == EVISCERATE_1))
                 pctbonus += 0.15f;
             //Blood Spatter: 30% bonus damage for Rupture and Garrote
             if (lvl >= 15 && (baseId == RUPTURE_1 || baseId == GARROTE_1))
@@ -1029,15 +1028,16 @@ public:
             if (lvl >= 20 && baseId == RUPTURE_1)
                 pctbonus += 0.3f;
             //Surprise Attacks: 10% bonus damage for Sinister Strike, Backstab, Shiv, Hemmorhage and Gouge
-            if (lvl >= 50 && (baseId == SINISTER_STRIKE_1 || baseId == BACKSTAB_1 ||
+            if ((_spec == BOT_SPEC_ROGUE_COMBAT) &&
+                lvl >= 50 && (baseId == SINISTER_STRIKE_1 || baseId == BACKSTAB_1 ||
                 /*baseId == SHIV_1 || */baseId == HEMORRHAGE_1 || baseId == GOUGE_1))
                 pctbonus += 0.1f;
             //Blade Twisting: 10% bonus damage for Sinister Strike and Backstab
-            if (lvl >= 35 && (baseId == SINISTER_STRIKE_1 || baseId == BACKSTAB_1))
+            if ((_spec == BOT_SPEC_ROGUE_COMBAT) && lvl >= 35 && (baseId == SINISTER_STRIKE_1 || baseId == BACKSTAB_1))
                 pctbonus += 0.1f;
             //Sinister Calling: 10% bonus percentage damage for Backstab and Hemorrhage
             //We add bonus damage pct because SpellMods are not handled
-            if (lvl >= 45 && (baseId == BACKSTAB_1 || baseId == HEMORRHAGE_1))
+            if ((_spec == BOT_SPEC_ROGUE_SUBTLETY) && lvl >= 45 && (baseId == BACKSTAB_1 || baseId == HEMORRHAGE_1))
                 pctbonus += 0.1f;
             //Glyph of Fan of Knives: 20% bonus damage for Fan of Knives
             if (lvl >= 80 && baseId == FAN_OF_KNIVES_1)
@@ -1078,16 +1078,17 @@ public:
             if (lvl >= 10 && baseId == SINISTER_STRIKE_1)
                 flatbonus += 5;
             //Dirty Deeds part 1: -20 energy cost for Cheap Shot and Garrote
-            if (lvl >= 30 && (baseId == CHEAP_SHOT_1 || baseId == GARROTE_1))
+            if ((_spec == BOT_SPEC_ROGUE_SUBTLETY) && lvl >= 30 && (baseId == CHEAP_SHOT_1 || baseId == GARROTE_1))
                 flatbonus += 20;
             //Filthy Tricks part 2: -10 energy cost for Tricks of the Trade, Distract and Shadowstep
-            if (lvl >= 50 && (baseId == TRICKS_OF_THE_TRADE_1 || baseId == DISTRACT_1 || baseId == SHADOWSTEP_1))
+            if ((_spec == BOT_SPEC_ROGUE_SUBTLETY) &&
+                lvl >= 50 && (baseId == TRICKS_OF_THE_TRADE_1 || baseId == DISTRACT_1 || baseId == SHADOWSTEP_1))
                 flatbonus += 10;
             //Slaugher from the Shadows part 1: -20 energy cost for Backstab and Ambush
-            if (lvl >= 55 && (baseId == BACKSTAB_1 || baseId == AMBUSH_1))
+            if ((_spec == BOT_SPEC_ROGUE_SUBTLETY) && lvl >= 55 && (baseId == BACKSTAB_1 || baseId == AMBUSH_1))
                 flatbonus += 20;
             //Slaugher from the Shadows part 2: -5 energy cost for Hemorrhage
-            if (lvl >= 55 && baseId == HEMORRHAGE_1)
+            if ((_spec == BOT_SPEC_ROGUE_SUBTLETY) && lvl >= 55 && baseId == HEMORRHAGE_1)
                 flatbonus += 5;
             //Glyph of Feint: -20 energy cost for Feint
             if (lvl >= 16 && baseId == FEINT_1)
@@ -1143,17 +1144,18 @@ public:
             //    pctbonus += 0.33f;
 
             //flat mods
-            //Camouflage part 2: -60 sec cooldown for Blind
+            //Elusiveness part 2: -60 sec cooldown for Blind
             if (lvl >= 20 && baseId == BLIND_1)
                 timebonus += 60000;
-            //Camouflage part 3: -30 sec cooldown for Cloak of Shadows
+            //Elusiveness part 3: -30 sec cooldown for Cloak of Shadows
             if (lvl >= 20 && baseId == CLOAK_OF_SHADOWS_1)
                 timebonus += 30000;
             //Filthy Tricks part 1: -10 sec cooldown for Tricks of the Trade, Distract and Shadowstep
-            if (lvl >= 50 && (baseId == TRICKS_OF_THE_TRADE_1 || baseId == DISTRACT_1 || baseId == SHADOWSTEP_1))
+            if ((_spec == BOT_SPEC_ROGUE_SUBTLETY) &&
+                lvl >= 50 && (baseId == TRICKS_OF_THE_TRADE_1 || baseId == DISTRACT_1 || baseId == SHADOWSTEP_1))
                 timebonus += 10000;
             //Filthy Tricks part 3: -3 min cooldown for Preparation
-            if (lvl >= 50 && baseId == PREPARATION_1)
+            if ((_spec == BOT_SPEC_ROGUE_SUBTLETY) && lvl >= 50 && baseId == PREPARATION_1)
                 timebonus += 180000;
             //Glyph of Killing Spree: -45 sec cooldown for Killing Spree
             if (lvl >= 60 && baseId == KILLING_SPREE_1)
@@ -1174,22 +1176,22 @@ public:
             //Endurance: -1 min cooldown for Sprint and Evasion
             if (lvl >= 20 && (baseId == SPRINT_1 || baseId == EVASION_1))
                 timebonus += 60000;
-            //Camouflage part 1: -60 sec cooldown for Vanish
+            //Elusiveness part 1: -60 sec cooldown for Vanish
             if (lvl >= 20 && baseId == VANISH_1)
                 timebonus += 60000;
-            //Elusiveness part 1: -6 sec cooldown for Stealth
+            //Camouflage part 2: -6 sec cooldown for Stealth
             if (lvl >= 15 && baseId == STEALTH_1)
                 timebonus += 6000;
 
             cooldown = std::max<int32>((float(cooldown) * (1.0f - pctbonus)) - timebonus, 0);
         }
 
-        void ApplyClassSpellGlobalCooldownMods(SpellInfo const* /*spellInfo*/, float& cooldown) const override
+        void ApplyClassSpellGlobalCooldownMods(SpellInfo const* spellInfo, float& cooldown) const override
         {
             //cooldown is in milliseconds
-            //uint32 spellId = spellInfo->Id;
+            uint32 spellId = spellInfo->Id;
             //SpellSchool school = GetFirstSchoolInMask(spellInfo->GetSchoolMask());
-            //uint8 lvl = me->GetLevel();
+            uint8 lvl = me->GetLevel();
             float timebonus = 0.0f;
             float pctbonus = 0.0f;
 
@@ -1200,12 +1202,12 @@ public:
             cooldown = (cooldown * (1.0f - pctbonus)) - timebonus;
         }
 
-        void ApplyClassSpellRadiusMods(SpellInfo const* /*spellInfo*/, float& radius) const override
+        void ApplyClassSpellRadiusMods(SpellInfo const* spellInfo, float& radius) const override
         {
             //uint32 spellId = spellInfo->Id;
             //uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
             //SpellSchool school = GetFirstSchoolInMask(spellInfo->GetSchoolMask());
-            //uint8 lvl = me->GetLevel();
+            uint8 lvl = me->GetLevel();
             float flatbonus = 0.0f;
             float pctbonus = 0.0f;
 
@@ -1238,7 +1240,7 @@ public:
 
             //flat mods
             //Throwing Specialization: + 4 yd range for Deadly Throw
-            if (lvl >= 45 && baseId == DEADLY_THROW_1)
+            if ((_spec == BOT_SPEC_ROGUE_COMBAT) && lvl >= 45 && baseId == DEADLY_THROW_1)
                 flatbonus += 4.f;
             //Dirty Tricks: + 5 yd range for Blind and Sap
             if (lvl >= 15 && (baseId == BLIND_1 || baseId == SAP_1))
@@ -1250,7 +1252,7 @@ public:
             maxrange = maxrange * (1.0f + pctbonus) + flatbonus;
         }
 
-        void ApplyClassSpellMaxTargetsMods(SpellInfo const* /*spellInfo*/, uint32& targets) const override
+        void ApplyClassSpellMaxTargetsMods(SpellInfo const* spellInfo, uint32& targets) const override
         {
             uint32 bonusTargets = 0;
 
@@ -1355,6 +1357,14 @@ public:
                     chea->ChangeAmount(-100);
                 }
             }
+            //Camouflage part 1: +15% speed while stealthed
+            if (baseId == STEALTH_1 && me->GetLevel() >= 15)
+            {
+                if (AuraEffect* stea = me->GetAuraEffect(spell->Id, 2))
+                {
+                    stea->ChangeAmount(stea->GetAmount() + 15);
+                }
+            }
 
             OnSpellHit(caster, spell);
         }
@@ -1412,7 +1422,7 @@ public:
             //some abilities like relentless strikes require combo points thus tries to proc itself
             else if (spell->NeedsComboPoints() && comboPoints)
             {
-                //uint32 tempCP = comboPoints;
+                uint32 tempCP = comboPoints;
                 comboPoints = 0;
 
                 //TC_LOG_ERROR("entities.player", "rogue_bot CP SPEND1: %u to 0", tempCP);
@@ -1594,7 +1604,7 @@ public:
                 }
             }
             //Cut to the Chase: Eviscerate and Envenom will refresh Slice and Dice duration as for 5 points
-            if (lvl >= 55 && (baseId == EVISCERATE_1/* || baseId == ENVENOM_1*/) && GetSpell(SLICE_DICE_1))
+            if ((_spec == BOT_SPEC_ROGUE_ASSASINATION) && lvl >= 55 && (baseId == EVISCERATE_1/* || baseId == ENVENOM_1*/) && GetSpell(SLICE_DICE_1))
             {
                 if (Aura* dice = me->GetAura(GetSpell(SLICE_DICE_1)))
                 {
@@ -1604,7 +1614,7 @@ public:
                 }
             }
             //Waylay
-            if (lvl >= 45 && (baseId == BACKSTAB_1 || baseId == AMBUSH_1))
+            if ((_spec == BOT_SPEC_ROGUE_SUBTLETY) && lvl >= 45 && (baseId == BACKSTAB_1 || baseId == AMBUSH_1))
                 me->CastSpell(target, WAYLAY_DEBUFF, true);
 
             //Stun: move behind
@@ -1623,7 +1633,7 @@ public:
             bot_ai::DamageDealt(victim, damage, damageType);
         }
 
-        void DamageTaken(Unit* u, uint32& /*damage*/) override
+        void DamageTaken(Unit* u, uint32& damage) override
         {
             if (!u)
                 return;
@@ -1641,9 +1651,7 @@ public:
 
         void CheckAttackState() override
         {
-            if (!me->GetVictim())
-                Evade();
-            else if (HasRole(BOT_ROLE_DPS) && !me->HasAuraType(SPELL_AURA_MOD_STEALTH) &&
+            if (me->GetVictim() && HasRole(BOT_ROLE_DPS) && !me->HasAuraType(SPELL_AURA_MOD_STEALTH) &&
                 (me->isAttackReady() || me->isAttackReady(OFF_ATTACK)) &&
                 (!me->GetVictim()->GetAuraEffect(SPELL_AURA_MOD_STUN, SPELLFAMILY_ROGUE, 0x8, 0x0, 0x0) &&
                 !me->GetVictim()->GetAuraEffect(SPELL_AURA_MOD_CONFUSE, SPELLFAMILY_ROGUE, 0x01000000, 0x0, 0x0)))
@@ -1760,6 +1768,9 @@ public:
         void InitSpells() override
         {
             uint8 lvl = me->GetLevel();
+            bool isAssa = _spec == BOT_SPEC_ROGUE_ASSASINATION;
+            bool isComb = _spec == BOT_SPEC_ROGUE_COMBAT;
+            bool isSubt = _spec == BOT_SPEC_ROGUE_SUBTLETY;
 
             InitSpellMap(KICK_1);
             //InitSpellMap(EXPOSE_ARMOR_1);
@@ -1770,10 +1781,6 @@ public:
             InitSpellMap(SINISTER_STRIKE_1);
             InitSpellMap(EVISCERATE_1);
             InitSpellMap(RUPTURE_1);
-            lvl >= 50 ? InitSpellMap(MUTILATE_1) : RemoveSpell(MUTILATE_1);
-            lvl >= 30 ? InitSpellMap(HEMORRHAGE_1) : RemoveSpell(HEMORRHAGE_1);
-            lvl >= 20 ? InitSpellMap(GHOSTLY_STRIKE_1) : RemoveSpell(GHOSTLY_STRIKE_1);
-            lvl >= 20 ? InitSpellMap(RIPOSTE_1) : RemoveSpell(RIPOSTE_1);
             InitSpellMap(DEADLY_THROW_1);
             InitSpellMap(FAN_OF_KNIVES_1);
 
@@ -1781,28 +1788,35 @@ public:
             InitSpellMap(EVASION_1);
             InitSpellMap(BLIND_1);
             InitSpellMap(VANISH_1);
-            lvl >= 30 ? InitSpellMap(COLD_BLOOD_1) : RemoveSpell(COLD_BLOOD_1);
-            lvl >= 60 ? InitSpellMap(HUNGER_FOR_BLOOD_1) : RemoveSpell(HUNGER_FOR_BLOOD_1);
-            lvl >= 40 ? InitSpellMap(ADRENALINE_RUSH_1) : RemoveSpell(ADRENALINE_RUSH_1);
-            lvl >= 60 ? InitSpellMap(KILLING_SPREE_1) : RemoveSpell(KILLING_SPREE_1);
-            lvl >= 30 ? InitSpellMap(PREPARATION_1) : RemoveSpell(PREPARATION_1);
-            lvl >= 40 ? InitSpellMap(PREMEDITATION_1) : RemoveSpell(PREMEDITATION_1);
 
             InitSpellMap(GOUGE_1);
 
             InitSpellMap(KIDNEY_SHOT_1);
             InitSpellMap(SLICE_DICE_1);
-            lvl >= 30 ? InitSpellMap(BLADE_FLURRY_1) : RemoveSpell(BLADE_FLURRY_1);
-            lvl >= 50 ? InitSpellMap(SHADOWSTEP_1) : RemoveSpell(SHADOWSTEP_1);
             InitSpellMap(CLOAK_OF_SHADOWS_1);
             InitSpellMap(TRICKS_OF_THE_TRADE_1);
-            lvl >= 60 ? InitSpellMap(SHADOW_DANCE_1) : RemoveSpell(SHADOW_DANCE_1);
 
             InitSpellMap(STEALTH_1);
             //InitSpellMap(SAP_1);
             InitSpellMap(GARROTE_1);
             InitSpellMap(CHEAP_SHOT_1);
             InitSpellMap(AMBUSH_1);
+
+            lvl >= 30 && isAssa ? InitSpellMap(COLD_BLOOD_1) : RemoveSpell(COLD_BLOOD_1);
+            lvl >= 50 && isAssa ? InitSpellMap(MUTILATE_1) : RemoveSpell(MUTILATE_1);
+            lvl >= 60 && isAssa ? InitSpellMap(HUNGER_FOR_BLOOD_1) : RemoveSpell(HUNGER_FOR_BLOOD_1);
+
+            lvl >= 20 && isComb ? InitSpellMap(RIPOSTE_1) : RemoveSpell(RIPOSTE_1);
+            lvl >= 30 && isComb ? InitSpellMap(BLADE_FLURRY_1) : RemoveSpell(BLADE_FLURRY_1);
+            lvl >= 40 && isComb ? InitSpellMap(ADRENALINE_RUSH_1) : RemoveSpell(ADRENALINE_RUSH_1);
+            lvl >= 60 && isComb ? InitSpellMap(KILLING_SPREE_1) : RemoveSpell(KILLING_SPREE_1);
+
+            lvl >= 20 && isSubt ? InitSpellMap(GHOSTLY_STRIKE_1) : RemoveSpell(GHOSTLY_STRIKE_1);
+            lvl >= 30 && isSubt ? InitSpellMap(HEMORRHAGE_1) : RemoveSpell(HEMORRHAGE_1);
+            lvl >= 30 && isSubt ? InitSpellMap(PREPARATION_1) : RemoveSpell(PREPARATION_1);
+            lvl >= 40 && isSubt ? InitSpellMap(PREMEDITATION_1) : RemoveSpell(PREMEDITATION_1);
+            lvl >= 50 && isSubt ? InitSpellMap(SHADOWSTEP_1) : RemoveSpell(SHADOWSTEP_1);
+            lvl >= 60 && isSubt ? InitSpellMap(SHADOW_DANCE_1) : RemoveSpell(SHADOW_DANCE_1);
 
             //InitSpellMap(DISTRACT_1);
 
@@ -1819,50 +1833,56 @@ public:
         void ApplyClassPassives() const override
         {
             uint8 level = master->GetLevel();
+            bool isAssa = _spec == BOT_SPEC_ROGUE_ASSASINATION;
+            bool isComb = _spec == BOT_SPEC_ROGUE_COMBAT;
+            bool isSubt = _spec == BOT_SPEC_ROGUE_SUBTLETY;
 
-            RefreshAura(COMBAT_POTENCY5, level >= 55 ? 1 : 0);
-            RefreshAura(COMBAT_POTENCY4, level >= 52 && level < 55 ? 1 : 0);
-            RefreshAura(COMBAT_POTENCY3, level >= 49 && level < 52 ? 1 : 0);
-            RefreshAura(COMBAT_POTENCY2, level >= 47 && level < 49 ? 1 : 0);
-            RefreshAura(COMBAT_POTENCY1, level >= 45 && level < 47 ? 1 : 0);
-            RefreshAura(SEAL_FATE5, level >= 45 ? 1 : 0);
-            RefreshAura(SEAL_FATE4, level >= 42 && level < 45 ? 1 : 0);
-            RefreshAura(SEAL_FATE3, level >= 39 && level < 42 ? 1 : 0);
-            RefreshAura(SEAL_FATE2, level >= 37 && level < 39 ? 1 : 0);
-            RefreshAura(SEAL_FATE1, level >= 35 && level < 37 ? 1 : 0);
-            RefreshAura(DEADLY_BREW, level >= 40 ? 1 : 0);
-            //RefreshAura(BLADE_TWISTING1, level >= 35 ? 1 : 0);
-            RefreshAura(QUICK_RECOVERY2, level >= 35 ? 1 : 0);
-            RefreshAura(QUICK_RECOVERY1, level >= 30 && level < 35 ? 1 : 0);
-            RefreshAura(IMPROVED_KIDNEY_SHOT, level >= 30 ? 1 : 0);
-            RefreshAura(VIGOR, level >= 20 ? 1 : 0);
-            RefreshAura(VIGOR_GLADIATOR, level >= 70 ? 1 : 0);
             RefreshAura(REMORSELESS_ATTACKS, level >= 10 ? 1 : 0);
-            RefreshAura(FLEET_FOOTED, level >= 30 ? 1 : 0);
-            RefreshAura(MURDER, level >= 35 ? 1 : 0);
-            RefreshAura(OVERKILL, level >= 40 ? 1 : 0);
-            //RefreshAura(FOCUSED_ATTACKS, level >= 45 ? 1 : 0);
-            RefreshAura(MASTER_POISONER, level >= 45 ? 1 : 0);
+            RefreshAura(VIGOR, level >= 20 ? 1 : 0);
+            RefreshAura(QUICK_RECOVERY2, isAssa && level >= 35 ? 1 : 0);
+            RefreshAura(QUICK_RECOVERY1, isAssa && level >= 30 && level < 35 ? 1 : 0);
+            RefreshAura(IMPROVED_KIDNEY_SHOT, isAssa && level >= 30 ? 1 : 0);
+            RefreshAura(FLEET_FOOTED, isAssa && level >= 30 ? 1 : 0);
+            RefreshAura(SEAL_FATE5, isAssa && level >= 45 ? 1 : 0);
+            RefreshAura(SEAL_FATE4, isAssa && level >= 42 && level < 45 ? 1 : 0);
+            RefreshAura(SEAL_FATE3, isAssa && level >= 39 && level < 42 ? 1 : 0);
+            RefreshAura(SEAL_FATE2, isAssa && level >= 37 && level < 39 ? 1 : 0);
+            RefreshAura(SEAL_FATE1, isAssa && level >= 35 && level < 37 ? 1 : 0);
+            RefreshAura(MURDER, isAssa && level >= 35 ? 1 : 0);
+            RefreshAura(DEADLY_BREW, isAssa && level >= 40 ? 1 : 0);
+            RefreshAura(OVERKILL, isAssa && level >= 40 ? 1 : 0);
+            //RefreshAura(FOCUSED_ATTACKS, isAssa && level >= 45 ? 1 : 0);
+            RefreshAura(MASTER_POISONER, isAssa && level >= 50 ? 1 : 0);
+
             RefreshAura(DUAL_WIELD_SPECIALIZATION, level >= 10 ? 1 : 0);
-            RefreshAura(IMPROVED_KICK, level >= 25 ? 1 : 0);
-            RefreshAura(IMPROVED_SPRINT, level >= 25 ? 1 : 0);
-            RefreshAura(HACK_AND_SLASH, level >= 30 ? 1 : 0);
-            RefreshAura(VITALITY, level >= 40 ? 1 : 0);
-            RefreshAura(NERVES_OF_STEEL, level >= 40 ? 1 : 0);
-            RefreshAura(THROWING_SPECIALIZATION, level >= 45 ? 1 : 0);
-            //RefreshAura(SAVAGE_COMBAT, level >= 50 ? 1 : 0);
-            RefreshAura(UNFAIR_ADVANTAGE, level >= 50 ? 1 : 0);
-            RefreshAura(SURPRISE_ATTACKS, level >= 50 ? 1 : 0);
-            RefreshAura(PREY_ON_THE_WEAK, level >= 60 ? 1 : 0);
+            RefreshAura(IMPROVED_KICK, isComb && level >= 25 ? 1 : 0);
+            RefreshAura(IMPROVED_SPRINT, isComb && level >= 25 ? 1 : 0);
+            RefreshAura(HACK_AND_SLASH, isComb && level >= 30 ? 1 : 0);
+            //RefreshAura(BLADE_TWISTING1, isComb && level >= 35 ? 1 : 0);
+            RefreshAura(VITALITY, isComb && level >= 40 ? 1 : 0);
+            RefreshAura(NERVES_OF_STEEL, isComb && level >= 40 ? 1 : 0);
+            RefreshAura(COMBAT_POTENCY5, isComb && level >= 55 ? 1 : 0);
+            RefreshAura(COMBAT_POTENCY4, isComb && level >= 52 && level < 55 ? 1 : 0);
+            RefreshAura(COMBAT_POTENCY3, isComb && level >= 49 && level < 52 ? 1 : 0);
+            RefreshAura(COMBAT_POTENCY2, isComb && level >= 47 && level < 49 ? 1 : 0);
+            RefreshAura(COMBAT_POTENCY1, isComb && level >= 45 && level < 47 ? 1 : 0);
+            RefreshAura(THROWING_SPECIALIZATION, isComb && level >= 45 ? 1 : 0);
+            //RefreshAura(SAVAGE_COMBAT, isComb && level >= 50 ? 1 : 0);
+            RefreshAura(UNFAIR_ADVANTAGE, isComb && level >= 50 ? 1 : 0);
+            RefreshAura(SURPRISE_ATTACKS, isComb && level >= 50 ? 1 : 0);
+            RefreshAura(PREY_ON_THE_WEAK, isComb && level >= 55 ? 1 : 0);
+
             RefreshAura(MASTER_OF_DECEPTION, level >= 10 ? 1 : 0);
-            RefreshAura(SETUP, level >= 25 ? 1 : 0);
-            RefreshAura(INITIATIVE, level >= 25 ? 1 : 0);
-            RefreshAura(DIRTY_DEEDS, level >= 30 ? 1 : 0);
-            RefreshAura(MASTER_OF_SUBTLETY, level >= 35 ? 1 : 0);
-            RefreshAura(CHEAT_DEATH, level >= 40 ? 1 : 0);
-            RefreshAura(ENVELOPING_SHADOWS, level >= 40 ? 1 : 0);
-            RefreshAura(TURN_THE_TABLES, level >= 55 ? 1 : 0);
-            //RefreshAura(HONOR_AMONG_THIEVES, level >= 55 ? 1 : 0);
+            RefreshAura(SETUP, isSubt && level >= 25 ? 1 : 0);
+            RefreshAura(INITIATIVE, isSubt && level >= 25 ? 1 : 0);
+            RefreshAura(DIRTY_DEEDS, isSubt && level >= 30 ? 1 : 0);
+            RefreshAura(MASTER_OF_SUBTLETY, isSubt && level >= 35 ? 1 : 0);
+            RefreshAura(CHEAT_DEATH, isSubt && level >= 40 ? 1 : 0);
+            RefreshAura(ENVELOPING_SHADOWS, isSubt && level >= 40 ? 1 : 0);
+            RefreshAura(TURN_THE_TABLES, isSubt && level >= 55 ? 1 : 0);
+            //RefreshAura(HONOR_AMONG_THIEVES, isSubt && level >= 55 ? 1 : 0);
+
+            RefreshAura(VIGOR_GLADIATOR, level >= 70 ? 1 : 0);
 
             RefreshAura(GLYPH_BACKSTAB, level >= 15 ? 1 : 0);
 

@@ -44,13 +44,12 @@ public:
 
         void StartAttack(Unit* u, bool force = false)
         {
-            if (GetBotCommandState() == COMMAND_ATTACK && !force) return;
-            SetBotCommandState(COMMAND_ATTACK);
-            OnStartAttack(u);
+            if (!bot_pet_ai::StartAttack(u, force))
+                return;
             GetInPosition(force, u);
         }
 
-        void DoPetActions(uint32 /*diff*/)
+        void DoPetActions(uint32 diff)
         {
         }
 
@@ -80,7 +79,7 @@ public:
             DoPetAttack(diff);
         }
 
-        void DoPetAttack(uint32 /*diff*/)
+        void DoPetAttack(uint32 diff)
         {
             StartAttack(opponent, IsPetMelee());
         }

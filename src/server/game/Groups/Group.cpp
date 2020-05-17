@@ -610,8 +610,7 @@ bool Group::RemoveMember(ObjectGuid guid, RemoveMethod const& method /*= GROUP_R
 
         SendUpdate();
 
-        //there were only 1 player and 1 bot
-        if (GetMembersCount() < 2)
+        if (GetMembersCount() < 2 && !(isLFGGroup() || isBGGroup() || isBFGroup()))
             Disband();
 
         return true;

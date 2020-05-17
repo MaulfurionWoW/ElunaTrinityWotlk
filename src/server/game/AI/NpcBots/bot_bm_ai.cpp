@@ -283,9 +283,8 @@ public:
 
         void StartAttack(Unit* u, bool force = false)
         {
-            if (GetBotCommandState() == COMMAND_ATTACK && !force) return;
-            SetBotCommandState(COMMAND_ATTACK);
-            OnStartAttack(u);
+            if (!bot_ai::StartAttack(u, force))
+                return;
             GetInPosition(force, u);
         }
 
@@ -356,8 +355,6 @@ public:
                 if (HasRole(BOT_ROLE_DPS))
                     DoBMMeleeAttackIfReady();
             }
-            else
-                Evade();
         }
 
         void CheckWindWalk(uint32 diff)
@@ -524,12 +521,12 @@ public:
                     }
                 }
 
-                illusion->GetBotAI()->SetBotCommandState(COMMAND_ABANDON);
+                illusion->GetBotAI()->SetBotCommandState(BOT_COMMAND_COMBATRESET);
 
                 _illusionGuids.push_back(illusion->GetGUID());
             }
 
-            SetBotCommandState(COMMAND_ABANDON);
+            SetBotCommandState(BOT_COMMAND_COMBATRESET);
 
             for (uint8 i = 0; i != MAX_ILLUSION_POSITIONS; ++i)
             {
@@ -715,32 +712,6 @@ public:
             if (spellId == GetSpell(MIRROR_IMAGE_1))
             {
                 MirrorImageStart();
-            }
-
-            if (spell->GetMaxDuration() >= 1000 && caster->IsControlledByPlayer())
-            {
-                //bots of W3 classes will not be easily CCed
-                if (spell->HasAura(SPELL_AURA_MOD_STUN) ||
-                    spell->HasAura(SPELL_AURA_MOD_CONFUSE) ||
-                    spell->HasAura(SPELL_AURA_MOD_CHARM) ||
-                    spell->HasAura(SPELL_AURA_MOD_FEAR) ||
-                    spell->HasAura(SPELL_AURA_MOD_PACIFY) ||
-                    spell->HasAura(SPELL_AURA_MOD_ROOT) ||
-                    spell->HasAura(SPELL_AURA_AOE_CHARM))
-                {
-                    if (Aura* cont = me->GetAura(spellId, caster->GetGUID()))
-                    {
-                        if (AuraApplication const* aurApp = cont->GetApplicationOfTarget(me->GetGUID()))
-                        {
-                            if (!aurApp->IsPositive())
-                            {
-                                int32 dur = std::max<int32>(cont->GetMaxDuration() / 3, 1000);
-                                cont->SetDuration(dur);
-                                cont->SetMaxDuration(dur);
-                            }
-                        }
-                    }
-                }
             }
 
             OnSpellHit(caster, spell);

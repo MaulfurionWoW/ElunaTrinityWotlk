@@ -54,7 +54,7 @@ extern uint8 _healTargetIconFlags;
 
 bot_pet_ai::bot_pet_ai(Creature* creature) : CreatureAI(creature)
 {
-    m_botCommandState = COMMAND_FOLLOW;
+    m_botCommandState = BOT_COMMAND_FOLLOW;
     regenTimer = 0;
     waitTimer = 0;
     GC_Timer = 0;
@@ -123,7 +123,7 @@ void bot_pet_ai::_calculatePos(Position& pos) const
     pos.m_positionY = y;
     pos.m_positionZ = z;
 }
-void bot_pet_ai::SetBotCommandState(CommandStates st, bool force, Position* newpos)
+void bot_pet_ai::SetBotCommandState(uint8 st, bool force, Position* newpos)
 {
     if (!me->IsAlive())
         return;
@@ -131,7 +131,7 @@ void bot_pet_ai::SetBotCommandState(CommandStates st, bool force, Position* newp
     if (JumpingOrFalling())
         return;
 
-    if (st == COMMAND_FOLLOW && !IsChanneling() &&
+    if ((st & BOT_COMMAND_FOLLOW) && !IsChanneling() &&
         ((!me->isMoving() && !IsCasting() && petOwner->GetBotOwner()->IsAlive()) || force))
     {
         if (CCed(me, true)) return;
@@ -155,15 +155,35 @@ void bot_pet_ai::SetBotCommandState(CommandStates st, bool force, Position* newp
             }
             me->GetMotionMaster()->MovePoint(petOwner->GetMapId(), pos);
         }
+        RemoveBotCommandState(BOT_COMMAND_STAY | BOT_COMMAND_FULLSTOP | BOT_COMMAND_ATTACK | BOT_COMMAND_COMBATRESET);
     }
-    else if (st == COMMAND_STAY)
+    else if (st & BOT_COMMAND_FULLSTOP)
     {
+        RemoveBotCommandState(BOT_COMMAND_FOLLOW | BOT_COMMAND_STAY | BOT_COMMAND_ATTACK);
+        me->InterruptNonMeleeSpells(true);
         if (me->isMoving())
             me->BotStopMovement();
     }
-    else if (st == COMMAND_ATTACK)
-    { }
-    m_botCommandState = st;
+    else if (st & BOT_COMMAND_STAY)
+    {
+        RemoveBotCommandState(BOT_COMMAND_FOLLOW | BOT_COMMAND_FULLSTOP);
+        if (me->isMoving())
+            me->BotStopMovement();
+    }
+    else if (st & BOT_COMMAND_ATTACK)
+    {
+        RemoveBotCommandState(BOT_COMMAND_FOLLOW);
+    }
+    else if (st & BOT_COMMAND_COMBATRESET)
+    {
+        RemoveBotCommandState(BOT_COMMAND_ATTACK);
+    }
+    m_botCommandState |= st;
+}
+
+void bot_pet_ai::RemoveBotCommandState(uint8 st)
+{
+    m_botCommandState &= ~st;
 }
 // CURES
 //cycle through the group sending members for cure
@@ -640,8 +660,8 @@ void bot_pet_ai::SetPetStats(bool force)
         }
         else if (myType == BOT_PET_DARK_MINION_ELITE)
         {
-            me->SetBaseWeaponDamage(BASE_ATTACK, MINDAMAGE, float(level * 2 + level / 2));
-            me->SetBaseWeaponDamage(BASE_ATTACK, MAXDAMAGE, float(level * 3 + level / 2));
+            me->SetBaseWeaponDamage(BASE_ATTACK, MINDAMAGE, float(level * 3));
+            me->SetBaseWeaponDamage(BASE_ATTACK, MAXDAMAGE, float(level * 4));
         }
         else
         {
@@ -678,10 +698,10 @@ void bot_pet_ai::SetPetStats(bool force)
         case BOT_CLASS_HUNTER:
             atpower += (level >= 80 ? 0.338f : 0.22f) * petOwner->GetTotalAttackPowerValue(RANGED_ATTACK);
             //Hunter vs. Wild
-            if (level >= 30)
+            if (level >= 30 && Spec() == BOT_SPEC_HUNTER_SURVIVAL)
                 atpower += 0.3f * petOwner->GetBotAI()->GetTotalBotStat(BOT_STAT_MOD_STAMINA);
             //Animal Handler
-            if (level >= 35)
+            if (level >= 35 && Spec() == BOT_SPEC_HUNTER_BEASTMASTERY)
                 atpower *= 1.1f;
             break;
         case BOT_CLASS_SHAMAN:
@@ -848,7 +868,7 @@ void bot_pet_ai::SetPetStats(bool force)
                 if (level >= 20)
                     amount += 15;
                 //Kindred Spirits
-                if (level >= 55)
+                if (level >= 55 && Spec() == BOT_SPEC_HUNTER_BEASTMASTERY)
                     amount += 20;
                 //Spiked Collar
                 if (level >= 32)
@@ -896,7 +916,7 @@ void bot_pet_ai::SetPetStats(bool force)
                 if (level >= 20)
                     amount += 15;
                 //Kindred Spirits
-                if (level >= 55)
+                if (level >= 55 && Spec() == BOT_SPEC_HUNTER_BEASTMASTERY)
                     amount += 20;
                 //Spiked Collar
                 if (level >= 32)
@@ -1083,10 +1103,11 @@ void bot_pet_ai::SetPetStats(bool force)
         m_totalhp *= 1.05f;
     }
     //TC_LOG_ERROR("entities.player", "SetPetStat(): hp stamval %.1f, stammult %.1f, base %u, total %.2f", stamValue, stamMult, botPet->GetCreateHealth(), m_totalhp);
-    float pct = me->GetHealth() == me->GetMaxHealth() ? 100.f : me->GetHealthPct(); // needs for regeneration
+    bool fullhp = me->GetHealth() == me->GetMaxHealth();
+    float pct = fullhp ? 100.f : me->GetHealthPct(); // needs for regeneration
     me->SetStatFlatModifier(UNIT_MOD_HEALTH, BASE_VALUE, m_totalhp);
     me->UpdateMaxHealth();
-    me->SetHealth(pct == 100.f ? me->GetMaxHealth() : uint32(0.5f + float(me->GetMaxHealth()) * pct / 100.f)); //restore pct
+    me->SetHealth(fullhp ? me->GetMaxHealth() : uint32(0.5f + float(me->GetMaxHealth()) * pct / 100.f)); //restore pct
     //mana
     if (me->GetPowerType() == POWER_MANA)
     {
@@ -1113,11 +1134,11 @@ void bot_pet_ai::SetPetStats(bool force)
         me->SetStat(STAT_INTELLECT, int32(intValue));
         float m_totalmana = intValue * intMult/* + me->GetCreatePowerValue(POWER_MANA)*/ + (IAmFree() ? level * 25.f : 0); //+2000/+0 mana at 80
         //TC_LOG_ERROR("entities.player", "SetPetStat(): mana intValue %.1f, intMult %.1f, base %u, total %.2f", intValue, intMult, botPet->GetCreatePowerValue(POWER_MANA), m_totalmana);
-        float pct = me->GetPower(POWER_MANA) == me->GetMaxPower(POWER_MANA) ? 100.f :
-            (float(me->GetPower(POWER_MANA)) * 100.f) / float(me->GetMaxPower(POWER_MANA));
+        bool fullmana = me->GetPower(POWER_MANA) == me->GetMaxPower(POWER_MANA);
+        float pct = fullmana ? 100.f : (float(me->GetPower(POWER_MANA)) * 100.f) / float(me->GetMaxPower(POWER_MANA));
         me->SetStatFlatModifier(UNIT_MOD_MANA, BASE_VALUE, m_totalmana);
         me->UpdateMaxPower(POWER_MANA);
-        me->SetPower(POWER_MANA, pct == 100.f ? me->GetMaxPower(POWER_MANA) :
+        me->SetPower(POWER_MANA, fullmana ? me->GetMaxPower(POWER_MANA) :
             uint32(0.5f + float(me->GetMaxPower(POWER_MANA)) * pct / 100.f)); //restore pct
     }
 
@@ -1134,19 +1155,26 @@ void bot_pet_ai::SetPetStats(bool force)
 //This means that anyone who attacks party will be attacked by whole bot party (see GetTarget())
 void bot_pet_ai::OnOwnerDamagedBy(Unit* attacker)
 {
+    if (petOwner->GetBotAI()->HasBotCommandState(BOT_COMMAND_MASK_UNMOVING))
+        return;
     if (me->GetVictim() && (!IAmFree() || me->GetDistance(me->GetVictim()) < me->GetDistance(attacker)))
         return;
 
     if (!me->IsValidAttackTarget(attacker) || !attacker->isTargetableForAttack() || IsInBotParty(attacker))
         return;
 
-    m_botCommandState = COMMAND_ABANDON;
+    SetBotCommandState(BOT_COMMAND_COMBATRESET);
     me->Attack(attacker, IsPetMelee());
 }
 
 bool bot_pet_ai::IsPetMelee() const
 {
     return bot_ai::IsPetMelee(myType);
+}
+
+uint8 bot_pet_ai::Spec() const
+{
+    return petOwner->GetBotAI()->GetSpec();
 }
 
 //ISINBOTPARTY
@@ -1180,7 +1208,7 @@ bool bot_pet_ai::IsInBotParty(Unit const* unit) const
             return true;
         //pointed target case
         for (uint8 i = 0; i != TARGETICONCOUNT; ++i)
-            if (_healTargetIconFlags & GroupIconsFlags[i])
+            if (BotMgr::GetHealTargetIconFlags() & GroupIconsFlags[i])
                 if (ObjectGuid guid = gr->GetTargetIcons()[i])//check this one
                     if (guid == unit->GetGUID())
                         return true;
@@ -1248,6 +1276,9 @@ void bot_pet_ai::RefreshAura(uint32 spellId, int8 count, Unit* target) const
 //All code above 'x = _getTarget() call must not dereference opponent since it can be invalid
 Unit* bot_pet_ai::_getTarget(bool &reset) const
 {
+    if (petOwner->GetBotAI()->HasBotCommandState(BOT_COMMAND_FULLSTOP))
+        return NULL;
+
     Unit* mytar = me->GetVictim();
     Unit* u = petOwner->GetVictim();
 
@@ -1299,7 +1330,7 @@ bool bot_pet_ai::CheckAttackTarget()
     }
 
     if (reset)
-        m_botCommandState = COMMAND_ABANDON;//reset AttackStart()
+        SetBotCommandState(BOT_COMMAND_COMBATRESET);//reset AttackStart()
 
     if (opponent != me->GetVictim())
         me->Attack(opponent, IsPetMelee());
@@ -1318,8 +1349,8 @@ void bot_pet_ai::CalculateAttackPos(Unit const* target, Position& pos) const
         followdist >= 40 ? followdist :
         5 + urand(followdist/3, followdist/3 + 5)/*18-23 at 40, 15-20 at 30*/,
         angle = target->GetAbsoluteAngle(me);
-    //bool boss = target->GetTypeId() == TYPEID_UNIT &&
-    //    (target->ToCreature()->isWorldBoss() || target->ToCreature()->IsDungeonBoss() || target->ToCreature()->GetCreatureTemplate()->rank == CREATURE_ELITE_WORLDBOSS);
+    bool boss = target->GetTypeId() == TYPEID_UNIT &&
+        (target->ToCreature()->isWorldBoss() || target->ToCreature()->IsDungeonBoss() || target->ToCreature()->GetCreatureTemplate()->rank == CREATURE_ELITE_WORLDBOSS);
     //most ranged classes have some sort of 20yd spell
     if (rangeMode != BOT_ATTACK_RANGE_EXACT)
         dist = std::min<float>(dist, petOwner->GetBotAI()->HasRole(BOT_ROLE_DPS) ? GetSpellAttackRange(rangeMode == BOT_ATTACK_RANGE_LONG) - 4.f : 30.f);
@@ -1346,13 +1377,15 @@ void bot_pet_ai::CalculateAttackPos(Unit const* target, Position& pos) const
 // Forces bot to chase opponent (if ranged then distance depends on follow distance)
 void bot_pet_ai::GetInPosition(bool force, Unit* newtarget, Position* mypos)
 {
+    if (petOwner->GetBotAI()->HasBotCommandState(BOT_COMMAND_MASK_UNMOVING))
+        return;
     if (CCed(me, true) || JumpingOrFalling())
         return;
     if (!newtarget)
         newtarget = me->GetVictim();
     if (!newtarget)
         return;
-    if ((!newtarget->IsInCombat() || m_botCommandState == COMMAND_STAY || me->isMoving()) && !force)
+    if ((!newtarget->IsInCombat() || me->isMoving()) && !force)
         return;
     if (IsCasting())
         return;
@@ -1421,6 +1454,7 @@ void bot_pet_ai::CheckAttackState()
 
 void bot_pet_ai::MoveBehind(Unit const* target) const
 {
+    if (HasBotCommandState(BOT_COMMAND_MASK_UNMOVING)) return;
     if (!IsPetMelee() || CCed(me, true)) return;
     if (JumpingOrFalling()) return;
 
@@ -1742,11 +1776,9 @@ void bot_pet_ai::SpellTimers(uint32 diff)
 //opponent is always valid
 void bot_pet_ai::AdjustTankingPosition() const
 {
-    //if (/*!IsTank() || */!me->IsInCombat() || me->isMoving() || IsCasting() ||
-    //    JumpingOrFalling() || CCed(me, true) || Rand() > 10 + 20*me->GetMap()->IsDungeon())
-    //    return;
     if (/*!IsTank() || */!me->IsInCombat() || IsCasting() ||
-        JumpingOrFalling() || CCed(me, true) || Rand() > 10 + 20*me->GetMap()->IsDungeon())
+        JumpingOrFalling() || CCed(me, true) || Rand() > 10 + 20*me->GetMap()->IsDungeon() ||
+        HasBotCommandState(BOT_COMMAND_MASK_UNMOVING))
         return;
 
     Unit::AttackerSet const& myattackers = me->getAttackers();
@@ -1777,12 +1809,12 @@ void bot_pet_ai::AdjustTankingPosition() const
     float const moveDist = -1.f * std::max<float>(opponent->GetCombatReach() * 0.6f, 3.f);
     float moveX;
     float moveY;
-    //bool move = false;
+    bool move = false;
     for (uint8 i = 0; i != 3; ++i)
     {
         if (i)
         {
-            ori = Position::NormalizeOrientation(ori + (i+1)*(float(M_PI_2)));
+            ori = Position::NormalizeOrientation(ori + (i+1)*(M_PI*0.5f));
         }
 
         //move back
@@ -1913,6 +1945,16 @@ void bot_pet_ai::OnStartAttack(Unit const* /*u*/)
     AdjustTankingPosition();
 }
 
+bool bot_pet_ai::StartAttack(Unit const* u, bool force)
+{
+    if (HasBotCommandState(BOT_COMMAND_ATTACK) && !force)
+        return false;
+
+    SetBotCommandState(BOT_COMMAND_ATTACK);
+    OnStartAttack(u);
+    return true;
+}
+
 void bot_pet_ai::JustDied(Unit*)
 {
     KillEvents(false);
@@ -1966,15 +2008,12 @@ void bot_pet_ai::OnBotPetSpellGo(Spell const* spell)
         SetSpellCategoryCooldown(curInfo->GetFirstRankSpell(), catrec);
     }
 
-    //TC_LOG_ERROR("entities.unit", "OnBotSpellGo: %u by %s",
-    //    curInfo->Id, me->GetName().c_str());
     if ((!curInfo->CastTimeEntry || !curInfo->CastTimeEntry->CastTime) &&
         curInfo->StartRecoveryTime)
     {
         GC_Timer = curInfo->StartRecoveryTime;
         GC_Timer = std::max<uint32>(GC_Timer, 1000);
         GC_Timer = std::min<uint32>(GC_Timer, 1500);
-        //TC_LOG_ERROR("entities.unit", "OnBotSpellGo setting GCD to %u", GC_Timer);
     }
 
     OnPetClassSpellGo(curInfo);
@@ -2113,8 +2152,6 @@ bool bot_pet_ai::GlobalUpdate(uint32 diff)
 
     Regenerate();
 
-    CheckAttackState();
-
     //update flags
     if (!me->IsInCombat())
     {
@@ -2122,12 +2159,20 @@ bool bot_pet_ai::GlobalUpdate(uint32 diff)
             me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PET_IN_COMBAT);
     }
 
+    if (HasBotCommandState(BOT_COMMAND_FULLSTOP))
+        return false;
+
+    if (HasBotCommandState(BOT_COMMAND_STAY) && !petOwner->GetBotAI()->HasBotCommandState(BOT_COMMAND_STAY))
+        RemoveBotCommandState(BOT_COMMAND_STAY);
+
+    CheckAttackState();
+
     if (checkAurasTimer <= lastdiff)
     {
         Unit* victim = me->GetVictim();
         checkAurasTimer += uint32(__rand + __rand + (IAmFree() ? 1000 : 40 * (1 + petOwner->GetBotOwner()->GetNpcBotsCount())));
 
-        if (m_botCommandState != COMMAND_FOLLOW && m_botCommandState != COMMAND_STAY && victim && !CCed(me, true) &&
+        if (!HasBotCommandState(BOT_COMMAND_MASK_UNCHASE) && victim && !CCed(me, true) &&
             !me->isMoving() && !IsCasting())
         {
             if (!IAmFree() && petOwner->GetBotOwner()->GetBotMgr()->GetBotAttackRangeMode() == BOT_ATTACK_RANGE_EXACT &&
@@ -2159,24 +2204,38 @@ bool bot_pet_ai::GlobalUpdate(uint32 diff)
 
     GenerateRand();
 
-    //opponent unsafe
-    if (!opponent)
+    bool closeToOwner = false;
+    if (!opponent && !HasBotCommandState(BOT_COMMAND_STAY))
     {
-        if (m_botCommandState != COMMAND_STAY && !IsCasting())
+        if (!IsCasting())
         {
             _calculatePos(pos);
             if (!petOwner->isMoving())
             {
                 if (me->GetExactDist(&pos) > 5.f)
-                    Follow(true, &pos);
+                    SetBotCommandState(BOT_COMMAND_FOLLOW, true, &pos);
+                else
+                    closeToOwner = true;
             }
             else
             {
                 Position destPos;
                 me->GetMotionMaster()->GetDestination(destPos.m_positionX, destPos.m_positionY, destPos.m_positionZ);
                 if (destPos.GetExactDist(&pos) > 5.f)
-                    Follow(true, &pos);
+                    SetBotCommandState(BOT_COMMAND_FOLLOW, true, &pos);
+                else
+                    closeToOwner = true;
             }
+        }
+    }
+
+    if (closeToOwner || me->IsInCombat())
+    {
+        uint8 st = (petOwner->GetBotAI()->GetBotCommandState() & BOT_COMMAND_MASK_UNMOVING);
+        if (st && GetBotCommandState() != st)
+        {
+            SetBotCommandState(st);
+            return !(st & BOT_COMMAND_FULLSTOP);
         }
     }
 
@@ -2196,7 +2255,7 @@ void bot_pet_ai::CommonTimers(uint32 diff)
     if (_updateTimerEx1 > diff)     _updateTimerEx1 -= diff;
 }
 
-void bot_pet_ai::KillEvents(bool /*force*/)
+void bot_pet_ai::KillEvents(bool force)
 {
     //_petEvents.KillAllEvents(force);
 }

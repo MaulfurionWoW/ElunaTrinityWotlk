@@ -75,9 +75,8 @@ public:
 
         void StartAttack(Unit* u, bool force = false)
         {
-            if (GetBotCommandState() == COMMAND_ATTACK && !force) return;
-            SetBotCommandState(COMMAND_ATTACK);
-            OnStartAttack(u);
+            if (!bot_pet_ai::StartAttack(u, force))
+                return;
             GetInPosition(force, u);
         }
 
@@ -286,6 +285,7 @@ public:
             else if (myType == BOT_PET_FELGUARD)
             {
                 if (IsSpellReady(INTERCEPT_1, diff, false) && canDPS &&
+                    !HasBotCommandState(BOT_COMMAND_STAY) &&
                     !(opponent->GetTypeId() == TYPEID_UNIT && opponent->ToCreature()->isWorldBoss()) &&
                     dist > 8 && dist < 25 && !CCed(opponent))
                 {

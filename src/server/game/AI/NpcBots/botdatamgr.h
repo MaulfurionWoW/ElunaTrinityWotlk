@@ -7,6 +7,7 @@ enum NpcBotDataUpdateType
 {
     NPCBOT_UPDATE_OWNER                 = 1,
     NPCBOT_UPDATE_ROLES,
+    NPCBOT_UPDATE_SPEC,
     NPCBOT_UPDATE_FACTION,
     NPCBOT_UPDATE_EQUIPS,
     NPCBOT_UPDATE_ERASE,
@@ -19,11 +20,12 @@ struct NpcBotData
 public:
     uint32 owner;
     uint16 roles;
+    uint8 spec;
     uint32 faction;
     uint32 equips[BOT_INVENTORY_SIZE];
 
 private:
-    explicit NpcBotData(uint16 iroles, uint32 ifaction) : owner(0), roles(iroles), faction(ifaction)
+    explicit NpcBotData(uint16 iroles, uint32 ifaction) : owner(0), roles(iroles), spec(1), faction(ifaction)
     {
         for (uint8 i = 0; i != BOT_INVENTORY_SIZE; ++i)
             equips[i] = 0;
@@ -69,6 +71,9 @@ class BotDataMgr
 
         static NpcBotAppearanceData const* SelectNpcBotAppearance(uint32 entry);
         static NpcBotExtras const* SelectNpcBotExtras(uint32 entry);
+
+        static bool AllBotsLoaded();
+
     private:
         BotDataMgr() {}
         BotDataMgr(BotDataMgr const&);

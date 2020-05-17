@@ -650,7 +650,7 @@ public:
             }
         }
 
-        bool HOPTarget(Unit* target, uint32 /*diff*/)
+        bool HOPTarget(Unit* target, uint32 diff)
         {
             if (target == me ||
                 (target->GetTypeId() == TYPEID_PLAYER ? target->GetClass() == BOT_CLASS_PALADIN :
@@ -746,7 +746,7 @@ public:
             }
         }
 
-        bool HOFTarget(Unit* target, uint32 /*diff*/)
+        bool HOFTarget(Unit* target, uint32 diff)
         {
             if (target->HasAuraType(SPELL_AURA_MECHANIC_IMMUNITY))
             {
@@ -841,7 +841,7 @@ public:
             }
         }
 
-        bool HOSTarget(Unit* target, uint32 /*diff*/)
+        bool HOSTarget(Unit* target, uint32 diff)
         {
             if (target->HasAuraTypeWithFamilyFlags(SPELL_AURA_PERIODIC_TRIGGER_SPELL_WITH_VALUE, SPELLFAMILY_PALADIN, 0x100))
                 return false;
@@ -952,9 +952,8 @@ public:
 
         void StartAttack(Unit* u, bool force = false)
         {
-            if (GetBotCommandState() == COMMAND_ATTACK && !force) return;
-            SetBotCommandState(COMMAND_ATTACK);
-            OnStartAttack(u);
+            if (!bot_ai::StartAttack(u, force))
+                return;
             GetInPosition(force, u);
         }
 
@@ -1118,7 +1117,8 @@ public:
             uint32 RETRIBUTION_AURA = GetSpell(RETRIBUTION_AURA_1);
             //uint32 CRUSADER_AURA = GetSpell(CRUSADER_AURA_1);
 
-            bool pureHealer = HasRole(BOT_ROLE_HEAL) && HasRole(BOT_ROLE_RANGED) && !HasRole(BOT_ROLE_TANK);
+            bool pureHealer = _spec == BOT_SPEC_PALADIN_HOLY;
+            bool isProt = _spec == BOT_SPEC_PALADIN_PROTECTION;
 
             std::map<uint32 /*baseid*/, uint32 /*curid*/> idMap;
             uint32 mask = _getAurasMask(idMap);
@@ -1144,7 +1144,7 @@ public:
             //TODO: priority?
             if (DEVOTION_AURA &&
                 (!(mask & SPECIFIC_AURA_DEVOTION) || idMap[DEVOTION_AURA_1] < DEVOTION_AURA) &&
-                (!RETRIBUTION_AURA || IsTank(master) || IsTank()))
+                (!RETRIBUTION_AURA || IsTank(master) || isProt))
             {
                 if (doCast(me, DEVOTION_AURA))
                     return;
@@ -1184,7 +1184,7 @@ public:
             }
         }
 
-        bool BuffTarget(Unit* target, uint32 /*diff*/) override
+        bool BuffTarget(Unit* target, uint32 diff) override
         {
             if (me->IsInCombat() && !master->GetMap()->IsRaid()) return false;
 
@@ -1469,9 +1469,8 @@ public:
                         return;
                 }
             }
-            //Divine Plea tanks only (Guarded by the Light synergy)
-            if (IsSpellReady(DIVINE_PLEA_1, diff) && IsTank() && !HasRole(BOT_ROLE_HEAL) && Rand() < 30 &&
-                dist < 10 && GetManaPCT(me) < 90 &&
+            //Divine Plea
+            if (IsSpellReady(DIVINE_PLEA_1, diff) && Rand() < 30 && GetManaPCT(me) < (IsTank() ? 90 : 7) &&
                 !me->GetAuraEffect(SPELL_AURA_OBS_MOD_POWER, SPELLFAMILY_PALADIN, 0x0, 0x80004000, 0x1))
             {
                 if (doCast(me, GetSpell(DIVINE_PLEA_1)))
@@ -1488,7 +1487,7 @@ public:
                 {}
             }
             //Avenger's shield
-            if (IsSpellReady(AVENGERS_SHIELD_1, diff) && CanBlock() && (IsTank() || IAmFree()) &&
+            if (IsSpellReady(AVENGERS_SHIELD_1, diff) && CanBlock() &&
                 HasRole(BOT_ROLE_DPS) && dist < 30 && Rand() < 60)
             {
                 if (doCast(opponent, GetSpell(AVENGERS_SHIELD_1)))
@@ -1588,7 +1587,7 @@ public:
                     return;
             }
             //Hammer of Righteous (1h only)
-            if (IsSpellReady(HAMMER_OF_THE_RIGHTEOUS_1, diff) && (IsTank() || IAmFree()) && HasRole(BOT_ROLE_DPS) &&
+            if (IsSpellReady(HAMMER_OF_THE_RIGHTEOUS_1, diff) && HasRole(BOT_ROLE_DPS) &&
                 dist < 5 && Rand() < 80)
             {
                 Item const* weapMH = GetEquips(BOT_SLOT_MAINHAND);
@@ -1642,10 +1641,10 @@ public:
             uint8 lvl = me->GetLevel();
 
             //Sanctified Light: 6% additional critical chance for Holy Light and Holy Shock
-            if (lvl >= 30 && (baseId == HOLY_LIGHT_1 || baseId == HOLY_SHOCK_1))
+            if ((_spec == BOT_SPEC_PALADIN_HOLY) && lvl >= 30 && (baseId == HOLY_LIGHT_1 || baseId == HOLY_SHOCK_1))
                 crit_chance += 6.f;
             //Holy Power: 5% additional critical chance for Holy spells
-            if (lvl >= 35 && (schoolMask & SPELL_SCHOOL_MASK_HOLY))
+            if ((_spec == BOT_SPEC_PALADIN_HOLY) && lvl >= 35 && (schoolMask & SPELL_SCHOOL_MASK_HOLY))
                 crit_chance += 5.f;
             //Improved Flash of Light (id: 20251): 6% additional critical chance for Flash of Light
             if (lvl >= 70 && baseId == FLASH_OF_LIGHT_1)
@@ -1654,10 +1653,10 @@ public:
             if (lvl >= 20 && baseId == FLASH_OF_LIGHT_1)
                 crit_chance += 5.f;
             //Sanctified Wrath: 50% additional critical chance for Hammer of Wrath
-            if (lvl >= 45 && baseId == HAMMER_OF_WRATH_1)
+            if ((_spec == BOT_SPEC_PALADIN_RETRIBUTION) && lvl >= 45 && baseId == HAMMER_OF_WRATH_1)
                 crit_chance += 50.f;
             //Fanaticism: 18% additional critical chance for all Judgements (not shure which check is right)
-            if (lvl >= 45 && spellInfo->GetCategory() == SPELLCATEGORY_JUDGEMENT)
+            if ((_spec == BOT_SPEC_PALADIN_RETRIBUTION) && lvl >= 45 && spellInfo->GetCategory() == SPELLCATEGORY_JUDGEMENT)
                 crit_chance += 18.f;
             //Infusion of Light
             if (baseId == HOLY_LIGHT_1)
@@ -1674,7 +1673,7 @@ public:
             }
         }
 
-        void ApplyClassDamageMultiplierMelee(int32& damage, SpellNonMeleeDamage& /*damageinfo*/, SpellInfo const* spellInfo, WeaponAttackType /*attackType*/, bool /*crit*/) const override
+        void ApplyClassDamageMultiplierMelee(int32& damage, SpellNonMeleeDamage& /*damageinfo*/, SpellInfo const* spellInfo, WeaponAttackType /*attackType*/, bool crit) const override
         {
             uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
             uint8 lvl = me->GetLevel();
@@ -1686,14 +1685,14 @@ public:
             //{
             //}
             //Sanctity of Battle: 15% bonus damage for Exorcism and Crusader Strike
-            if (lvl >= 25 && baseId == EXORCISM_1)
+            if ((_spec == BOT_SPEC_PALADIN_RETRIBUTION) && lvl >= 25 && baseId == EXORCISM_1)
                 pctbonus += 0.15f;
             //The Art of War (damage part): 10% bonus damage for Judgements, Crusader Strike and Divine Storm
-            if (lvl >= 40 &&
+            if ((_spec == BOT_SPEC_PALADIN_RETRIBUTION) && lvl >= 40 &&
                 (spellInfo->GetCategory() == SPELLCATEGORY_JUDGEMENT || baseId == CRUSADER_STRIKE_1 || baseId == DIVINE_STORM_1))
                 pctbonus += 0.1f;
             //Judgements of the Pure (damage part): 25% bonus damage for Judgements and Seals
-            if (lvl >= 50 &&
+            if ((_spec == BOT_SPEC_PALADIN_HOLY) && lvl >= 50 &&
                 (spellInfo->GetCategory() == SPELLCATEGORY_JUDGEMENT ||
                 spellInfo->GetSpellSpecific() == SPELL_SPECIFIC_SEAL ||
                 baseId == JUDGEMENT_OF_COMMAND_DAMAGE))
@@ -1705,7 +1704,7 @@ public:
             damage = int32(fdamage * (1.0f + pctbonus));
         }
 
-        void ApplyClassDamageMultiplierSpell(int32& damage, SpellNonMeleeDamage& /*damageinfo*/, SpellInfo const* spellInfo, WeaponAttackType /*attackType*/, bool /*crit*/) const override
+        void ApplyClassDamageMultiplierSpell(int32& damage, SpellNonMeleeDamage& /*damageinfo*/, SpellInfo const* spellInfo, WeaponAttackType /*attackType*/, bool crit) const override
         {
             uint32 spellId = spellInfo->Id;
             uint8 lvl = me->GetLevel();
@@ -1718,7 +1717,7 @@ public:
             //}
 
             //Judgements of the Pure (damage part): 25% bonus damage for Judgements and Seals
-            if (lvl >= 50 &&
+            if ((_spec == BOT_SPEC_PALADIN_HOLY) && lvl >= 50 &&
                 (spellInfo->GetCategory() == SPELLCATEGORY_JUDGEMENT ||
                 spellInfo->GetSpellSpecific() == SPELL_SPECIFIC_SEAL ||
                 spellId == JUDGEMENT_OF_COMMAND_DAMAGE))
@@ -1742,7 +1741,7 @@ public:
                 pctbonus -= 0.5f;
 
             //Healing Light: 12% bonus healing for Holy Light, Flash of Light and Holy Shock
-            if (lvl >= 15 && (baseId == HOLY_LIGHT_1 || baseId == FLASH_OF_LIGHT_1 || baseId == HOLY_SHOCK_1))
+            if ((_spec == BOT_SPEC_PALADIN_HOLY) && lvl >= 15 && (baseId == HOLY_LIGHT_1 || baseId == FLASH_OF_LIGHT_1 || baseId == HOLY_SHOCK_1))
                 pctbonus += 0.12f;
             //Glyph of Seal of Light: 5% bonus healing for all spells
             if (lvl >= 30 && me->GetAuraEffect(SPELL_AURA_ADD_PCT_MODIFIER, SPELLFAMILY_PALADIN, 0x0, 0x2000000, 0x0))
@@ -1765,7 +1764,7 @@ public:
             if (lvl >= 10 && !spellInfo->CalcCastTime())
                 pctbonus += 0.1f;
             //Blessed Hands: -30% mana cost for Hand spells
-            if (lvl >= 25 && (spellInfo->SpellFamilyFlags[0] & 0x2110))
+            if ((_spec == BOT_SPEC_PALADIN_HOLY) && lvl >= 25 && (spellInfo->SpellFamilyFlags[0] & 0x2110))
                 pctbonus += 0.3f;
             //Holy Light Cost Reduction (id: 60148): -5% mana cost for Holy Light
             if (lvl >= 30 && baseId == HOLY_LIGHT_1)
@@ -1861,13 +1860,13 @@ public:
                     timebonus += 2000;
             }
             //Sacred Duty: -60 sec cooldown for Divine Shield and Divine Protection
-            if (lvl >= 35 && (baseId == DIVINE_SHIELD_1 || baseId == DIVINE_PROTECTION_1))
+            if ((_spec == BOT_SPEC_PALADIN_PROTECTION) && lvl >= 35 && (baseId == DIVINE_SHIELD_1 || baseId == DIVINE_PROTECTION_1))
                 timebonus += 60000;
             //Reduced Righteous Defense Cooldown (37181): -2 sec cooldown for Righteous Defense
             if (lvl >= 60 && baseId == RIGHTEOUS_DEFENSE_1)
                 timebonus += 2000;
             //Paladin T9 Tank 2P Bonus part 1: -2 sec cooldown for Hand of Reckoning
-            if (lvl >= 60 && baseId == HAND_OF_RECKONING_1)
+            if (lvl >= 78 && baseId == HAND_OF_RECKONING_1)
                 timebonus += 2000;
             //Glyph of Turn Evil: +8 sec cooldown for Turn Evil
             if (lvl >= 24 && baseId == TURN_EVIL_1)
@@ -1887,7 +1886,7 @@ public:
 
             //pct mods
             //Purifying Power part 2: -33% cooldown for Exorcism and Holy Wrath
-            if (lvl >= 35 && (baseId == EXORCISM_1 || baseId == HOLY_WRATH_1))
+            if ((_spec == BOT_SPEC_PALADIN_HOLY) && lvl >= 35 && (baseId == EXORCISM_1 || baseId == HOLY_WRATH_1))
                 pctbonus += 0.333f;
             //Glyph of Avenging Wrath: -50% cooldown for Hammer of Wrath if Avenging Wrath is active
             if (lvl >= 70 && baseId == HAMMER_OF_WRATH_1 &&
@@ -1911,10 +1910,10 @@ public:
             if (lvl >= 15 && baseId == HAND_OF_PROTECTION_1)
                 timebonus += 120000;
             //Improved Hammer of Justice: -20 sec cooldown for Hammer of Justice
-            if (lvl >= 25 && baseId == HAMMER_OF_JUSTICE_1)
+            if ((_spec == BOT_SPEC_PALADIN_PROTECTION) && lvl >= 25 && baseId == HAMMER_OF_JUSTICE_1)
                 timebonus += 20000;
             //Judgements of the Just: -10 sec cooldown for Hammer of Justice (tanks only)
-            if (lvl >= 55 && baseId == HAMMER_OF_JUSTICE_1 && IsTank())
+            if ((_spec == BOT_SPEC_PALADIN_PROTECTION) && lvl >= 55 && baseId == HAMMER_OF_JUSTICE_1)
                 timebonus += 10000;
             //Glyph of Holy Shock: -1 sec cooldown for Holy Shock
             if (baseId == HOLY_SHOCK_1)
@@ -1938,12 +1937,12 @@ public:
             cooldown = std::max<int32>((float(cooldown) * (1.0f - pctbonus)) - timebonus, 0);
         }
 
-        void ApplyClassSpellGlobalCooldownMods(SpellInfo const* /*spellInfo*/, float& cooldown) const override
+        void ApplyClassSpellGlobalCooldownMods(SpellInfo const* spellInfo, float& cooldown) const override
         {
             //cooldown is in milliseconds
-            //uint32 spellId = spellInfo->Id;
+            uint32 spellId = spellInfo->Id;
             //SpellSchool school = GetFirstSchoolInMask(spellInfo->GetSchoolMask());
-            //uint8 lvl = me->GetLevel();
+            uint8 lvl = me->GetLevel();
             float timebonus = 0.0f;
             float pctbonus = 0.0f;
 
@@ -1992,8 +1991,7 @@ public:
 
             //flat mods
             //Enlightened Judgements: +30 yd range for Judgement of Light and Judgement of Wisdom (healers)
-            if (lvl >= 55 && (spellInfo->SpellFamilyFlags[0] & 0x800000) &&
-                HasRole(BOT_ROLE_HEAL) && HasRole(BOT_ROLE_RANGED))
+            if ((_spec == BOT_SPEC_PALADIN_HOLY) && lvl >= 55 && (spellInfo->SpellFamilyFlags[0] & 0x800000))
                 flatbonus += 30.f;
 
             maxrange = maxrange * (1.0f + pctbonus) + flatbonus;
@@ -2065,19 +2063,19 @@ public:
                 }
             }
             //Judgements of the Just melee attack speed reduction part 1
-            if (lvl >= 55 && IsTank() && spell->GetCategory() == SPELLCATEGORY_JUDGEMENT)
+            if ((_spec == BOT_SPEC_PALADIN_PROTECTION) && lvl >= 55 && spell->GetCategory() == SPELLCATEGORY_JUDGEMENT)
             {
                 me->CastSpell(target, JUDGEMENTS_OF_THE_JUST_AURA, true);
             }
             //Judgements of the Just melee attack speed reduction part 2
-            if (spellId == JUDGEMENTS_OF_THE_JUST_AURA)
+            if ((_spec == BOT_SPEC_PALADIN_PROTECTION) && spellId == JUDGEMENTS_OF_THE_JUST_AURA)
             {
                 AuraEffect* slow = target->GetAuraEffect(JUDGEMENTS_OF_THE_JUST_AURA, 1, me->GetGUID());
                 if (slow)
                     slow->ChangeAmount(slow->GetAmount() - 20);
             }
 
-            if (spellId == SEAL_OF_JUSTICE_STUN_AURA)
+            if ((_spec == BOT_SPEC_PALADIN_PROTECTION) && spellId == SEAL_OF_JUSTICE_STUN_AURA)
             {
                 if (lvl >= 55)
                 {
@@ -2105,7 +2103,7 @@ public:
                     }
                 }
             }
-            if (baseId == RETRIBUTION_AURA_1)
+            if ((_spec == BOT_SPEC_PALADIN_RETRIBUTION) && baseId == RETRIBUTION_AURA_1)
             {
                 if (lvl >= 30)
                 {
@@ -2115,7 +2113,7 @@ public:
                         eff->ChangeAmount(eff->GetAmount() * 3 / 2);
                 }
             }
-            if (baseId == DEVOTION_AURA_1)
+            if ((_spec == BOT_SPEC_PALADIN_PROTECTION) && baseId == DEVOTION_AURA_1)
             {
                 if (lvl >= 25)
                 {
@@ -2125,7 +2123,7 @@ public:
                         eff->ChangeAmount(eff->GetAmount() * 3 / 2);
                 }
             }
-            if (baseId == CONCENTRATION_AURA_1)
+            if ((_spec == BOT_SPEC_PALADIN_HOLY) && baseId == CONCENTRATION_AURA_1)
             {
                 if (lvl >= 25)
                 {
@@ -2137,7 +2135,7 @@ public:
             }
             if (baseId == FLASH_OF_LIGHT_HEAL_PERIODIC)
             {
-                if (lvl >= 68 && HasRole(BOT_ROLE_HEAL) && !HasRole(BOT_ROLE_TANK | BOT_ROLE_DPS))
+                if ((_spec == BOT_SPEC_PALADIN_HOLY) && lvl >= 78 && !HasRole(BOT_ROLE_TANK | BOT_ROLE_DPS))
                 {
                     //Paldin T9 Holy 4P Bonus: 100% increased healing from Infusion of Light (pure healers only)
                     AuraEffect* eff = target->GetAuraEffect(spellId, EFFECT_0, me->GetGUID());
@@ -2176,7 +2174,7 @@ public:
                     hof->SetMaxDuration(dur);
                 }
             }
-            if (baseId == HAND_OF_SALVATION_1 && !IsTank(target))
+            if ((_spec == BOT_SPEC_PALADIN_HOLY) && baseId == HAND_OF_SALVATION_1 && !IsTank(target))
             {
                 //Blessed Hands (part 2)
                 if (AuraEffect* hos = target->GetAuraEffect(spellId, 0, me->GetGUID()))
@@ -2184,7 +2182,7 @@ public:
                     hos->ChangeAmount(hos->GetAmount() * 2);
                 }
             }
-            if (baseId == HAND_OF_SACRIFICE_1)
+            if ((_spec == BOT_SPEC_PALADIN_HOLY) && baseId == HAND_OF_SACRIFICE_1)
             {
                 //Blessed Hands (part 3)
                 if (AuraEffect* hos = target->GetAuraEffect(spellId, 0, me->GetGUID()))
@@ -2279,7 +2277,7 @@ public:
         void HealReceived(Unit* healer, uint32& heal) override
         {
             //Spiritual Attunement (double the effect on bots)
-            if (heal && me->GetLevel() >= 40 && healer != me && HasRole(BOT_ROLE_TANK) && GetLostHP(me))
+            if (heal && (_spec == BOT_SPEC_PALADIN_PROTECTION) && me->GetLevel() >= 40 && healer != me && GetLostHP(me))
             {
                 if (int32 basepoints = int32(CalculatePct(std::min<int32>(heal, GetLostHP(me)), 20)))
                 {
@@ -2337,36 +2335,30 @@ public:
         void InitSpells() override
         {
             uint8 lvl = me->GetLevel();
+            bool isHoly = _spec == BOT_SPEC_PALADIN_HOLY;
+            bool isProt = _spec == BOT_SPEC_PALADIN_PROTECTION;
+            bool isRetr = _spec == BOT_SPEC_PALADIN_RETRIBUTION;
 
             InitSpellMap(FLASH_OF_LIGHT_1);
             InitSpellMap(HOLY_LIGHT_1);
             InitSpellMap(LAY_ON_HANDS_1);
             InitSpellMap(SACRED_SHIELD_1);
-  /*Talent*/lvl >= 40 ? InitSpellMap(HOLY_SHOCK_1) : RemoveSpell(HOLY_SHOCK_1);
             InitSpellMap(REDEMPTION_1);
             InitSpellMap(HAMMER_OF_JUSTICE_1);
-  /*Talent*/lvl >= 40 ? InitSpellMap(REPENTANCE_1) : RemoveSpell(REPENTANCE_1);
             InitSpellMap(TURN_EVIL_1);
             InitSpellMap(HOLY_WRATH_1);
             InitSpellMap(EXORCISM_1);
-  /*Talent*/lvl >= 20 ? InitSpellMap(SEAL_OF_COMMAND_1) : RemoveSpell(SEAL_OF_COMMAND_1);
-  /*Talent*/lvl >= 50 ? InitSpellMap(CRUSADER_STRIKE_1) : RemoveSpell(CRUSADER_STRIKE_1);
             InitSpellMap(JUDGEMENT_OF_LIGHT_1);
             InitSpellMap(JUDGEMENT_OF_WISDOM_1);
             InitSpellMap(JUDGEMENT_OF_JUSTICE_1);
             InitSpellMap(CONSECRATION_1);
-  /*Talent*/lvl >= 60 ? InitSpellMap(DIVINE_STORM_1) : RemoveSpell(DIVINE_STORM_1);
             InitSpellMap(HAMMER_OF_WRATH_1);
             InitSpellMap(AVENGING_WRATH_1);
             InitSpellMap(RIGHTEOUS_FURY_1);
-  /*Talent*/lvl >= 40 ? InitSpellMap(HOLY_SHIELD_1) : RemoveSpell(HOLY_SHIELD_1);
-  /*Talent*/lvl >= 50 ? InitSpellMap(AVENGERS_SHIELD_1) : RemoveSpell(AVENGERS_SHIELD_1);
-  /*Talent*/lvl >= 60 ? InitSpellMap(HAMMER_OF_THE_RIGHTEOUS_1) : RemoveSpell(HAMMER_OF_THE_RIGHTEOUS_1);
             InitSpellMap(SHIELD_OF_RIGHTEOUSNESS_1);
             InitSpellMap(BLESSING_OF_MIGHT_1);
             InitSpellMap(BLESSING_OF_WISDOM_1);
             InitSpellMap(BLESSING_OF_KINGS_1);
-  /*Talent*/lvl >= 30 ? InitSpellMap(BLESSING_OF_SANCTUARY_1) : RemoveSpell(BLESSING_OF_SANCTUARY_1);
             InitSpellMap(DEVOTION_AURA_1);
             InitSpellMap(CONCENTRATION_AURA_1);
             InitSpellMap(FIRE_RESISTANCE_AURA_1);
@@ -2388,80 +2380,95 @@ public:
             InitSpellMap(SEAL_OF_WISDOM_1);
             InitSpellMap(SEAL_OF_JUSTICE_1);
             InitSpellMap((me->GetRaceMask() & RACEMASK_ALLIANCE) ? SEAL_OF_VENGEANCE_1 : SEAL_OF_CORRUPTION_1);
-  /*Talent*/lvl >= 20 ? InitSpellMap(DIVINE_SACRIFICE_1) : RemoveSpell(DIVINE_SACRIFICE_1);
             InitSpellMap(DIVINE_INTERVENTION_1);
-  /*Talent*/lvl >= 20 ? InitSpellMap(AURA_MASTERY_1) : RemoveSpell(AURA_MASTERY_1);
-  /*Talent*/lvl >= 30 ? InitSpellMap(DIVINE_FAVOR_1) : RemoveSpell(DIVINE_FAVOR_1);
-  /*Talent*/lvl >= 50 ? InitSpellMap(DIVINE_ILLUMINATION_1) : RemoveSpell(DIVINE_ILLUMINATION_1);
-  /*Talent*/lvl >= 60 ? InitSpellMap(BEACON_OF_LIGHT_1) : RemoveSpell(BEACON_OF_LIGHT_1);
-
             InitSpellMap(DIVINE_PROTECTION_1);
             InitSpellMap(DIVINE_SHIELD_1);
+
+  /*Talent*/lvl >= (isHoly ? 20 : 70) ? InitSpellMap(AURA_MASTERY_1) : RemoveSpell(AURA_MASTERY_1);
+  /*Talent*/lvl >= 30 && isHoly ? InitSpellMap(DIVINE_FAVOR_1) : RemoveSpell(DIVINE_FAVOR_1);
+  /*Talent*/lvl >= 40 && isHoly ? InitSpellMap(HOLY_SHOCK_1) : RemoveSpell(HOLY_SHOCK_1);
+  /*Talent*/lvl >= 50 && isHoly ? InitSpellMap(DIVINE_ILLUMINATION_1) : RemoveSpell(DIVINE_ILLUMINATION_1);
+  /*Talent*/lvl >= 60 && isHoly ? InitSpellMap(BEACON_OF_LIGHT_1) : RemoveSpell(BEACON_OF_LIGHT_1);
+
+  /*Talent*/lvl >= (isProt ? 20 : isHoly ? 70 : 99) ? InitSpellMap(DIVINE_SACRIFICE_1) : RemoveSpell(DIVINE_SACRIFICE_1);
+  /*Talent*/lvl >= 30 && isProt ? InitSpellMap(BLESSING_OF_SANCTUARY_1) : RemoveSpell(BLESSING_OF_SANCTUARY_1);
+  /*Talent*/lvl >= 40 && isProt ? InitSpellMap(HOLY_SHIELD_1) : RemoveSpell(HOLY_SHIELD_1);
+  /*Talent*/lvl >= 50 && isProt ? InitSpellMap(AVENGERS_SHIELD_1) : RemoveSpell(AVENGERS_SHIELD_1);
+  /*Talent*/lvl >= 60 && isProt ? InitSpellMap(HAMMER_OF_THE_RIGHTEOUS_1) : RemoveSpell(HAMMER_OF_THE_RIGHTEOUS_1);
+
+  /*Talent*/lvl >= 20 && isRetr ? InitSpellMap(SEAL_OF_COMMAND_1) : RemoveSpell(SEAL_OF_COMMAND_1);
+  /*Talent*/lvl >= 40 && isRetr ? InitSpellMap(REPENTANCE_1) : RemoveSpell(REPENTANCE_1);
+  /*Talent*/lvl >= 50 && isRetr ? InitSpellMap(CRUSADER_STRIKE_1) : RemoveSpell(CRUSADER_STRIKE_1);
+  /*Talent*/lvl >= 60 && isRetr ? InitSpellMap(DIVINE_STORM_1) : RemoveSpell(DIVINE_STORM_1);
 
             CLEANSE = InitSpell(me, CLEANSE_1) ? CLEANSE_1 : PURIFY_1;
             RemoveSpell(CLEANSE_1);
             RemoveSpell(PURIFY_1);
             InitSpellMap(CLEANSE);
-
- /*SPECIAL*/InitSpellMap(ARDENT_DEFENDER_HEAL, true);
         }
 
         void ApplyClassPassives() const override
         {
             uint8 level = master->GetLevel();
+            bool isHoly = _spec == BOT_SPEC_PALADIN_HOLY;
+            bool isProt = _spec == BOT_SPEC_PALADIN_PROTECTION;
+            bool isRetr = _spec == BOT_SPEC_PALADIN_RETRIBUTION;
 
-            RefreshAura(JUDGEMENTS_OF_THE_PURE, level >= 50 ? 1 : 0);
-            RefreshAura(JUDGEMENTS_OF_THE_WISE, level >= 40 ? 1 : 0);
-            RefreshAura(RECKONING5, level >= 50 ? 1 : 0);
-            RefreshAura(RECKONING4, level >= 45 && level < 50 ? 1 : 0);
-            RefreshAura(RECKONING3, level >= 40 && level < 45 ? 1 : 0);
-            RefreshAura(RECKONING2, level >= 35 && level < 40 ? 1 : 0);
-            RefreshAura(RECKONING1, level >= 30 && level < 35 ? 1 : 0);
-            RefreshAura(VENGEANCE3, level >= 40 ? 1 : 0);
-            RefreshAura(VENGEANCE2, level >= 37 && level < 40 ? 1 : 0);
-            RefreshAura(VENGEANCE1, level >= 35 && level < 37 ? 1 : 0);
-            RefreshAura(RIGHTEOUS_VENGEANCE3, level >= 60 ? 1 : 0);
-            RefreshAura(RIGHTEOUS_VENGEANCE2, level >= 57 && level < 60 ? 1 : 0);
-            RefreshAura(RIGHTEOUS_VENGEANCE1, level >= 55 && level < 57 ? 1 : 0);
-            RefreshAura(SHEATH_OF_LIGHT3, level >= 60 ? 1 : 0);
-            RefreshAura(SHEATH_OF_LIGHT2, level >= 55 && level < 60 ? 1 : 0);
-            RefreshAura(SHEATH_OF_LIGHT1, level >= 50 && level < 55 ? 1 : 0);
-            RefreshAura(SACRED_CLEANSING, level >= 45 ? 1 : 0);
-            RefreshAura(DIVINE_PURPOSE, level >= 35 ? 1 : 0);
-            RefreshAura(VINDICATION2, level >= 25 ? 1 : 0);
-            RefreshAura(VINDICATION1, level >= 20 && level < 25 ? 1 : 0);
-            RefreshAura(PURSUIT_OF_JUSTICE, level >= 20 ? 1 : 0);
-            RefreshAura(ART_OF_WAR, level >= 40 ? 1 : 0);
-            RefreshAura(IMPROVED_LAY_ON_HANDS, level >= 30 ? 1 : 0);
-            RefreshAura(FANATICISM, level >= 20 ? 1 : 0);
-            RefreshAura(ARDENT_DEFENDER, level >= 40 ? 1 : 0);
-            RefreshAura(ILLUMINATION, level >= 20 ? 1 : 0);
-            RefreshAura(INFUSION_OF_LIGHT, level >= 55 ? 1 : 0);
-            RefreshAura(REDOUBT3, level >= 55 ? 1 : 0);
-            RefreshAura(REDOUBT2, level >= 50 && level < 55 ? 1 : 0);
-            RefreshAura(REDOUBT1, level >= 45 && level < 50 ? 1 : 0);
-            RefreshAura(IMPROVED_RIGHTEOUS_FURY, level >= 20 ? 1 : 0);
-            RefreshAura(SHIELD_OF_THE_TEMPLAR, level >= 55 ? 1 : 0);
-            RefreshAura(IMPROVED_DEVOTION_AURA, level >= 25 ? 1 : 0);
-            RefreshAura(IMPROVED_CONCENTRATION_AURA, level >= 25 ? 1 : 0);
-            RefreshAura(SANCTIFIED_RETRIBUTION, level >= 30 ? 1 : 0);
-            RefreshAura(LIGHTS_GRACE, level >= 40 ? 1 : 0);
-            RefreshAura(DIVINE_GUARDIAN, level >= 25 ? 1 : 0);
-            //RefreshAura(COMBAT_EXPERTISE, level >= 45 ? 1 : 0);
-            RefreshAura(CRUSADE, level >= 25 ? 1 : 0);
-            RefreshAura(ONE_HANDED_WEAPON_SPECIALIZATION, level >= 35 ? 1 : 0);
-            RefreshAura(TWO_HANDED_WEAPON_SPECIALIZATION, level >= 30 ? 1 : 0);
-            //RefreshAura(JUDGEMENTS_OF_THE_JUST, level >= 55 ? 1 : 0);
-            RefreshAura(GUARDED_BY_THE_LIGHT, level >= 50 ? 1 : 0);
-            RefreshAura(TOUCHED_BY_THE_LIGHT, level >= 50 ? 1 : 0);
-            RefreshAura(HEART_OF_THE_CRUSADER, level >= 15 ? 1 : 0);
-            RefreshAura(SWIFT_RETRIBUTION, level >= 50 ? 1 : 0);
+            RefreshAura(ILLUMINATION, isHoly && level >= 20 ? 1 : 0);
+            RefreshAura(IMPROVED_LAY_ON_HANDS, isHoly && level >= 20 ? 1 : 0);
+            RefreshAura(IMPROVED_CONCENTRATION_AURA, isHoly && level >= 25 ? 1 : 0);
+            RefreshAura(LIGHTS_GRACE, isHoly && level >= 40 ? 1 : 0);
+            RefreshAura(SACRED_CLEANSING, isHoly && level >= 45 ? 1 : 0);
+            RefreshAura(JUDGEMENTS_OF_THE_PURE, isHoly && level >= 50 ? 1 : 0);
+            RefreshAura(INFUSION_OF_LIGHT, isHoly && level >= 55 ? 1 : 0);
+            RefreshAura(RECUCED_HOLY_LIGHT_CAST_TIME, isHoly && level >= 60 ? 1 : 0); //
+
+            RefreshAura(IMPROVED_RIGHTEOUS_FURY, isProt && level >= 20 ? 1 : 0);
+            RefreshAura(IMPROVED_DEVOTION_AURA, isProt && level >= 25 ? 1 : 0);
+            RefreshAura(DIVINE_GUARDIAN, isProt && level >= 25 ? 1 : 0);
+            RefreshAura(RECKONING5, isProt && level >= 50 ? 1 : 0);
+            RefreshAura(RECKONING4, isProt && level >= 45 && level < 50 ? 1 : 0);
+            RefreshAura(RECKONING3, isProt && level >= 40 && level < 45 ? 1 : 0);
+            RefreshAura(RECKONING2, isProt && level >= 35 && level < 40 ? 1 : 0);
+            RefreshAura(RECKONING1, isProt && level >= 30 && level < 35 ? 1 : 0);
+            RefreshAura(ONE_HANDED_WEAPON_SPECIALIZATION, isProt && level >= 35 ? 1 : 0);
+            RefreshAura(ARDENT_DEFENDER, isProt && level >= 40 ? 1 : 0);
+            //RefreshAura(COMBAT_EXPERTISE, isProt && level >= 45 ? 1 : 0);
+            RefreshAura(REDOUBT3, isProt && level >= 55 ? 1 : 0);
+            RefreshAura(REDOUBT2, isProt && level >= 50 && level < 55 ? 1 : 0);
+            RefreshAura(REDOUBT1, isProt && level >= 45 && level < 50 ? 1 : 0);
+            RefreshAura(GUARDED_BY_THE_LIGHT, isProt && level >= 50 ? 1 : 0);
+            RefreshAura(TOUCHED_BY_THE_LIGHT, isProt && level >= 50 ? 1 : 0);
+            RefreshAura(SHIELD_OF_THE_TEMPLAR, isProt && level >= 55 ? 1 : 0);
+            //RefreshAura(JUDGEMENTS_OF_THE_JUST, isProt && level >= 55 ? 1 : 0);
+
+            RefreshAura(HEART_OF_THE_CRUSADER, isRetr && level >= 15 ? 1 : 0);
+            RefreshAura(PURSUIT_OF_JUSTICE, isRetr && level >= 20 ? 1 : 0);
+            RefreshAura(FANATICISM, isRetr && level >= 20 ? 1 : 0);
+            RefreshAura(VINDICATION2, isRetr && level >= 25 ? 1 : 0);
+            RefreshAura(VINDICATION1, isRetr && level >= 20 && level < 25 ? 1 : 0);
+            RefreshAura(CRUSADE, isRetr && level >= 25 ? 1 : 0);
+            RefreshAura(TWO_HANDED_WEAPON_SPECIALIZATION, isRetr && level >= 30 ? 1 : 0);
+            RefreshAura(SANCTIFIED_RETRIBUTION, isRetr && level >= 30 ? 1 : 0);
+            RefreshAura(VENGEANCE3, isRetr && level >= 40 ? 1 : 0);
+            RefreshAura(VENGEANCE2, isRetr && level >= 37 && level < 40 ? 1 : 0);
+            RefreshAura(VENGEANCE1, isRetr && level >= 35 && level < 37 ? 1 : 0);
+            RefreshAura(DIVINE_PURPOSE, isRetr && level >= 35 ? 1 : 0);
+            RefreshAura(JUDGEMENTS_OF_THE_WISE, isRetr && level >= 40 ? 1 : 0);
+            RefreshAura(ART_OF_WAR, isRetr && level >= 40 ? 1 : 0);
+            RefreshAura(SWIFT_RETRIBUTION, isRetr && level >= 50 ? 1 : 0);
+            RefreshAura(SHEATH_OF_LIGHT3, isRetr && level >= 60 ? 1 : 0);
+            RefreshAura(SHEATH_OF_LIGHT2, isRetr && level >= 55 && level < 60 ? 1 : 0);
+            RefreshAura(SHEATH_OF_LIGHT1, isRetr && level >= 50 && level < 55 ? 1 : 0);
+            RefreshAura(RIGHTEOUS_VENGEANCE3, isRetr && level >= 60 ? 1 : 0);
+            RefreshAura(RIGHTEOUS_VENGEANCE2, isRetr && level >= 57 && level < 60 ? 1 : 0);
+            RefreshAura(RIGHTEOUS_VENGEANCE1, isRetr && level >= 55 && level < 57 ? 1 : 0);
+
             RefreshAura(GLYPH_HOLY_LIGHT, level >= 15 ? 1 : 0);
             RefreshAura(GLYPH_SALVATION, level >= 26 ? 1 : 0);
 
             RefreshAura(JUDGEMENT_ANTI_PARRY_DODGE_PASSIVE);
 
-            RefreshAura(RECUCED_HOLY_LIGHT_CAST_TIME, level >= 65 ? 1 : 0);
             //RefreshAura(CLEANSE_HEAL_PASSIVE, level >= 58 ? 1 : 0);
         }
 

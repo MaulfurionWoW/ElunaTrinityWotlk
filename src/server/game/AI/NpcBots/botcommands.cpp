@@ -62,13 +62,21 @@ public:
         {
             { "faction",    GM_COMMANDS,            false, &HandleNpcBotSetFactionCommand,          "" },
             { "owner",      GM_COMMANDS,            false, &HandleNpcBotSetOwnerCommand,            "" },
+            { "spec",       GM_COMMANDS,            false, &HandleNpcBotSetSpecCommand,             "" },
+        };
+
+        static std::vector<ChatCommand> npcbotCommandCommandTable =
+        {
+            { "standstill", PLAYER_COMMANDS,        false, &HandleNpcBotCommandStandstillCommand,   "" },
+            { "stopfully",  PLAYER_COMMANDS,        false, &HandleNpcBotCommandStopfullyCommand,    "" },
+            { "follow",     PLAYER_COMMANDS,        false, &HandleNpcBotCommandFollowCommand,       "" },
         };
 
         static std::vector<ChatCommand> npcbotCommandTable =
         {
-            //{ "debug",      GM_COMMANDS,            false, nullptr,             "", npcbotDebugCommandTable },
-            //{ "toggle",     GM_COMMANDS,            false, nullptr,             "", npcbotToggleCommandTable },
-            { "set",        GM_COMMANDS,            false, nullptr,              "", npcbotSetCommandTable },
+            //{ "debug",      GM_COMMANDS,            false, nullptr,        "", npcbotDebugCommandTable },
+            //{ "toggle",     GM_COMMANDS,            false, nullptr,       "", npcbotToggleCommandTable },
+            { "set",        GM_COMMANDS,            false, nullptr,          "", npcbotSetCommandTable },
             { "add",        GM_COMMANDS,            false, &HandleNpcBotAddCommand,                 "" },
             { "remove",     GM_COMMANDS,            false, &HandleNpcBotRemoveCommand,              "" },
             { "spawn",      GM_COMMANDS,            false, &HandleNpcBotSpawnCommand,               "" },
@@ -76,7 +84,7 @@ public:
             { "lookup",     GM_COMMANDS,            false, &HandleNpcBotLookupCommand,              "" },
             { "revive",     GM_COMMANDS,            false, &HandleNpcBotReviveCommand,              "" },
             { "reloadconfig",GM_COMMANDS,           true,  &HandleNpcBotReloadConfigCommand,        "" },
-            { "command",    PLAYER_COMMANDS,        false, &HandleNpcBotCommandCommand,             "" },
+            { "command",    PLAYER_COMMANDS,        false, nullptr,      "", npcbotCommandCommandTable },
             { "info",       PLAYER_COMMANDS,        false, &HandleNpcBotInfoCommand,                "" },
             { "hide",       PLAYER_COMMANDS,        false, &HandleNpcBotHideCommand,                "" },
             { "unhide",     PLAYER_COMMANDS,        false, &HandleNpcBotUnhideCommand,              "" },
@@ -162,7 +170,7 @@ public:
         if (!*args)
             return false;
 
-        //float speed = 1.f;
+        float speed = 1.f;
         uint32 num = 0;
 
         num = atoi((char*)args);
@@ -471,6 +479,44 @@ public:
         //bot->GetBotAI()->Reset();
 
         handler->PSendSysMessage("%s's new owner is %s (guidlow: %u)", bot->GetName().c_str(), characterName.c_str(), guidlow);
+        return true;
+    }
+
+    static bool HandleNpcBotSetSpecCommand(ChatHandler* handler, const char* args)
+    {
+        Player* chr = handler->GetSession()->GetPlayer();
+        Unit* ubot = chr->GetSelectedUnit();
+        if (!ubot || !*args)
+        {
+            handler->SendSysMessage(".npcbot set spec #specnumber");
+            handler->SendSysMessage("Changes talent spec for selected npcbot");
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        Creature* bot = ubot->ToCreature();
+        if (!bot || !bot->IsNPCBot())
+        {
+            handler->SendSysMessage("You must select a npcbot");
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        char* specStr = strtok((char*)args, " ");
+        if (!specStr)
+            return false;
+
+        uint8 spec = (uint8)atoi(specStr);
+        if (spec < 1 || spec > 3)
+        {
+            handler->SendSysMessage("Spec is out of range (1 to 3)!");
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        bot->GetBotAI()->SetSpec(spec);
+
+        handler->PSendSysMessage("%s's new spec is %u", bot->GetName().c_str(), uint32(spec));
         return true;
     }
 
@@ -854,40 +900,91 @@ public:
         return true;
     }
 
-    static bool HandleNpcBotCommandCommand(ChatHandler* handler, const char* args)
+    static bool HandleNpcBotCommandStandstillCommand(ChatHandler* handler, const char* /*args*/)
     {
         Player* owner = handler->GetSession()->GetPlayer();
-        if (!*args)
+
+        if (!owner->HaveBot())
         {
-            handler->SendSysMessage(".npcbot command #[ stand | follow ]");
-            handler->SendSysMessage("Forces npcbots to either follow you or hold position");
+            handler->SendSysMessage(".npcbot command standstill");
+            handler->SendSysMessage("Forces your npcbots to stop all movement and remain stationed");
             handler->SetSentErrorMessage(true);
             return false;
         }
-        char* command = strtok((char*)args, " ");
-        int8 state = -1;
-        if (!strncmp(command, "s", 2) || !strncmp(command, "st", 3) || !strncmp(command, "stay", 5) ||
-            !strncmp(command, "stop", 5) || !strncmp(command, "stand", 6))
-            state = COMMAND_STAY;
-        else if (!strncmp(command, "f", 2) || !strncmp(command, "follow", 7) || !strncmp(command, "fol", 4) || !strncmp(command, "fo", 3))
-            state = COMMAND_FOLLOW;
-        if (state >= 0 && owner->HaveBot())
+
+        std::string msg;
+        Unit* target = owner->GetSelectedUnit();
+        if (target && owner->GetBotMgr()->GetBot(target->GetGUID()))
         {
-            owner->GetBotMgr()->SendBotCommandState(CommandStates(state));
-            std::ostringstream msg;
-            msg << "Bot command state set to '";
-            switch (state)
-            {
-                case 0:  msg << "STAY";    break;
-                case 1:  msg << "FOLLOW";  break;
-                default: msg << "unknown"; break;
-            }
-            msg << "'";
-            handler->SendSysMessage(msg.str().c_str());
-            return true;
+            target->ToCreature()->GetBotAI()->SetBotCommandState(BOT_COMMAND_STAY);
+            msg = target->GetName() + "'s command state set to 'STAY'";
         }
-        handler->SetSentErrorMessage(true);
-        return false;
+        else
+        {
+            owner->GetBotMgr()->SendBotCommandState(BOT_COMMAND_STAY);
+            msg = "Bots' command state set to 'STAY'";
+        }
+
+        handler->SendSysMessage(msg.c_str());
+        return true;
+    }
+
+    static bool HandleNpcBotCommandStopfullyCommand(ChatHandler* handler, const char* /*args*/)
+    {
+        Player* owner = handler->GetSession()->GetPlayer();
+
+        if (!owner->HaveBot())
+        {
+            handler->SendSysMessage(".npcbot command stopfully");
+            handler->SendSysMessage("Forces your npcbots to stop all activity");
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        std::string msg;
+        Unit* target = owner->GetSelectedUnit();
+        if (target && owner->GetBotMgr()->GetBot(target->GetGUID()))
+        {
+            target->ToCreature()->GetBotAI()->SetBotCommandState(BOT_COMMAND_FULLSTOP);
+            msg = target->GetName() + "'s command state set to 'FULLSTOP'";
+        }
+        else
+        {
+            owner->GetBotMgr()->SendBotCommandState(BOT_COMMAND_FULLSTOP);
+            msg = "Bots' command state set to 'FULLSTOP'";
+        }
+
+        handler->SendSysMessage(msg.c_str());
+        return true;
+    }
+
+    static bool HandleNpcBotCommandFollowCommand(ChatHandler* handler, const char* /*args*/)
+    {
+        Player* owner = handler->GetSession()->GetPlayer();
+
+        if (!owner->HaveBot())
+        {
+            handler->SendSysMessage(".npcbot command follow");
+            handler->SendSysMessage("Allows npcbots to follow you again if stopped");
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        std::string msg;
+        Unit* target = owner->GetSelectedUnit();
+        if (target && owner->GetBotMgr()->GetBot(target->GetGUID()))
+        {
+            target->ToCreature()->GetBotAI()->SetBotCommandState(BOT_COMMAND_FOLLOW);
+            msg = target->GetName() + "'s command state set to 'FOLLOW'";
+        }
+        else
+        {
+            owner->GetBotMgr()->SendBotCommandState(BOT_COMMAND_FOLLOW);
+            msg = "Bots' command state set to 'FOLLOW'";
+        }
+
+        handler->SendSysMessage(msg.c_str());
+        return true;
     }
 
     static bool HandleNpcBotRemoveCommand(ChatHandler* handler, const char* /*args*/)

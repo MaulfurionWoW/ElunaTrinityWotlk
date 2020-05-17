@@ -212,9 +212,8 @@ public:
 
         void StartAttack(Unit* u, bool force = false)
         {
-            if (GetBotCommandState() == COMMAND_ATTACK && !force) return;
-            SetBotCommandState(COMMAND_ATTACK);
-            OnStartAttack(u);
+            if (!bot_ai::StartAttack(u, force))
+                return;
             GetInPosition(force, u);
         }
 
@@ -725,12 +724,12 @@ public:
             float maxRangeLong = me->GetLevel() >= 10 ? 51.f : 45.f;
             float maxRangeNormal = me->GetLevel() >= 10 ? 41.f : 35.f;
 
-            bool inpostion = !opponent->HasAuraType(SPELL_AURA_MOD_CONFUSE) || dist > maxRangeNormal - 15.f;
+            bool inposition = !opponent->HasAuraType(SPELL_AURA_MOD_CONFUSE) || dist > maxRangeNormal - 15.f;
 
             //Auto Shot
             if (Spell const* shot = me->GetCurrentSpell(CURRENT_AUTOREPEAT_SPELL))
             {
-                if (shot->GetSpellInfo()->Id == AUTO_SHOT_1 && (shot->m_targets.GetUnitTarget() != opponent || !inpostion))
+                if (shot->GetSpellInfo()->Id == AUTO_SHOT_1 && (shot->m_targets.GetUnitTarget() != opponent || !inposition))
                     me->InterruptSpell(CURRENT_AUTOREPEAT_SPELL);
             }
             else if (HasRole(BOT_ROLE_DPS) && dist > 5 && dist < maxRangeNormal)
@@ -764,12 +763,15 @@ public:
 
             //DISENGAGE
             if (IsSpellReady(DISENGAGE_1, diff, false) && me->IsInCombat() && !IsTank() && Rand() < 70 &&
+                !HasBotCommandState(BOT_COMMAND_STAY) &&
                 !me->getAttackers().empty() && me->GetDistance(*me->getAttackers().begin()) < 5 &&
                 me->HasInArc(float(M_PI), *me->getAttackers().begin()))
             {
                 if (doCast(me, GetSpell(DISENGAGE_1)))
                     return;
             }
+
+            MoveBehind(opponent);
 
             //MELEE SECTION
             if (dist < 5)
@@ -833,7 +835,7 @@ public:
             if (dist > maxRangeNormal)
                 return;
 
-            if (!inpostion && me->getAttackers().empty())
+            if (!inposition && me->getAttackers().empty())
                 return;
 
             //CONCUSSIVE SHOT
@@ -1166,7 +1168,7 @@ public:
                 return;
         }
 
-        void ApplyClassSpellCritMultiplierAll(Unit const* victim, float& crit_chance, SpellInfo const* spellInfo, SpellSchoolMask /*schoolMask*/, WeaponAttackType /*attackType*/) const override
+        void ApplyClassSpellCritMultiplierAll(Unit const* victim, float& crit_chance, SpellInfo const* spellInfo, SpellSchoolMask schoolMask, WeaponAttackType /*attackType*/) const override
         {
             uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
             uint8 lvl = me->GetLevel();
@@ -1175,13 +1177,13 @@ public:
             if (lvl >= 60 && (baseId == EXPLOSIVE_SHOT_1 || baseId == EXPLOSIVE_SHOT_PERIODIC_DUMMY_AURA))
                 crit_chance += 4.f;
             //Point of No Escape: 6% additional critical chance on targets affected by frosty traps
-            if (lvl >= 50)
+            if ((_spec == BOT_SPEC_HUNTER_SURVIVAL) && lvl >= 50)
             {
                 if (victim->GetAuraEffect(SPELL_AURA_MOD_CRIT_CHANCE_FOR_CASTER, SPELLFAMILY_HUNTER, 0x18, 0x0, 0x0, me->GetGUID()))
                     crit_chance += 6.f;
             }
             //Sniper Training (part 1): 15% additional critical chance for Kill Shot
-            if (lvl >= 50 && baseId == KILL_SHOT_1)
+            if ((_spec == BOT_SPEC_HUNTER_SURVIVAL) && lvl >= 50 && baseId == KILL_SHOT_1)
                 crit_chance += 15.f;
             //Improved Steady Shot (37505): 5% additional critical chance for Steady Shot
             if (lvl >= 50 && baseId == STEADY_SHOT_1)
@@ -1190,7 +1192,7 @@ public:
             if (lvl >= 40 && baseId == AIMED_SHOT_1)
                 crit_chance += 10.f;
             //Improved Barrage: 12% additional critical chance for Multi-Shot and Aimed Shot
-            if (lvl >= 40 && (baseId == AIMED_SHOT_1 || baseId == MULTISHOT_1))
+            if ((_spec == BOT_SPEC_HUNTER_MARKSMANSHIP) && lvl >= 40 && (baseId == AIMED_SHOT_1 || baseId == MULTISHOT_1))
                 crit_chance += 12.f;
             //Survival Instincts: 4% additional critical chance for Arcane Shot, Steady Shot and Explosive Shot
             if (lvl >= 15 && (baseId == ARCANE_SHOT_1 || baseId == STEADY_SHOT_1 || baseId == EXPLOSIVE_SHOT_1 ||
@@ -1221,7 +1223,7 @@ public:
                 if (lvl >= 15 && baseId != AUTO_SHOT_1)
                     pctbonus += 0.15f;
                 //Marked for Death (part 2): 10% crit damage bonus for Aimed Shot, Arcane Shot, Steady Shot, Kill Shot and Chimera Shot
-                if (lvl >= 55 &&
+                if ((_spec == BOT_SPEC_HUNTER_MARKSMANSHIP) && lvl >= 55 &&
                     (baseId == AIMED_SHOT_1 || baseId == ARCANE_SHOT_1 || baseId == STEADY_SHOT_1 ||
                     baseId == KILL_SHOT_1 || baseId == CHIMERA_SHOT_1))
                     pctbonus += 0.05f;
@@ -1234,7 +1236,7 @@ public:
             if (lvl >= 15 && botPet)
                 pctbonus += 0.02f;
             //Ranged Weapon Specialization: 5% bonus damage for ranged attacks
-            if (lvl >= 35)
+            if ((_spec == BOT_SPEC_HUNTER_MARKSMANSHIP) && lvl >= 35)
                 pctbonus += 0.05f;
             //Improved Arcane Shot: 15% bonus damage for Arcane Shot
             if (lvl >= 20 && baseId == ARCANE_SHOT_1)
@@ -1247,19 +1249,20 @@ public:
                         pctbonus += 0.2f;
             }
             //Barrage: 12% bonus damage for Aimed Shot, Multi-Shot or Volley
-            if (lvl >= 30 && (spellInfo->SpellFamilyFlags[0] & 0x23000))
+            if ((_spec == BOT_SPEC_HUNTER_MARKSMANSHIP) && lvl >= 30 && (spellInfo->SpellFamilyFlags[0] & 0x23000))
                 pctbonus += 0.12f;
             //Marked for Death (part 1): 5% bonus damage for all ranged shots on marked target
-            if (lvl >= 55 && damageinfo.target &&
+            if ((_spec == BOT_SPEC_HUNTER_MARKSMANSHIP) && lvl >= 55 && damageinfo.target &&
                 damageinfo.target->GetAuraEffect(SPELL_AURA_RANGED_ATTACK_POWER_ATTACKER_BONUS, SPELLFAMILY_HUNTER, 0x400, 0x0, 0x0/*, me->GetGUID()*/))
                 pctbonus += 0.05f;
             //T.N.T: 6% bonus damage for Explosive Shot, Explosive Trap, Immolation Trap and Black Arrow
-            if (lvl >= 25 &&
+            if ((_spec == BOT_SPEC_HUNTER_SURVIVAL) && lvl >= 25 &&
                 (baseId == EXPLOSIVE_SHOT_1 || baseId == EXPLOSIVE_SHOT_PERIODIC_DUMMY_AURA ||
                 baseId == EXPLOSIVE_TRAP_AURA_1 || baseId == IMMOLATION_TRAP_AURA_1 || baseId == BLACK_ARROW_1))
                 pctbonus += 0.06f;
             //Ferocious Inspiration part 2: 9% bonus damage for Arcane Shot and Steady Shot
-            if (lvl >= 40 && (baseId == ARCANE_SHOT_1 || baseId == STEADY_SHOT_1))
+            if ((_spec == BOT_SPEC_HUNTER_BEASTMASTERY) &&
+                lvl >= 40 && (baseId == ARCANE_SHOT_1 || baseId == STEADY_SHOT_1))
                 pctbonus += 0.09f;
             //Improved Steady Shot (38392): 10% bonus damage for Steady Shot
             if (lvl >= 50 && baseId == STEADY_SHOT_1)
@@ -1269,10 +1272,10 @@ public:
                 damageinfo.target->GetAuraEffect(SPELL_AURA_MOD_DAMAGE_FROM_CASTER, SPELLFAMILY_HUNTER, 0x4000, 0x0, 0x0/*, me->GetGUID()*/))
                 pctbonus += 0.1f;
             //The Beast Within part 1: 10% bonus damage for all abilities
-            if (lvl >= 50)
+            if ((_spec == BOT_SPEC_HUNTER_BEASTMASTERY) && lvl >= 50)
                 pctbonus += 0.1f;
             //Sniper Training part 2: 6% bonus damage for Steady Shot, Aimed Shot, Black Arrow and Explosive Shot
-            if (lvl >= 50 &&
+            if ((_spec == BOT_SPEC_HUNTER_SURVIVAL) && lvl >= 50 &&
                 ((spellInfo->SpellFamilyFlags[0] & 0x20000) ||
                 (spellInfo->SpellFamilyFlags[1] & 0x8000001) ||
                 (spellInfo->SpellFamilyFlags[2] & 0x200)))
@@ -1295,7 +1298,7 @@ public:
             damage = int32(fdamage * (1.0f + pctbonus));
         }
 
-        void ApplyClassDamageMultiplierSpell(int32& damage, SpellNonMeleeDamage& /*damageinfo*/, SpellInfo const* spellInfo, WeaponAttackType /*attackType*/, bool /*crit*/) const override
+        void ApplyClassDamageMultiplierSpell(int32& damage, SpellNonMeleeDamage& /*damageinfo*/, SpellInfo const* spellInfo, WeaponAttackType /*attackType*/, bool crit) const override
         {
             uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
             uint8 lvl = me->GetLevel();
@@ -1316,12 +1319,12 @@ public:
             if (lvl >= 15 && (baseId == IMMOLATION_TRAP_AURA_1 || baseId == EXPLOSIVE_TRAP_AURA_1 || baseId == BLACK_ARROW_1))
                 pctbonus += 0.3f;
             //T.N.T: 6% bonus damage for Explosive Shot, Explosive Trap, Immolation Trap and Black Arrow
-            if (lvl >= 25 &&
+            if ((_spec == BOT_SPEC_HUNTER_SURVIVAL) && lvl >= 25 &&
                 (baseId == EXPLOSIVE_SHOT_1 || baseId == EXPLOSIVE_SHOT_PERIODIC_DUMMY_AURA ||
                 baseId == EXPLOSIVE_TRAP_AURA_1 || baseId == IMMOLATION_TRAP_AURA_1 || baseId == BLACK_ARROW_1))
                 pctbonus += 0.06f;
             //The Beast Within part 1: 10% bonus damage for all abilities
-            if (lvl >= 50)
+            if ((_spec == BOT_SPEC_HUNTER_BEASTMASTERY) && lvl >= 50)
                 pctbonus += 0.1f;
 
             damage = int32(fdamage * (1.0f + pctbonus) + flat_mod);
@@ -1354,13 +1357,13 @@ public:
             if (lvl >= 25 && baseId == MEND_PET_1)
                 pctbonus += 0.5f;
             //Efficiency: -15% mana cost for Stings and Shots
-            if (lvl >= 25 &&
+            if ((_spec == BOT_SPEC_HUNTER_MARKSMANSHIP) && lvl >= 25 &&
                 ((spellInfo->SpellFamilyFlags[0] & 0x7FA00) ||
                 (spellInfo->SpellFamilyFlags[1] & 0x88801081) ||
                 (spellInfo->SpellFamilyFlags[2] & 0x1)))
                 pctbonus += 0.15f;
             //Resourcefulness: -60% mana cost for Traps, melee spells and Black Arrow
-            if (lvl >= 35 &&
+            if ((_spec == BOT_SPEC_HUNTER_SURVIVAL) && lvl >= 35 &&
                 ((spellInfo->SpellFamilyFlags[0] & 0xDE) ||
                 (spellInfo->SpellFamilyFlags[1] & 0x84000)))
                 pctbonus += 0.6f;
@@ -1368,7 +1371,8 @@ public:
             if (lvl >= 40 && baseId == VOLLEY_1)
                 pctbonus += 0.2f;
             //Master Marksman: -25% mana cost for Steady Shot, Aimed Shot and Chimera Shot
-            if (lvl >= 45 && (baseId == STEADY_SHOT_1 || baseId == AIMED_SHOT_1 || baseId == CHIMERA_SHOT_1))
+            if ((_spec == BOT_SPEC_HUNTER_MARKSMANSHIP) &&
+                lvl >= 45 && (baseId == STEADY_SHOT_1 || baseId == AIMED_SHOT_1 || baseId == CHIMERA_SHOT_1))
                 pctbonus += 0.25f;
             //Improved Steady Shot part 2: -20% mana cost for Steady Shot, Aimed Shot, Arcane Arrow and Chimera Shot
             if (baseId == AIMED_SHOT_1 || baseId == ARCANE_SHOT_1 || baseId == CHIMERA_SHOT_1)
@@ -1406,7 +1410,7 @@ public:
             //Survival Tactics: -4 sec cooldown for Disengage
             //Glyph of Disengage: -5 sec cooldown for Disengage
             if (lvl >= 20 && baseId == DISENGAGE_1)
-                timebonus += 9000;
+                timebonus += (_spec == BOT_SPEC_HUNTER_SURVIVAL) ? 9000 : 5000;
             //Glyph of Feign Death: -5 sec cooldown for Feign Death
             //Improved Feign Death (24432): -2 sec cooldown for Feign Death
             if (lvl >= 30 && baseId == FEIGN_DEATH_1)
@@ -1441,7 +1445,7 @@ public:
             }
 
             //Rapid Killing part 1: -2 min cooldown for Rapid Fire
-            if (baseId == RAPID_FIRE_1)
+            if ((_spec == BOT_SPEC_HUNTER_MARKSMANSHIP) && baseId == RAPID_FIRE_1)
                 timebonus += 120000;
             //Glyph of Aimed Shot: -2 sec cooldown for Aimed Shot
             if (baseId == AIMED_SHOT_1)
@@ -1455,10 +1459,10 @@ public:
             if (spellInfo->SpellFamilyFlags[0] & 0x80)
                 timebonus += 6000;
             //Resourcefulness: -6 sec cd for Traps and Black Arrow
-            if (lvl >= 35 && (spellInfo->SpellFamilyFlags[0] & 0x80))
+            if ((_spec == BOT_SPEC_HUNTER_SURVIVAL) && lvl >= 35 && (spellInfo->SpellFamilyFlags[0] & 0x80))
                 timebonus += 6000;
             //Catlike Reflexes part 3: -30 sec cd for Kill Command
-            if (lvl >= 40 && (spellInfo->SpellFamilyFlags[1] & 0x800))
+            if ((_spec == BOT_SPEC_HUNTER_BEASTMASTERY) && lvl >= 40 && (spellInfo->SpellFamilyFlags[1] & 0x800))
                 timebonus += 30000;
             //Glyph of Kill Shot: -6 sec cooldown for Kill Shot
             if (lvl >= 40 && baseId == KILL_SHOT_1)
@@ -1471,7 +1475,7 @@ public:
         {
             uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
             //SpellSchool school = GetFirstSchoolInMask(spellInfo->GetSchoolMask());
-            //uint8 lvl = me->GetLevel();
+            uint8 lvl = me->GetLevel();
             float flatbonus = 0.0f;
             float pctbonus = 0.0f;
 
@@ -1656,7 +1660,7 @@ public:
                 }
             }
             //Improved Stings part 1: +30% damage
-            if (lvl >= 25 && (baseId == SERPENT_STING_1 || baseId == WYVERN_STING_DOT_AURA_1))
+            if ((_spec == BOT_SPEC_HUNTER_MARKSMANSHIP) && lvl >= 25 && (baseId == SERPENT_STING_1 || baseId == WYVERN_STING_DOT_AURA_1))
             {
                 if (AuraEffect* stin = target->GetAuraEffect(spell->Id, 0, me->GetGUID()))
                 {
@@ -1727,7 +1731,7 @@ public:
                     me->CastSpell(target, IMPROVED_CONCUSSION, true);
                 }
             }
-            if (lvl >= 50 && baseId == STEADY_SHOT_1)
+            if ((_spec == BOT_SPEC_HUNTER_MARKSMANSHIP) && lvl >= 50 && baseId == STEADY_SHOT_1)
             {
                 //Improved Steady Shot: 15% chance
                 if (urand(1,100) <= 15)
@@ -1752,9 +1756,8 @@ public:
                 me->CastSpell(me, RAPID_RECUPERATION_ENERGIZE_PCT_1, true);
             }
             //Rapid Recuperation (Rapid Fire): match duration
-            if (baseId == RAPID_RECUPERATION_BUFF)
+            if (baseId == RAPID_RECUPERATION_BUFF && GetSpell(RAPID_FIRE_1))
             {
-                if (GetSpell(RAPID_FIRE_1))
                 if (Aura const* rapi = me->GetAura(GetSpell(RAPID_FIRE_1)))
                 {
                     if (Aura* recu = me->GetAura(spell->Id))
@@ -1766,12 +1769,12 @@ public:
                 }
             }
             //Rapid Recuperation (Rapid Fire)
-            if (baseId == RAPID_FIRE_1 && me->GetLevel() >= 45)
+            if ((_spec == BOT_SPEC_HUNTER_MARKSMANSHIP) && baseId == RAPID_FIRE_1 && me->GetLevel() >= 45)
             {
                 me->CastSpell(me, RAPID_RECUPERATION_BUFF, true);
             }
             //Rapid Recuperation (Rapid Killing)
-            if (baseId == RAPID_KILLING_BUFF && me->GetLevel() >= 45)
+            if ((_spec == BOT_SPEC_HUNTER_MARKSMANSHIP) && baseId == RAPID_KILLING_BUFF && me->GetLevel() >= 45)
             {
                 me->CastSpell(me, RAPID_RECUPERATION_BUFF2, true);
             }
@@ -1916,7 +1919,8 @@ public:
                 entry = urand(BOT_PET_HUNTER_START, BOT_PET_HUNTER_END_GENERAL);
 
             //ensurance
-            if (entry < BOT_PET_HUNTER_START || entry > BOT_PET_HUNTER_END_EXOTIC)
+            if (entry < BOT_PET_HUNTER_START || entry > BOT_PET_HUNTER_END_EXOTIC ||
+                (entry >= BOT_PET_EXOTIC_START && _spec != BOT_SPEC_HUNTER_BEASTMASTERY))
                 entry = 0;
 
             myPetType = entry;
@@ -1933,7 +1937,7 @@ public:
 
             me->CastSpell(me, CALL_PET_VISUAL, true);
             Creature* myPet = me->SummonCreature(myPetType, *me, TEMPSUMMON_CORPSE_DESPAWN);
-            me->GetNearPoint(myPet, pos.m_positionX, pos.m_positionY, pos.m_positionZ, 0, me->GetOrientation() + float(M_PI_2));
+            me->GetNearPoint(myPet, pos.m_positionX, pos.m_positionY, pos.m_positionZ, 0, me->GetOrientation() + M_PI / 2);
             myPet->GetMotionMaster()->MovePoint(me->GetMapId(), pos);
             myPet->SetCreatorGUID(master->GetGUID());
             myPet->SetOwnerGUID(me->GetGUID());
@@ -1977,7 +1981,7 @@ public:
                 botPet->ToTempSummon()->UnSummon();
         }
 
-        void SummonedCreatureDies(Creature* /*summon*/, Unit* /*killer*/) override
+        void SummonedCreatureDies(Creature* summon, Unit* /*killer*/) override
         {
             //TC_LOG_ERROR("entities.unit", "SummonedCreatureDies: %s's %s", me->GetName().c_str(), summon->GetName().c_str());
             //if (summon == botPet)
@@ -2089,19 +2093,17 @@ public:
         void InitSpells() override
         {
             uint8 lvl = me->GetLevel();
+            //bool isBeas = _spec == BOT_SPEC_HUNTER_BEASTMASTERY;
+            bool isMark = _spec == BOT_SPEC_HUNTER_MARKSMANSHIP;
+            bool isSurv = _spec == BOT_SPEC_HUNTER_SURVIVAL;
+
             InitSpellMap(AUTO_SHOT_1);
             InitSpellMap(ARCANE_SHOT_1);
             InitSpellMap(TRANQ_SHOT_1);
-  /*Talent*/lvl >= 50 ? InitSpellMap(BLACK_ARROW_1) : RemoveSpell(BLACK_ARROW_1);
-  /*Talent*/lvl >= 50 ? InitSpellMap(SILENCING_SHOT_1) : RemoveSpell(SILENCING_SHOT_1);
-  /*Talent*/lvl >= 60 ? InitSpellMap(CHIMERA_SHOT_1) : RemoveSpell(CHIMERA_SHOT_1);
-  /*Talent*/lvl >= 20 ? InitSpellMap(AIMED_SHOT_1) : RemoveSpell(AIMED_SHOT_1);
             InitSpellMap(STEADY_SHOT_1);
-  /*Talent*/lvl >= 60 ? InitSpellMap(EXPLOSIVE_SHOT_1) : RemoveSpell(EXPLOSIVE_SHOT_1);
             InitSpellMap(KILL_SHOT_1);
             InitSpellMap(MULTISHOT_1);
             InitSpellMap(VOLLEY_1);
-  /*Talent*/lvl >= 20 ? InitSpellMap(SCATTER_SHOT_1) : RemoveSpell(SCATTER_SHOT_1);
             InitSpellMap(CONCUSSIVE_SHOT_1);
             InitSpellMap(DISTRACTING_SHOT_1);
             InitSpellMap(SERPENT_STING_1);
@@ -2109,12 +2111,9 @@ public:
             InitSpellMap(VIPER_STING_1);
             InitSpellMap(RAPID_FIRE_1);
             InitSpellMap(FLARE_1);
-  /*Talent*/lvl >= 40 ? InitSpellMap(TRUESHOT_AURA_1) : RemoveSpell(TRUESHOT_AURA_1);
-  /*Talent*/lvl >= 40 ? InitSpellMap(WYVERN_STING_1) : RemoveSpell(WYVERN_STING_1);
             InitSpellMap(WING_CLIP_1);
             InitSpellMap(RAPTOR_STRIKE_1);
             InitSpellMap(MONGOOSE_BITE_1);
-            InitSpellMap(COUNTERATTACK_1);
             InitSpellMap(DISENGAGE_1);
             InitSpellMap(IMMOLATION_TRAP_1);
             InitSpellMap(FREEZING_TRAP_1);
@@ -2124,7 +2123,6 @@ public:
             InitSpellMap(HUNTERS_MARK_1);
             InitSpellMap(SCARE_BEAST_1);
             InitSpellMap(FEIGN_DEATH_1);
-  /*Talent*/lvl >= 30 ? InitSpellMap(READINESS_1) : RemoveSpell(READINESS_1);
             InitSpellMap(DETERRENCE_1);
             InitSpellMap(MISDIRECTION_1);
             InitSpellMap(MEND_PET_1);
@@ -2137,31 +2135,48 @@ public:
             InitSpellMap(ASPECT_OF_THE_PACK_1);
             InitSpellMap(ASPECT_OF_THE_WILD_1);
             InitSpellMap(ASPECT_OF_THE_DRAGONHAWK_1);
+
+  /*Talent*/lvl >= (isMark ? 20 : 70) ? InitSpellMap(AIMED_SHOT_1) : RemoveSpell(AIMED_SHOT_1);
+  /*Talent*/lvl >= 30 && isMark ? InitSpellMap(READINESS_1) : RemoveSpell(READINESS_1);
+  /*Talent*/lvl >= 40 && isMark ? InitSpellMap(TRUESHOT_AURA_1) : RemoveSpell(TRUESHOT_AURA_1);
+  /*Talent*/lvl >= 50 && isMark ? InitSpellMap(SILENCING_SHOT_1) : RemoveSpell(SILENCING_SHOT_1);
+  /*Talent*/lvl >= 60 && isMark ? InitSpellMap(CHIMERA_SHOT_1) : RemoveSpell(CHIMERA_SHOT_1);
+
+  /*Talent*/lvl >= (isSurv ? 20 : isMark ? 70 : 99) ? InitSpellMap(SCATTER_SHOT_1) : RemoveSpell(SCATTER_SHOT_1);
+  /*Talent*/lvl >= 30 && isSurv ? InitSpellMap(COUNTERATTACK_1) : RemoveSpell(COUNTERATTACK_1);
+  /*Talent*/lvl >= 40 && isSurv ? InitSpellMap(WYVERN_STING_1) : RemoveSpell(WYVERN_STING_1);
+  /*Talent*/lvl >= 50 && isSurv ? InitSpellMap(BLACK_ARROW_1) : RemoveSpell(BLACK_ARROW_1);
+  /*Talent*/lvl >= 60 && isSurv ? InitSpellMap(EXPLOSIVE_SHOT_1) : RemoveSpell(EXPLOSIVE_SHOT_1);
         }
 
         void ApplyClassPassives() const override
         {
             uint8 level = master->GetLevel();
+            bool isBeas = _spec == BOT_SPEC_HUNTER_BEASTMASTERY;
+            bool isMark = _spec == BOT_SPEC_HUNTER_MARKSMANSHIP;
+            bool isSurv = _spec == BOT_SPEC_HUNTER_SURVIVAL;
+
+            RefreshAura(IMPROVED_MEND_PET, isBeas && level >= 25 ? 1 : 0);
+
+            RefreshAura(RAPID_KILLING, isMark && level >= 20 ? 1 : 0);
+            RefreshAura(CONCUSSIVE_BARRAGE, isMark && level >= 30 ? 1 : 0);
+            RefreshAura(PIERCING_SHOTS, isMark && level >= 40 ? 1 : 0);
+            //RefreshAura(TRUESHOT_AURA, isMark && level >= 40 ? 1 : 0);
+            RefreshAura(MASTER_MARKSMAN, isMark && level >= 45 ? 1 : 0);
+            RefreshAura(WILD_QUIVER, isMark && level >= 50 ? 1 : 0);
 
             RefreshAura(SUREFOOTED, level >= 15 ? 1 : 0);
-            RefreshAura(ENTRAPMENT, level >= 15 ? 1 : 0);
-            RefreshAura(RAPID_KILLING, level >= 20 ? 1 : 0);
-            RefreshAura(IMPROVED_MEND_PET, level >= 25 ? 1 : 0);
-            RefreshAura(LOCK_AND_LOAD, level >= 25 ? 1 : 0);
-            RefreshAura(CONCUSSIVE_BARRAGE, level >= 30 ? 1 : 0);
-            RefreshAura(PIERCING_SHOTS, level >= 40 ? 1 : 0);
-            //RefreshAura(TRUESHOT_AURA, level >= 40 ? 1 : 0);
-            RefreshAura(EXPOSE_WEAKNESS, level >= 40 ? 1 : 0);
-            RefreshAura(THRILL_OF_THE_HUNT, level >= 40 ? 1 : 0);
-            RefreshAura(MASTER_MARKSMAN, level >= 45 ? 1 : 0);
-            RefreshAura(MASTER_TACTICIAN5, level >= 50 ? 1 : 0);
-            RefreshAura(MASTER_TACTICIAN4, level >= 49 && level < 50 ? 1 : 0);
-            RefreshAura(MASTER_TACTICIAN3, level >= 48 && level < 49 ? 1 : 0);
-            RefreshAura(MASTER_TACTICIAN2, level >= 47 && level < 48 ? 1 : 0);
-            RefreshAura(MASTER_TACTICIAN1, level >= 46 && level < 47 ? 1 : 0);
-            RefreshAura(NOXIOUS_STINGS, level >= 45 ? 1 : 0);
-            RefreshAura(WILD_QUIVER, level >= 50 ? 1 : 0);
-            RefreshAura(SNIPER_TRAINING, level >= 50 ? 1 : 0);
+            RefreshAura(ENTRAPMENT, isSurv && level >= 15 ? 1 : 0);
+            RefreshAura(LOCK_AND_LOAD, isSurv && level >= 25 ? 1 : 0);
+            RefreshAura(EXPOSE_WEAKNESS, isSurv && level >= 40 ? 1 : 0);
+            RefreshAura(THRILL_OF_THE_HUNT, isSurv && level >= 40 ? 1 : 0);
+            RefreshAura(MASTER_TACTICIAN5, isSurv && level >= 50 ? 1 : 0);
+            RefreshAura(MASTER_TACTICIAN4, isSurv && level >= 49 && level < 50 ? 1 : 0);
+            RefreshAura(MASTER_TACTICIAN3, isSurv && level >= 48 && level < 49 ? 1 : 0);
+            RefreshAura(MASTER_TACTICIAN2, isSurv && level >= 47 && level < 48 ? 1 : 0);
+            RefreshAura(MASTER_TACTICIAN1, isSurv && level >= 46 && level < 47 ? 1 : 0);
+            RefreshAura(NOXIOUS_STINGS, isSurv && level >= 45 ? 1 : 0);
+            RefreshAura(SNIPER_TRAINING, isSurv && level >= 50 ? 1 : 0);
 
             RefreshAura(GLYPH_RAPTOR_STRIKE, level >= 15 ? 1 : 0);
             RefreshAura(GLYPH_ASPECT_OF_THE_VIPER, level >= 20 ? 1 : 0);

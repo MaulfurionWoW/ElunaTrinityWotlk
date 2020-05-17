@@ -49,15 +49,15 @@ public:
 
         void StartAttack(Unit* u, bool force = false)
         {
-            if (GetBotCommandState() == COMMAND_ATTACK && !force) return;
-            SetBotCommandState(COMMAND_ATTACK);
-            OnStartAttack(u);
+            if (!bot_pet_ai::StartAttack(u, force))
+                return;
             GetInPosition(force, u);
         }
 
         void DoPetActions(uint32 diff)
         {
             if (IsSpellReady(SPIRIT_WALK_1, diff) && (me->GetVictim() || petOwner->GetVictim()) &&
+                !HasBotCommandState(BOT_COMMAND_STAY) &&
                 me->GetDistance(petOwner) < 25)
             {
                 me->CastSpell(me, GetSpell(SPIRIT_WALK_1), false);
@@ -100,6 +100,7 @@ public:
             //bool canDPS = petOwner->GetBotAI()->HasRole(BOT_ROLE_DPS);
 
             if (IsSpellReady(LEAP_1, diff) &&
+                !HasBotCommandState(BOT_COMMAND_STAY) &&
                 !(opponent->GetTypeId() == TYPEID_UNIT && opponent->ToCreature()->isWorldBoss()) &&
                 dist > 5 && dist < 30)
             {

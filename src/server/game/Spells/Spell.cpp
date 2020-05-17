@@ -2509,6 +2509,16 @@ void Spell::TargetInfo::DoDamageAndTriggers(Spell* spell)
                 unitCaster->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_TALK);
                 spell->unitTarget->ToCreature()->EngageWithTarget(unitCaster);
             }
+
+            //npcbot
+            //disabled: causes double procs (needs an update)
+            /*
+            if (caster->GetTypeId() == TYPEID_UNIT && caster->ToCreature()->IsNPCBot() && (procSpellType & (PROC_SPELL_TYPE_DAMAGE | PROC_SPELL_TYPE_NO_DMG_HEAL)) &&
+                !(spell->m_spellInfo->Attributes & SPELL_ATTR0_STOP_ATTACK_TARGET) && !spell->m_spellInfo->HasAttribute(SPELL_ATTR4_CANT_TRIGGER_ITEM_SPELLS) &&
+                (spell->m_spellInfo->DmgClass == SPELL_DAMAGE_CLASS_MELEE || spell->m_spellInfo->DmgClass == SPELL_DAMAGE_CLASS_RANGED))
+                caster->ToCreature()->CastCreatureItemCombatSpell(spell->unitTarget, spell->m_attackType, procVictim, hitMask);
+            */
+            //end npcbot
         }
 
         // Do triggers for unit
@@ -2524,12 +2534,12 @@ void Spell::TargetInfo::DoDamageAndTriggers(Spell* spell)
                         caster->ToPlayer()->CastItemCombatSpell(*spellDamageInfo);
             }
 
-            //npcbot
-            if (caster->GetTypeId() == TYPEID_UNIT && caster->ToCreature()->IsNPCBot() && (procSpellType & (PROC_SPELL_TYPE_DAMAGE | PROC_SPELL_TYPE_NO_DMG_HEAL)) &&
-                !(spell->m_spellInfo->Attributes & SPELL_ATTR0_STOP_ATTACK_TARGET) && !spell->m_spellInfo->HasAttribute(SPELL_ATTR4_CANT_TRIGGER_ITEM_SPELLS) &&
-                (spell->m_spellInfo->DmgClass == SPELL_DAMAGE_CLASS_MELEE || spell->m_spellInfo->DmgClass == SPELL_DAMAGE_CLASS_RANGED))
-                caster->ToCreature()->CastCreatureItemCombatSpell(spell->unitTarget, spell->m_attackType, procVictim, hitMask);
-            //end npcbot
+                //npcbot
+                if (caster->GetTypeId() == TYPEID_UNIT && caster->ToCreature()->IsNPCBot() &&
+                    !(spell->m_spellInfo->Attributes & SPELL_ATTR0_STOP_ATTACK_TARGET) && !spell->m_spellInfo->HasAttribute(SPELL_ATTR4_CANT_TRIGGER_ITEM_SPELLS) &&
+                    (spell->m_spellInfo->DmgClass == SPELL_DAMAGE_CLASS_MELEE || spell->m_spellInfo->DmgClass == SPELL_DAMAGE_CLASS_RANGED))
+                    caster->ToCreature()->CastCreatureItemCombatSpell(spell->unitTarget, spell->m_attackType, procVictim, hitMask);
+                //end npcbot
         }
 
         // set hitmask for finish procs

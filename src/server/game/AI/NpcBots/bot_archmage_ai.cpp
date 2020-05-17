@@ -89,9 +89,8 @@ public:
 
         void StartAttack(Unit* u, bool force = false)
         {
-            if (GetBotCommandState() == COMMAND_ATTACK && !force) return;
-            SetBotCommandState(COMMAND_ATTACK);
-            OnStartAttack(u);
+            if (!bot_ai::StartAttack(u, force))
+                return;
             GetInPosition(force, u);
         }
 
@@ -182,10 +181,10 @@ public:
             }
         }
 
-        void ApplyClassDamageMultiplierSpell(int32& damage, SpellNonMeleeDamage& /*damageinfo*/, SpellInfo const* spellInfo, WeaponAttackType /*attackType*/, bool crit) const override
+        void ApplyClassDamageMultiplierSpell(int32& damage, SpellNonMeleeDamage& damageinfo, SpellInfo const* spellInfo, WeaponAttackType /*attackType*/, bool crit) const override
         {
             uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
-            //uint8 lvl = me->GetLevel();
+            uint8 lvl = me->GetLevel();
             float fdamage = float(damage);
 
             //apply bonus damage mods
@@ -213,33 +212,12 @@ public:
                 SummonBotPet();
         }
 
-        void SpellHitTarget(Unit* /*target*/, SpellInfo const* /*spell*/) override
+        void SpellHitTarget(Unit* target, SpellInfo const* spell) override
         {
         }
 
         void SpellHit(Unit* caster, SpellInfo const* spell) override
         {
-            if (spell->GetMaxDuration() >= 1000 && caster->IsControlledByPlayer())
-            {
-                //bots of W3 classes will not be easily CCed
-                if (spell->HasAura(SPELL_AURA_MOD_STUN) || spell->HasAura(SPELL_AURA_MOD_CONFUSE) ||
-                    spell->HasAura(SPELL_AURA_MOD_PACIFY) || spell->HasAura(SPELL_AURA_MOD_ROOT))
-                {
-                    if (Aura* cont = me->GetAura(spell->Id, caster->GetGUID()))
-                    {
-                        if (AuraApplication const* aurApp = cont->GetApplicationOfTarget(me->GetGUID()))
-                        {
-                            if (!aurApp->IsPositive())
-                            {
-                                int32 dur = std::max<int32>(cont->GetMaxDuration() / 3, 1000);
-                                cont->SetDuration(dur);
-                                cont->SetMaxDuration(dur);
-                            }
-                        }
-                    }
-                }
-            }
-
             OnSpellHit(caster, spell);
         }
 
@@ -248,7 +226,7 @@ public:
             bot_ai::DamageDealt(victim, damage, damageType);
         }
 
-        void DamageTaken(Unit* u, uint32& /*damage*/) override
+        void DamageTaken(Unit* u, uint32& damage) override
         {
             if (!u)
                 return;
@@ -319,13 +297,6 @@ public:
 
         void CheckAttackState() override
         {
-            if (me->GetVictim())
-            {
-                //if (HasRole(BOT_ROLE_DPS))
-                //    DoMeleeAttackIfReady();
-            }
-            else
-                Evade();
         }
 
         void Reset() override

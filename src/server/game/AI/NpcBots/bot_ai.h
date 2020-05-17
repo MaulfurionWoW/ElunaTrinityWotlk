@@ -5,7 +5,6 @@
 #include "botcommon.h"
 /*
 NpcBot System by Trickerer (onlysuffering@gmail.com)
-Original patch from: LordPsyan https://bitbucket.org/lordpsyan/trinitycore-patches/src/3b8b9072280e/Individual/11185-BOTS-NPCBots.patch
 */
 
 struct PlayerClassLevelInfo;
@@ -30,7 +29,7 @@ class bot_ai : public CreatureAI
         void DamageDealt(Unit* victim, uint32& damage, DamageEffectType damageType) override;
         void DamageTaken(Unit* /*attacker*/, uint32& /*damage*/) override { }
         void ReceiveEmote(Player* player, uint32 emote) override;
-        void EnterEvadeMode(EvadeReason /*why = EVADE_REASON_OTHER*/) override { }
+        void EnterEvadeMode(EvadeReason why = EVADE_REASON_OTHER) override { }
 
         virtual void OnBotSummon(Creature* /*summon*/) {}
         virtual void OnBotDespawn(Creature* /*summon*/) {}
@@ -50,12 +49,6 @@ class bot_ai : public CreatureAI
         Creature* GetBotsPet() const { return botPet; }
 
         void Evade();
-        void Follow(bool force = false, Position* newpos = nullptr)
-        {
-            if (force ||
-                (me->IsAlive() && (!me->IsInCombat() || !opponent) && m_botCommandState != COMMAND_STAY))
-                SetBotCommandState(COMMAND_FOLLOW, force, newpos);
-        }
 
         EventProcessor* GetEvents() { return &Events; }
         ObjectGuid::LowType GetBotOwnerGuid() const { return _ownerGuid; }
@@ -63,16 +56,18 @@ class bot_ai : public CreatureAI
         bool SetBotOwner(Player* newowner);
         uint8 GetBotClass() const { return _botclass; }
         uint32 GetLastDiff() const { return lastdiff; }
-        virtual void UpdateDeadAI(uint32 /*diff*/) {}
+        virtual void UpdateDeadAI(uint32 diff) {}
         void ReturnHome() { _atHome = false; }
         void CommonTimers(uint32 diff);
         void ResetBotAI(uint8 resetType);
         void KillEvents(bool force);
         bool CanRespawn() { return IAmFree(); }
-        void SetBotCommandState(CommandStates st, bool force = false, Position* newpos = nullptr);
+        void SetBotCommandState(uint8 st, bool force = false, Position* newpos = nullptr);
+        void RemoveBotCommandState(uint8 st);
+        bool HasBotCommandState(uint8 st) const { return (m_botCommandState & st); }
+        uint8 GetBotCommandState() const { return m_botCommandState; }
         bool IsInBotParty(Unit const* unit) const;
         bool CanBotAttack(Unit const* target, int8 byspell = 0) const;
-        CommandStates GetBotCommandState() const { return m_botCommandState; }
         void ApplyBotDamageMultiplierMelee(uint32& damage, CalcDamageInfo& damageinfo) const;
         void ApplyBotDamageMultiplierMelee(int32& damage, SpellNonMeleeDamage& damageinfo, SpellInfo const* spellInfo, WeaponAttackType attackType, bool crit) const;
         void ApplyBotDamageMultiplierSpell(int32& damage, SpellNonMeleeDamage& damageinfo, SpellInfo const* spellInfo, WeaponAttackType attackType, bool crit) const;
@@ -185,6 +180,8 @@ class bot_ai : public CreatureAI
 
         void ReInitFaction() { InitFaction(); }
         void ReinitOwner() { InitOwner(); }
+        void SetSpec(uint8 spec, bool activate = true);
+        uint8 GetSpec() const { return _spec; }
 
         static bool IsMeleeClass(uint8 m_class);
         static bool IsTankingClass(uint8 m_class);
@@ -226,6 +223,7 @@ class bot_ai : public CreatureAI
         uint32 GetSpellCooldown(uint32 basespell) const;
         void ResetSpellCooldown(uint32 basespell) { SetSpellCooldown(basespell, 0); }
         void RemoveSpell(uint32 basespell);
+        //void RemoveAllSpells();
         void SpellTimers(uint32 diff);
         static uint32 RaceSpellForClass(uint8 myrace, uint8 myclass);
 
@@ -246,6 +244,7 @@ class bot_ai : public CreatureAI
 
         void AdjustTankingPosition() const;
         void OnStartAttack(Unit const* u);
+        bool StartAttack(Unit const* u, bool force = false);
 
         virtual void BreakCC(uint32 diff);
         void CheckRacials(uint32 diff);
@@ -360,6 +359,7 @@ class bot_ai : public CreatureAI
         uint32 GC_Timer;
 
         uint8 _botclass;
+        uint8 _spec, _newspec;
 
     private:
         void FindMaster();
@@ -389,6 +389,7 @@ class bot_ai : public CreatureAI
 
         void ApplyRacials();
         void InitRoles();
+        void InitSpec();
         void InitEquips();
         void InitOwner();
         void InitFaction();
@@ -442,7 +443,7 @@ class bot_ai : public CreatureAI
         SpellInfo const* m_botSpellInfo;
         Position pos, attackpos;
 
-        CommandStates m_botCommandState;
+        uint8 m_botCommandState;
 
         //stats
         float hit, parry, dodge, block, crit, dmg_taken_phy, dmg_taken_mag, armor_pen;

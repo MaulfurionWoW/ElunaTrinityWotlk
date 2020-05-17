@@ -14,7 +14,7 @@ Abilities:
 1) Carrion Swarm. Sends a horde of bats combined with chaotic magic to damage enemies in frontal cone, 10 seconds cooldown.
 2) Sleep. Puts the enemy target to sleep for 60 seconds (15 seconds on players) and allows next physical attack
 on that target to bypass armor, removed by direct damage, 6 seconds cooldown.
-3) Vampiric Aura. Increases physical critical damage by 5% and heals party and raid members within 40 yards for a 
+3) Vampiric Aura. Increases physical critical damage by 5% and heals party and raid members within 40 yards for a
 percentage (100% for Dreadlord and 25% for everyone else) of damage done by physical attacks and Carrion Swarm, no threat.
 4) Summon Infernal Servant. Calls an infernal down from the sky dealing damage and stunning enemy units, lasts 180 seconds, 180 seconds cooldown.
 Complete - 100%
@@ -129,9 +129,8 @@ public:
 
         void StartAttack(Unit* u, bool force = false)
         {
-            if (GetBotCommandState() == COMMAND_ATTACK && !force) return;
-            SetBotCommandState(COMMAND_ATTACK);
-            OnStartAttack(u);
+            if (!bot_ai::StartAttack(u, force))
+                return;
             GetInPosition(force, u);
         }
 
@@ -307,33 +306,12 @@ public:
             }
         }
 
-        void SpellHitTarget(Unit* /*target*/, SpellInfo const* /*spell*/) override
+        void SpellHitTarget(Unit* target, SpellInfo const* spell) override
         {
         }
 
         void SpellHit(Unit* caster, SpellInfo const* spell) override
         {
-            if (spell->GetMaxDuration() >= 1000 && caster->IsControlledByPlayer())
-            {
-                //bots of W3 classes will not be easily CCed
-                if (spell->HasAura(SPELL_AURA_MOD_STUN) || spell->HasAura(SPELL_AURA_MOD_CONFUSE) ||
-                    spell->HasAura(SPELL_AURA_MOD_PACIFY) || spell->HasAura(SPELL_AURA_MOD_ROOT))
-                {
-                    if (Aura* cont = me->GetAura(spell->Id, caster->GetGUID()))
-                    {
-                        if (AuraApplication const* aurApp = cont->GetApplicationOfTarget(me->GetGUID()))
-                        {
-                            if (!aurApp->IsPositive())
-                            {
-                                int32 dur = std::max<int32>(cont->GetMaxDuration() / 3, 1000);
-                                cont->SetDuration(dur);
-                                cont->SetMaxDuration(dur);
-                            }
-                        }
-                    }
-                }
-            }
-
             OnSpellHit(caster, spell);
         }
 

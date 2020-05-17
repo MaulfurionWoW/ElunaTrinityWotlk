@@ -144,20 +144,21 @@ public:
 
         void StartAttack(Unit* u, bool force = false)
         {
-            if (GetBotCommandState() == COMMAND_ATTACK && !force) return;
-            SetBotCommandState(COMMAND_ATTACK);
-            OnStartAttack(u);
+            if (!bot_pet_ai::StartAttack(u, force))
+                return;
             GetInPosition(force, u);
         }
 
         void DoPetActions(uint32 diff)
         {
-            if (GetSpell(SPIRIT_BOND_PET) && IsSpellReady(SPIRIT_BOND_PET, diff, false) && !petOwner->GetAuraEffect(SPELL_AURA_MOD_HEALING_PCT, SPELLFAMILY_GENERIC, 960, 1))
+            if (GetSpell(SPIRIT_BOND_PET) && IsSpellReady(SPIRIT_BOND_PET, diff, false) &&
+                !petOwner->GetAuraEffect(SPELL_AURA_MOD_HEALING_PCT, SPELLFAMILY_GENERIC, 960, 1))
             {
                 me->CastSpell(me, SPIRIT_BOND_PET, true);
                 SetSpellCooldown(SPIRIT_BOND_PET, uint32(-1));
             }
-            if (GetSpell(KINDRED_SPIRITS_PET) && IsSpellReady(KINDRED_SPIRITS_PET, diff, false) && !petOwner->GetAuraEffect(SPELL_AURA_MOD_INCREASE_SPEED, SPELLFAMILY_GENERIC, 3559, 0))
+            if (GetSpell(KINDRED_SPIRITS_PET) && IsSpellReady(KINDRED_SPIRITS_PET, diff, false) &&
+                !petOwner->GetAuraEffect(SPELL_AURA_MOD_INCREASE_SPEED, SPELLFAMILY_GENERIC, 3559, 0))
             {
                 me->CastSpell(me, KINDRED_SPIRITS_PET, true);
                 SetSpellCooldown(KINDRED_SPIRITS_PET, uint32(-1));
@@ -309,7 +310,8 @@ public:
             }
 
             uint32 SPRINT = IsPetTypeSpell(DASH_1) ? DASH_1 : IsPetTypeSpell(DIVE_1) ? DIVE_1 : 0;
-            if (SPRINT && GetSpell(SPRINT) && IsSpellReady(SPRINT, diff, false) && dist > 10 && dist < 30)
+            if (SPRINT && GetSpell(SPRINT) && IsSpellReady(SPRINT, diff, false) && dist > 10 && dist < 30 &&
+                !HasBotCommandState(BOT_COMMAND_STAY))
             {
                 me->CastSpell(opponent, GetSpell(SPRINT), false);
                 SetSpellCooldown(SPRINT, 17500);
@@ -650,6 +652,7 @@ public:
             uint32 CHARGE = IsPetTypeSpell(SWOOP_1) ? SWOOP_1 : IsPetTypeSpell(CHARGE_1) ? CHARGE_1 : 0;
             if (CHARGE && GetSpell(CHARGE) && IsSpellReady(CHARGE, diff, false) && !CCed(opponent, true) && !me->HasStealthAura() &&
                 !(opponent->GetTypeId() == TYPEID_UNIT && opponent->ToCreature()->isWorldBoss()) &&
+                !HasBotCommandState(BOT_COMMAND_STAY) &&
                 dist > 8 && dist < 25)
             {
                 me->CastSpell(opponent, GetSpell(CHARGE), false);
@@ -713,6 +716,7 @@ public:
         void InitPetSpells() override
         {
             uint8 lvl = me->GetLevel();
+            bool isBeas = Spec() == BOT_SPEC_HUNTER_BEASTMASTERY;
 
             InitSpellMap(GROWL_1);
             InitSpellMap(COWER_1);
@@ -775,11 +779,11 @@ public:
             InitSpellMap(WARP_1);
             InitSpellMap(ACID_SPIT_1);
 
-  /*Talent*/lvl >= 30 ? InitSpellMap(SPIRIT_BOND_PET, true) : RemoveSpell(SPIRIT_BOND_PET);
-  /*Talent*/lvl >= 55 ? InitSpellMap(KINDRED_SPIRITS_PET, true) : RemoveSpell(KINDRED_SPIRITS_PET);
-  /*Talent*/lvl >= 30 ? InitSpellMap(INTIMIDATION_1, true) : RemoveSpell(INTIMIDATION_1);
-  /*Talent*/lvl >= 40 ? InitSpellMap(BESTIAL_WRATH_1, true) : RemoveSpell(BESTIAL_WRATH_1);
-  /*Talent*/lvl >= 50 ? InitSpellMap(BEAST_WITHIN_1, true) : RemoveSpell(BEAST_WITHIN_1);
+  /*Talent*/lvl >= 30 && isBeas ? InitSpellMap(SPIRIT_BOND_PET, true) : RemoveSpell(SPIRIT_BOND_PET);
+  /*Talent*/lvl >= 55 && isBeas ? InitSpellMap(KINDRED_SPIRITS_PET, true) : RemoveSpell(KINDRED_SPIRITS_PET);
+  /*Talent*/lvl >= 30 && isBeas ? InitSpellMap(INTIMIDATION_1, true) : RemoveSpell(INTIMIDATION_1);
+  /*Talent*/lvl >= 40 && isBeas ? InitSpellMap(BESTIAL_WRATH_1, true) : RemoveSpell(BESTIAL_WRATH_1);
+  /*Talent*/lvl >= 50 && isBeas ? InitSpellMap(BEAST_WITHIN_1, true) : RemoveSpell(BEAST_WITHIN_1);
         }
 
         void ApplyPetPassives() const override

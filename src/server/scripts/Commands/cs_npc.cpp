@@ -442,7 +442,7 @@ public:
             }
 
             //npcbot
-            if (creature->IsNPCBot() || creature->IsNPCBotPet())
+            if (creature->IsNPCBotOrPet())
             {
                 handler->SendSysMessage("Selected creature has botAI assigned, use '.npcbot delete' instead");
                 handler->SetSentErrorMessage(true);

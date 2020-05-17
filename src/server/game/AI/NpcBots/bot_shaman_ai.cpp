@@ -303,9 +303,8 @@ public:
 
         void StartAttack(Unit* u, bool force = false)
         {
-            if (GetBotCommandState() == COMMAND_ATTACK && !force) return;
-            SetBotCommandState(COMMAND_ATTACK);
-            OnStartAttack(u);
+            if (!bot_ai::StartAttack(u, force))
+                return;
             GetInPosition(force, u);
         }
 
@@ -920,7 +919,7 @@ public:
 
             ShieldCheckTimer = 2000;
 
-            //Aura const* shield = nullptr;
+            Aura const* shield = nullptr;
             uint32 SHIELD =
                 HasRole(BOT_ROLE_TANK)   ? GetSpell(EARTH_SHIELD_1) :
                 HasRole(BOT_ROLE_HEAL)   ? GetSpell(WATER_SHIELD_1) :
@@ -1065,7 +1064,8 @@ public:
             }
 
             //LAVA BURST
-            if (IsSpellReady(LAVA_BURST_1, diff) && HasRole(BOT_ROLE_DPS) && dist < CalcSpellMaxRange(LAVA_BURST_1) && Rand() < 60 &&
+            if (IsSpellReady(LAVA_BURST_1, diff) && _spec == BOT_SPEC_SHAMAN_ELEMENTAL &&
+                HasRole(BOT_ROLE_DPS) && dist < CalcSpellMaxRange(LAVA_BURST_1) && Rand() < 60 &&
                 (me->getAttackers().empty() || dist > 10))
             {
                 if (doCast(opponent, GetSpell(LAVA_BURST_1)))
@@ -1101,7 +1101,7 @@ public:
             Hexy = FindAffectedTarget(GetSpell(HEX_1), me->GetGUID());
         }
 
-        void CheckHex(uint32 /*diff*/)
+        void CheckHex(uint32 diff)
         {
             //if (Hexy || !IsSpellReady(HEX_1, diff))
             //    return;
@@ -1125,7 +1125,7 @@ public:
 
         void CheckGhostWolf(uint32 diff)
         {
-            if (!IsSpellReady(GHOST_WOLF_1, diff) || GetBotCommandState() != COMMAND_FOLLOW || Rand() > 15 ||
+            if (!IsSpellReady(GHOST_WOLF_1, diff) || !HasBotCommandState(BOT_COMMAND_FOLLOW) || Rand() > 15 ||
                 me->GetShapeshiftForm() == FORM_GHOSTWOLF || me->GetVictim() || me->IsMounted() || IAmFree())
                 return;
 
@@ -1227,7 +1227,7 @@ public:
             }
         }
 
-        bool BuffTarget(Unit* target, uint32 /*diff*/) override
+        bool BuffTarget(Unit* target, uint32 diff) override
         {
             if (GetSpell(EARTH_SHIELD_1) && Earthy == false && IsTank(target) && (target == me || !IsTank()) &&
                 (target->IsInCombat() || !target->isMoving()) && Rand() < 35)
@@ -1364,7 +1364,7 @@ public:
             uint8 lvl = me->GetLevel();
 
             //Call of Thunder: 5% additional critical chance for Lightning Bolt, Chain Lightning and Thunderstorm
-            if (lvl >= 30 &&
+            if ((_spec == BOT_SPEC_SHAMAN_ELEMENTAL) && lvl >= 30 &&
                 (spellId == GetSpell(LIGHTNING_BOLT_1) ||
                 spellId == GetSpell(CHAIN_LIGHTNING_1) ||
                 spellId == GetSpell(THUNDERSTORM_1)))
@@ -1373,7 +1373,7 @@ public:
             if (lvl >= 25 && (SPELL_SCHOOL_MASK_NATURE & schoolMask))
                 crit_chance += 5.f;
             //Blessing of the Eternals: 4% additional critical chance for all spells
-            if (lvl >= 45)
+            if ((_spec == BOT_SPEC_SHAMAN_RESTORATION) && lvl >= 45)
                 crit_chance += 4.f;
             //Tidal Waves (Lesser Healing Wave crit)
             if (spellInfo->SpellFamilyFlags[0] & 0x80)
@@ -1433,7 +1433,7 @@ public:
                     (spellInfo->GetSchoolMask() & (SPELL_SCHOOL_MASK_NATURE|SPELL_SCHOOL_MASK_FIRE|SPELL_SCHOOL_MASK_FROST)))
                     pctbonus += 0.333f;
                 //Lava Flows (part 1): 24% additional crit damage bonus for Lava Burst
-                if (lvl >= 50 && spellId == GetSpell(LAVA_BURST_1))
+                if ((_spec == BOT_SPEC_SHAMAN_ELEMENTAL) && lvl >= 50 && spellId == GetSpell(LAVA_BURST_1))
                     pctbonus += 0.16f;
             }
             //Concussion: 5% bonus damage for Lightning Bolt, Chain Lightning, Thunderstorm, Lava Burst and Shocks
@@ -1450,10 +1450,10 @@ public:
             if (lvl >= 15 && spellId == GetSpell(LAVA_BURST_1))
                 pctbonus += 0.06f;
             //Storm, Earth and fire (part 3): 60% bonus damage for Flame Shock (periodic damage in fact but who cares?)
-            if (lvl >= 40 && spellId == GetSpell(FLAME_SHOCK_1))
+            if ((_spec == BOT_SPEC_SHAMAN_ELEMENTAL) && lvl >= 40 && spellId == GetSpell(FLAME_SHOCK_1))
                 pctbonus += 0.6f;
             //Booming Echoes (part 2): 20% bonus damage for Flame Shock and Frost Shock (direct damage)
-            if (lvl >= 45 &&
+            if ((_spec == BOT_SPEC_SHAMAN_ELEMENTAL) && lvl >= 45 &&
                 (spellId == GetSpell(FLAME_SHOCK_1) ||
                 spellId == GetSpell(FROST_SHOCK_1)))
                 pctbonus += 0.2f;
@@ -1461,7 +1461,7 @@ public:
             if (lvl >= 15 && spellInfo->IsRankOf(sSpellMgr->GetSpellInfo(LIGHTNING_SHIELD_DAMAGE_1)))
                 pctbonus += 0.15f;
             //Shamanism: +20/25% bonus from spp
-            if (lvl >= 45)
+            if ((_spec == BOT_SPEC_SHAMAN_ELEMENTAL) && lvl >= 45)
             {
                 if (spellId == GetSpell(CHAIN_LIGHTNING_1) || spellId == GetSpell(LIGHTNING_BOLT_1))
                     flat_mod += me->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_MAGIC) * 0.2f * me->CalculateDefaultCoefficient(spellInfo, SPELL_DIRECT_DAMAGE) * me->CalculateSpellpowerCoefficientLevelPenalty(spellInfo);
@@ -1469,7 +1469,8 @@ public:
                     flat_mod += me->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_MAGIC) * 0.25f * me->CalculateDefaultCoefficient(spellInfo, SPELL_DIRECT_DAMAGE) * me->CalculateSpellpowerCoefficientLevelPenalty(spellInfo);
             }
             //Elemental Oath (part 1): 10% bonus damage
-            if (lvl >= 45 && me->GetAuraEffect(ELEMENTAL_FOCUS_BUFF, 0, me->GetGUID()))
+            if ((_spec == BOT_SPEC_SHAMAN_ELEMENTAL) &&
+                lvl >= 45 && me->GetAuraEffect(ELEMENTAL_FOCUS_BUFF, 0, me->GetGUID()))
                 pctbonus += 0.1f;
             //Elemental Weapons (part 1): 40% bonus damage
             if (lvl >= 20 && (spellId == WINDFURY_ATTACK_MAINHAND || spellId == WINDFURY_ATTACK_OFFHAND))
@@ -1490,26 +1491,26 @@ public:
             float flat_mod = 0.0f;
 
             //Healing Way: 25% bonus healing for Healing Wave
-            if (lvl >= 30 && spellId == GetSpell(HEALING_WAVE_1))
+            if ((_spec == BOT_SPEC_SHAMAN_RESTORATION) && lvl >= 30 && spellId == GetSpell(HEALING_WAVE_1))
                 pctbonus += 0.25f;
             //Purification: 10% bonus healing for all spells
-            if (lvl >= 35)
+            if ((_spec == BOT_SPEC_SHAMAN_RESTORATION) && lvl >= 35)
                 pctbonus += 0.1f;
             //Nature's Blessing: 15% of Intellect to healing
-            if (lvl >= 45)
+            if ((_spec == BOT_SPEC_SHAMAN_RESTORATION) && lvl >= 45)
                 flat_mod += GetTotalBotStat(STAT_INTELLECT) * 0.15f * me->CalculateDefaultCoefficient(spellInfo, damagetype) * stack * 1.88f * me->CalculateSpellpowerCoefficientLevelPenalty(spellInfo) * stack;
             //Improved Chain Heal: 20% bonus healing for Chain Heal
-            if (lvl >= 45 && spellId == GetSpell(CHAIN_HEAL_1))
+            if ((_spec == BOT_SPEC_SHAMAN_RESTORATION) && lvl >= 45 && spellId == GetSpell(CHAIN_HEAL_1))
                 pctbonus += 0.2f;
             //Improved Earth Shield: 10% bonus healing for Earth Shield
             //Glyph of Earth Shield: 20% bonus healing for Earth Shield
             if (lvl >= 50 && spellId == EARTH_SHIELD_HEAL)
-                pctbonus += 0.3f;
+                pctbonus += (_spec == BOT_SPEC_SHAMAN_RESTORATION) ? 0.3f : 0.2f;
             //Improved Shields (part 3): 15% bonus healing for Earth Shield
             if (lvl >= 15 && spellId == EARTH_SHIELD_HEAL)
                 pctbonus += 0.15f;
             //Tidal Waves (part 2): 20% bonus (from spellpower) for Healing Wave and 10% bonus (from spellpower) for Lesser Healing Wave
-            if (lvl >= 55)
+            if ((_spec == BOT_SPEC_SHAMAN_RESTORATION) && lvl >= 55)
             {
                 if (spellId == GetSpell(HEALING_WAVE_1))
                     flat_mod += me->SpellBaseHealingBonusDone(SPELL_SCHOOL_MASK_MAGIC) * 0.2f * me->CalculateDefaultCoefficient(spellInfo, damagetype) * 1.88f * me->CalculateSpellpowerCoefficientLevelPenalty(spellInfo) * stack;
@@ -1541,7 +1542,7 @@ public:
             if (lvl >= 20 && (spellInfo->SpellFamilyFlags[0] & 0x90100000))
                 pctbonus += 0.45f;
             //Mental Quickness:
-            if (lvl >= 50 && !spellInfo->CalcCastTime())
+            if ((_spec == BOT_SPEC_SHAMAN_ENHANCEMENT) && lvl >= 50 && !spellInfo->CalcCastTime())
                 pctbonus += 0.06f;
             //Totemic Focus:
             if (lvl >= 10 && (spellInfo->AttributesEx7 & SPELL_ATTR7_SUMMON_PLAYER_TOTEM))
@@ -1604,7 +1605,8 @@ public:
             if (lvl >= 10 && spellId == GetSpell(HEALING_WAVE_1))
                 timebonus += 500;
             //Lightning Mastery: -0.5 sec
-            if (lvl >= 35 && ((spellInfo->SpellFamilyFlags[0] & 0x3) || (spellInfo->SpellFamilyFlags[1] & 0x1000)))
+            if ((_spec == BOT_SPEC_SHAMAN_ELEMENTAL) &&
+                lvl >= 35 && ((spellInfo->SpellFamilyFlags[0] & 0x3) || (spellInfo->SpellFamilyFlags[1] & 0x1000)))
                 timebonus += 500;
             //Stormcaller Chain Heal Bonus (26122): -0.4 sec
             if (lvl >= 60 && spellId == GetSpell(CHAIN_HEAL_1))
@@ -1632,13 +1634,13 @@ public:
             if (lvl >= 20 && ((spellInfo->SpellFamilyFlags[0] & 0x90100000) || (spellInfo->SpellFamilyFlags[1] & 0x8000000)))
                 timebonus += 1000;
             //Booming Echoes (part 1)
-            if (lvl >= 45 && (spellInfo->SpellFamilyFlags[0] & 0x90000000))
+            if ((_spec == BOT_SPEC_SHAMAN_ELEMENTAL) && lvl >= 45 && (spellInfo->SpellFamilyFlags[0] & 0x90000000))
                 timebonus += 2000;
             //Storm, Earth and Fire (part 1)
-            if (lvl >= 40 && (spellInfo->SpellFamilyFlags[0] & 0x2))
+            if ((_spec == BOT_SPEC_SHAMAN_ELEMENTAL) && lvl >= 40 && (spellInfo->SpellFamilyFlags[0] & 0x2))
                 timebonus += 2500;
             //Improved Fire Nova (part 2)
-            if (lvl >= 25 && (spellInfo->SpellFamilyFlags[0] & 0x8000000))
+            if ((_spec == BOT_SPEC_SHAMAN_ELEMENTAL) && lvl >= 25 && (spellInfo->SpellFamilyFlags[0] & 0x8000000))
                 timebonus += 4000;
 
             cooldown = std::max<int32>((float(cooldown) * (1.0f - pctbonus)) - timebonus, 0);
@@ -1678,7 +1680,7 @@ public:
         void ApplyClassSpellRangeMods(SpellInfo const* spellInfo, float& maxrange) const override
         {
             //uint32 spellId = spellInfo->Id;
-            //uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
+            uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
             //SpellSchool school = GetFirstSchoolInMask(spellInfo->GetSchoolMask());
             uint8 lvl = me->GetLevel();
             float flatbonus = 0.0f;
@@ -1691,10 +1693,12 @@ public:
 
             //flat mods
             //Elemental Reach part 1: +6 yd
-            if (lvl >= 30 && ((spellInfo->SpellFamilyFlags[0] & 0x8000003) || (spellInfo->SpellFamilyFlags[1] & 0x1000)))
+            if ((_spec == BOT_SPEC_SHAMAN_ELEMENTAL) &&
+                lvl >= 30 && ((spellInfo->SpellFamilyFlags[0] & 0x8000003) || (spellInfo->SpellFamilyFlags[1] & 0x1000)))
                 flatbonus += 6.f;
             //Elemental Reach part 2: +15 yd
-            if (lvl >= 30 && (spellInfo->SpellFamilyFlags[0] & 0x10000000))
+            if ((_spec == BOT_SPEC_SHAMAN_ELEMENTAL) &&
+                lvl >= 30 && (spellInfo->SpellFamilyFlags[0] & 0x10000000))
                 flatbonus += 15.f;
 
             maxrange = maxrange * (1.0f + pctbonus) + flatbonus;
@@ -1719,7 +1723,7 @@ public:
 
         void OnClassSpellGo(SpellInfo const* spellInfo) override
         {
-            //uint32 spellId = spellInfo->Id;
+            uint32 spellId = spellInfo->Id;
             uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
 
             //reincarnation: notify master
@@ -1908,15 +1912,16 @@ public:
                 HexyCheckTimer += 2000;
             }
 
-            //Didn't comment this right away and now I don't remember talent name...
-            if (me->GetLevel() >= 50 && baseId == EARTH_SHOCK_1)
+            //Earthen Power part 2
+            if ((_spec == BOT_SPEC_SHAMAN_ENHANCEMENT) && me->GetLevel() >= 50 && baseId == EARTH_SHOCK_1)
             {
                 if (AuraEffect* eff = target->GetAuraEffect(spellId, 0, me->GetGUID()))
                     eff->ChangeAmount(eff->GetAmount() * 2);
             }
 
             //Lightning Overload
-            if (me->GetLevel() >= 45 && (baseId == LIGHTNING_BOLT_1 || baseId == CHAIN_LIGHTNING_1) &&
+            if ((_spec == BOT_SPEC_SHAMAN_ELEMENTAL) &&
+                me->GetLevel() >= 45 && (baseId == LIGHTNING_BOLT_1 || baseId == CHAIN_LIGHTNING_1) &&
                 urand(1,100) <= 33)
             {
                 uint32 procId = 0;
@@ -1967,7 +1972,7 @@ public:
             {
                 if (Aura* shield = target->GetAura(spellId, me->GetGUID()))
                 {
-                    shield->SetCharges(shield->GetCharges() + 7);
+                    shield->SetCharges(shield->GetCharges() + 6);
                 }
             }
         }
@@ -2029,7 +2034,8 @@ public:
                 //botPet = myPet;
 
                 myPet->Attack(target, true);
-                myPet->GetMotionMaster()->MoveChase(target);
+                if (!HasBotCommandState(BOT_COMMAND_STAY))
+                    myPet->GetMotionMaster()->MoveChase(target);
             }
         }
 
@@ -2258,7 +2264,7 @@ public:
             //check by btype
 
             // Storm, Earth and Fire: Earthbind totem AoE root
-            if (btype == BOT_TOTEM_EARTHBIND && me->GetLevel() >= 40)
+            if ((_spec == BOT_SPEC_SHAMAN_ELEMENTAL) && btype == BOT_TOTEM_EARTHBIND && me->GetLevel() >= 40)
             {
                 //master's talent will be found so do not cast earthgrab twice, instead let spell script roll the chance
                 //see spell_shaman.cpp
@@ -2393,23 +2399,22 @@ public:
         void InitSpells() override
         {
             uint8 lvl = me->GetLevel();
+            bool isElem = _spec == BOT_SPEC_SHAMAN_ELEMENTAL;
+            bool isEnha = _spec == BOT_SPEC_SHAMAN_ENHANCEMENT;
+            bool isRest = _spec == BOT_SPEC_SHAMAN_RESTORATION;
 
             InitSpellMap(HEALING_WAVE_1);
             InitSpellMap(CHAIN_HEAL_1);
             InitSpellMap(LESSER_HEALING_WAVE_1);
-  /*Talent*/lvl >= 60 ? InitSpellMap(RIPTIDE_1) : RemoveSpell(RIPTIDE_1);
             InitSpellMap(ANCESTRAL_SPIRIT_1);
             InitSpellMap(CURE_TOXINS_1);
             InitSpellMap(FLAME_SHOCK_1);
             InitSpellMap(EARTH_SHOCK_1);
             InitSpellMap(FROST_SHOCK_1);
-  /*Talent*/lvl >= 40 ? InitSpellMap(STORMSTRIKE_1) : RemoveSpell(STORMSTRIKE_1);
             InitSpellMap(LIGHTNING_BOLT_1);
             InitSpellMap(CHAIN_LIGHTNING_1);
             InitSpellMap(LAVA_BURST_1);
-  /*Talent*/lvl >= 60 ? InitSpellMap(THUNDERSTORM_1) : RemoveSpell(THUNDERSTORM_1);
             InitSpellMap(LIGHTNING_SHIELD_1);
-  /*Talent*/lvl >= 50 ? InitSpellMap(EARTH_SHIELD_1) : RemoveSpell(EARTH_SHIELD_1);
             InitSpellMap(WATER_SHIELD_1);
             InitSpellMap(WATER_BREATHING_1);
             InitSpellMap(WATER_WALKING_1);
@@ -2417,10 +2422,6 @@ public:
             InitSpellMap(WIND_SHEAR_1);
             InitSpellMap(HEX_1);
             InitSpellMap((me->GetRaceMask() & RACEMASK_ALLIANCE) ? HEROISM_1 : BLOODLUST_1); //at least race is constant
-  /*Talent*/lvl >= 50 ? InitSpellMap(SHAMANISTIC_RAGE_1) : RemoveSpell(SHAMANISTIC_RAGE_1);
-  /*Talent*/lvl >= 30 ? InitSpellMap(NATURES_SWIFTNESS_1) : RemoveSpell(NATURES_SWIFTNESS_1);
-  /*Talent*///lvl >= 40 ? InitSpellMap(ELEMENTAL_MASTERY_1) : RemoveSpell(ELEMENTAL_MASTERY_1);
-  /*Talent*/lvl >= 20 ? InitSpellMap(TIDAL_FORCE_1) : RemoveSpell(TIDAL_FORCE_1);
 
             InitSpellMap(GHOST_WOLF_1);
 
@@ -2445,14 +2446,27 @@ public:
             InitSpellMap(CLEANSING_TOTEM_1);
             //InitSpellMap(HEALING_STREAM_TOTEM_1);
             InitSpellMap(MANA_SPRING_TOTEM_1);
-  /*Talent*/InitSpellMap(TOTEM_OF_WRATH_1); //safe
-  /*Talent*/InitSpellMap(MANA_TIDE_TOTEM_1); //safe
             InitSpellMap(TREMOR_TOTEM_1);
 
             InitSpellMap(TOTEMIC_RECALL_1);
 
             InitSpellMap(REINCARNATION_1); //base lvl 30, 30 min cd
-  /*Talent*/lvl >= 60 ? InitSpellMap(FERAL_SPIRIT_1) : RemoveSpell(FERAL_SPIRIT_1); //not casted
+
+  /*Talent*///lvl >= 40 && isElem ? InitSpellMap(ELEMENTAL_MASTERY_1) : RemoveSpell(ELEMENTAL_MASTERY_1);
+  /*Talent*/lvl >= 60 && isElem ? InitSpellMap(THUNDERSTORM_1) : RemoveSpell(THUNDERSTORM_1);
+
+  /*Talent*/lvl >= 40 && isEnha ? InitSpellMap(STORMSTRIKE_1) : RemoveSpell(STORMSTRIKE_1);
+  /*Talent*/lvl >= 50 && isEnha ? InitSpellMap(SHAMANISTIC_RAGE_1) : RemoveSpell(SHAMANISTIC_RAGE_1);
+  /*Talent*/lvl >= 60 && isEnha ? InitSpellMap(FERAL_SPIRIT_1) : RemoveSpell(FERAL_SPIRIT_1); //not casted
+
+  /*Talent*/lvl >= 20 && isRest ? InitSpellMap(TIDAL_FORCE_1) : RemoveSpell(TIDAL_FORCE_1);
+  /*Talent*/lvl >= 30 && isRest ? InitSpellMap(NATURES_SWIFTNESS_1) : RemoveSpell(NATURES_SWIFTNESS_1);
+  /*Talent*/lvl >= 50 && isRest ? InitSpellMap(EARTH_SHIELD_1) : RemoveSpell(EARTH_SHIELD_1);
+  /*Talent*/lvl >= 60 && isRest ? InitSpellMap(RIPTIDE_1) : RemoveSpell(RIPTIDE_1);
+
+  /*Talent*/lvl >= 50 && isElem ? InitSpellMap(TOTEM_OF_WRATH_1) : RemoveSpell(TOTEM_OF_WRATH_1);
+
+  /*Talent*/lvl >= 40 && isRest ? InitSpellMap(MANA_TIDE_TOTEM_1) : RemoveSpell(MANA_TIDE_TOTEM_1);
 
             CURE_TOXINS = InitSpell(me, CLEANSE_SPIRIT_1) ? CLEANSE_SPIRIT_1 : CURE_TOXINS_1;
             RemoveSpell(CLEANSE_SPIRIT_1);
@@ -2469,35 +2483,41 @@ public:
         void ApplyClassPassives() const override
         {
             uint8 level = master->GetLevel();
+            bool isElem = _spec == BOT_SPEC_SHAMAN_ELEMENTAL;
+            bool isEnha = _spec == BOT_SPEC_SHAMAN_ENHANCEMENT;
+            bool isRest = _spec == BOT_SPEC_SHAMAN_RESTORATION;
+
+            RefreshAura(ELEMENTAL_DEVASTATION3, isEnha && level >= 18 ? 1 : 0);
+            RefreshAura(ELEMENTAL_DEVASTATION2, isEnha && level >= 15 && level < 18 ? 1 : 0);
+            RefreshAura(ELEMENTAL_DEVASTATION1, isEnha && level >= 12 && level < 15 ? 1 : 0);
+            RefreshAura(ELEMENTAL_FOCUS, isElem && level >= 20 ? 1 : 0);
+            RefreshAura(ELEMENTAL_OATH, isElem && level >= 40 ? 1 : 0);
+            //RefreshAura(STORM_EARTH_AND_FIRE, isElem && level >= 45 ? 1 : 0);
+
+            RefreshAura(TOUGHNESS, level >= 25 ? 1 : 0);
+            RefreshAura(FLURRY5, isEnha && level >= 29 ? 1 : 0);
+            RefreshAura(FLURRY4, isEnha && level >= 28 && level < 29 ? 1 : 0);
+            RefreshAura(FLURRY3, isEnha && level >= 27 && level < 28 ? 1 : 0);
+            RefreshAura(FLURRY2, isEnha && level >= 26 && level < 27 ? 1 : 0);
+            RefreshAura(FLURRY1, isEnha && level >= 25 && level < 26 ? 1 : 0);
+            RefreshAura(WEAPON_MASTERY, isEnha && level >= 30 ? 1 : 0);
+            RefreshAura(UNLEASHED_RAGE, isEnha && level >= 35 ? 1 : 0);
+            RefreshAura(IMPROVED_STORMSTRIKE, isEnha && level >= 40 ? 1 : 0);
+            RefreshAura(STATIC_SHOCK, isEnha && level >= 41 ? 1 : 0);
+            RefreshAura(EARTHEN_POWER, isEnha && level >= 50 ? 1 : 0);
+            RefreshAura(MAELSTROM_WEAPON5, isEnha && level >= 59 ? 1 : 0);
+            RefreshAura(MAELSTROM_WEAPON4, isEnha && level >= 58 && level < 59 ? 1 : 0);
+            RefreshAura(MAELSTROM_WEAPON3, isEnha && level >= 57 && level < 58 ? 1 : 0);
+            RefreshAura(MAELSTROM_WEAPON2, isEnha && level >= 56 && level < 57 ? 1 : 0);
+            RefreshAura(MAELSTROM_WEAPON1, isEnha && level >= 55 && level < 56 ? 1 : 0);
+
+            RefreshAura(IMPROVED_WATER_SHIELD, isRest && level >= 20 ? 1 : 0);
+            RefreshAura(ANCESTRAL_HEALING, isRest && level >= 20 ? 1 : 0);
+            RefreshAura(ANCESTRAL_AWAKENING, isRest && level >= 50 ? 1 : 0);
+            RefreshAura(TIDAL_WAVES, isRest && level >= 55 ? 1 : 0);
 
             RefreshAura(SHAMAN_FLAME_SHOCK_PASSIVE);
 
-            RefreshAura(ELEMENTAL_FOCUS, level >= 20 ? 1 : 0);
-            RefreshAura(ELEMENTAL_DEVASTATION3, level >= 18 ? 1 : 0);
-            RefreshAura(ELEMENTAL_DEVASTATION2, level >= 15 && level < 18 ? 1 : 0);
-            RefreshAura(ELEMENTAL_DEVASTATION1, level >= 12 && level < 15 ? 1 : 0);
-            RefreshAura(TOUGHNESS, level >= 25 ? 1 : 0);
-            RefreshAura(FLURRY5, level >= 29 ? 1 : 0);
-            RefreshAura(FLURRY4, level >= 28 && level < 29 ? 1 : 0);
-            RefreshAura(FLURRY3, level >= 27 && level < 28 ? 1 : 0);
-            RefreshAura(FLURRY2, level >= 26 && level < 27 ? 1 : 0);
-            RefreshAura(FLURRY1, level >= 25 && level < 26 ? 1 : 0);
-            RefreshAura(WEAPON_MASTERY, level >= 30 ? 1 : 0);
-            RefreshAura(STATIC_SHOCK, level >= 41 ? 1 : 0);
-            RefreshAura(ANCESTRAL_HEALING, level >= 20 ? 1 : 0);
-            RefreshAura(ANCESTRAL_AWAKENING, level >= 50 ? 1 : 0);
-            RefreshAura(IMPROVED_WATER_SHIELD, level >= 20 ? 1 : 0);
-            RefreshAura(TIDAL_WAVES, level >= 55 ? 1 : 0);
-            RefreshAura(MAELSTROM_WEAPON5, level >= 59 ? 1 : 0);
-            RefreshAura(MAELSTROM_WEAPON4, level >= 58 && level < 59 ? 1 : 0);
-            RefreshAura(MAELSTROM_WEAPON3, level >= 57 && level < 58 ? 1 : 0);
-            RefreshAura(MAELSTROM_WEAPON2, level >= 56 && level < 57 ? 1 : 0);
-            RefreshAura(MAELSTROM_WEAPON1, level >= 55 && level < 56 ? 1 : 0);
-            RefreshAura(EARTHEN_POWER, level >= 50 ? 1 : 0);
-            RefreshAura(UNLEASHED_RAGE, level >= 40 ? 1 : 0);
-            RefreshAura(IMPROVED_STORMSTRIKE, level >= 40 ? 1 : 0);
-            RefreshAura(ELEMENTAL_OATH, level >= 40 ? 1 : 0);
-            //RefreshAura(STORM_EARTH_AND_FIRE, level >= 45 ? 1 : 0);
             RefreshAura(SHAMAN_T10_RESTO_4P, level >= 70 ? 1 : 0);
 
             RefreshAura(GLYPH_THUNDERSTORM, GetSpell(THUNDERSTORM_1) ? 1 : 0);

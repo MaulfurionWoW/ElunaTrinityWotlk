@@ -28,6 +28,10 @@
 #include "botmgr.h"
 //end npcbot
 
+//npcbot
+#include "botmgr.h"
+//end npcbot
+
 /*static*/ bool CombatManager::CanBeginCombat(Unit const* a, Unit const* b)
 {
     // Checks combat validity before initial reference creation.
@@ -215,10 +219,10 @@ bool CombatManager::SetInCombatWith(Unit* who)
     if (_owner->IsControlledByPlayer() && who->IsControlledByPlayer())
         ref = new PvPCombatReference(_owner, who);
     //npcbot: follow pvp rules
-    else if ((_owner->ToCreature() && _owner->ToCreature()->IsNPCBot() && who->IsControlledByPlayer()) ||
-        (who->ToCreature() && who->ToCreature()->IsNPCBot() && _owner->IsControlledByPlayer()) ||
-        (_owner->ToCreature() && _owner->ToCreature()->IsNPCBot() &&
-        who->ToCreature() && who->ToCreature()->IsNPCBot()))
+    else if ((_owner->ToCreature() && _owner->ToCreature()->IsNPCBotOrPet() && who->IsControlledByPlayer()) ||
+        (who->ToCreature() && who->ToCreature()->IsNPCBotOrPet() && _owner->IsControlledByPlayer()) ||
+        (_owner->ToCreature() && _owner->ToCreature()->IsNPCBotOrPet() &&
+            who->ToCreature() && who->ToCreature()->IsNPCBotOrPet()))
         ref = new PvPCombatReference(_owner, who);
     //end npcbot
     else

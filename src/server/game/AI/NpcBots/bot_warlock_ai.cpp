@@ -217,7 +217,7 @@ public:
                     return;
             }
 
-            if (!hasSoulstone && GetSpell(CREATE_SOULSTONE_1))
+            if (!hasSoulstone && !IAmFree() && GetSpell(CREATE_SOULSTONE_1))
             {
                 if (doCast(me, GetSpell(CREATE_SOULSTONE_1)))
                     return;
@@ -307,9 +307,8 @@ public:
 
         void StartAttack(Unit* u, bool force = false)
         {
-            if (GetBotCommandState() == COMMAND_ATTACK && !force) return;
-            SetBotCommandState(COMMAND_ATTACK);
-            OnStartAttack(u);
+            if (!bot_ai::StartAttack(u, force))
+                return;
             GetInPosition(force, u);
             fearTimer = std::max<uint32>(fearTimer, 1000);
         }
@@ -441,7 +440,8 @@ public:
                     return;
             }
             //Howl of Terror (only instant cast)
-            if (!busyCasting && me->GetLevel() >= 45 && IsSpellReady(HOWL_OF_TERROR_1, diff))
+            if ((_spec == BOT_SPEC_WARLOCK_AFFLICTION) &&
+                !busyCasting && me->GetLevel() >= 45 && IsSpellReady(HOWL_OF_TERROR_1, diff))
             {
                 Unit* u = FindCastingTarget(8, 0, FEAR_1); //same immunity
                 if (u && doCast(u, GetSpell(HOWL_OF_TERROR_1)))
@@ -476,8 +476,8 @@ public:
             if (GC_Timer > diff || !me->IsInCombat() || Rand() > 120)
                 return;
 
-            Unit::AttackerSet m_attackers = master->getAttackers();
-            Unit::AttackerSet b_attackers = me->getAttackers();
+            Unit::AttackerSet const& m_attackers = master->getAttackers();
+            Unit::AttackerSet const& b_attackers = me->getAttackers();
             bool needFearM = !IAmFree() && !m_attackers.empty() && (!IsTank(master) || GetHealthPCT(master) < 75);
 
             //HOWL
@@ -487,7 +487,7 @@ public:
                 if (needFearM)
                 {
                     uint8 tCount = 0;
-                    for (Unit::AttackerSet::iterator iter = m_attackers.begin(); iter != m_attackers.end(); ++iter)
+                    for (Unit::AttackerSet::const_iterator iter = m_attackers.begin(); iter != m_attackers.end(); ++iter)
                     {
                         if (!(*iter)) continue;
                         if (CCed(*iter, true)) continue;
@@ -503,7 +503,7 @@ public:
                 if (!b_attackers.empty())
                 {
                     uint8 tCount = 0;
-                    for (Unit::AttackerSet::iterator iter = b_attackers.begin(); iter != b_attackers.end(); ++iter)
+                    for (Unit::AttackerSet::const_iterator iter = b_attackers.begin(); iter != b_attackers.end(); ++iter)
                     {
                         if (!(*iter)) continue;
                         if (CCed(*iter, true)) continue;
@@ -535,7 +535,7 @@ public:
             }
         }
 
-        bool BuffTarget(Unit* target, uint32 /*diff*/) override
+        bool BuffTarget(Unit* target, uint32 diff) override
         {
             if (target->GetTypeId() != TYPEID_PLAYER) return false;
             if (me->IsInCombat() && !master->GetMap()->IsRaid()) return false;
@@ -914,12 +914,12 @@ public:
                 if (shot->GetSpellInfo()->Id == SHOOT_WAND && shot->m_targets.GetUnitTarget() != opponent)
                     me->InterruptSpell(CURRENT_AUTOREPEAT_SPELL);
             }
-            else if (IsSpellReady(SHOOT_WAND, diff, false) && me->GetDistance(opponent) < 30 && GetEquips(BOT_SLOT_RANGED) &&
+            else if (IsSpellReady(SHOOT_WAND, diff) && me->GetDistance(opponent) < 30 && GetEquips(BOT_SLOT_RANGED) &&
                 doCast(opponent, SHOOT_WAND))
                 return;
         }
 
-        void ApplyClassSpellCritMultiplierAll(Unit const* victim, float& crit_chance, SpellInfo const* spellInfo, SpellSchoolMask /*schoolMask*/, WeaponAttackType /*attackType*/) const override
+        void ApplyClassSpellCritMultiplierAll(Unit const* victim, float& crit_chance, SpellInfo const* spellInfo, SpellSchoolMask schoolMask, WeaponAttackType /*attackType*/) const override
         {
             //victim can be NULL
             uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
@@ -934,14 +934,16 @@ public:
             }
 
             //Devastation: 5% additional critical chance for Destruction spells
-            if (lvl >= 30 && spellInfo->SpellFamilyName == SPELLFAMILY_WARLOCK &&
+            if ((_spec == BOT_SPEC_WARLOCK_DESTRUCTION) &&
+                lvl >= 30 && spellInfo->SpellFamilyName == SPELLFAMILY_WARLOCK &&
                 ((spellInfo->SpellFamilyFlags[0] & 0x3E5) || (spellInfo->SpellFamilyFlags[1] & 0x8310C0)))
                 crit_chance += 5.f;
             //Fire and Brimstone part 2: 25% additional critical chance for Conflagrate
-            if (lvl >= 55 && baseId == CONFLAGRATE_1)
+            if ((_spec == BOT_SPEC_WARLOCK_DESTRUCTION) && lvl >= 55 && baseId == CONFLAGRATE_1)
                 crit_chance += 25.f;
             //Malediction part 2: 9% additional critical chance for Corruption and Unstable Affliction
-            if (lvl >= 45 && (baseId == CORRUPTION_1 || baseId == UNSTABLE_AFFLICTION_1))
+            if ((_spec == BOT_SPEC_WARLOCK_AFFLICTION) &&
+                lvl >= 45 && (baseId == CORRUPTION_1 || baseId == UNSTABLE_AFFLICTION_1))
                 crit_chance += 9.f;
             //Glyph of Shadowburn: 20% additional critical chance for Shadowburn on targets 35% hp and below
             if (lvl >= 20 && baseId == SHADOWBURN_1 && victim && victim->HasAuraState(AURA_STATE_HEALTHLESS_35_PERCENT))
@@ -950,14 +952,16 @@ public:
             if (lvl >= 10 && (baseId == SEED_OF_CORRUPTION_1 || baseId == SEED_OF_CORRUPTION_FINAL_DAMAGE_1))
                 crit_chance += 5.f;
             //Improved Searing Pain: 10% additional critical chance for Searing Pain
-            if (lvl >= 25 && baseId == SEARING_PAIN_1)
+            if ((_spec == BOT_SPEC_WARLOCK_DESTRUCTION) && lvl >= 25 && baseId == SEARING_PAIN_1)
                 crit_chance += 10.f;
 
             //Master Demonologist part 1.2 (me): 5% additional critical chance for Fire spells
-            if (lvl >= 35 && botPet && myPetType == BOT_PET_IMP && (spellInfo->GetSchoolMask() & SPELL_SCHOOL_MASK_FIRE))
+            if ((_spec == BOT_SPEC_WARLOCK_DEMONOLOGY) &&
+                lvl >= 35 && botPet && myPetType == BOT_PET_IMP && (spellInfo->GetSchoolMask() & SPELL_SCHOOL_MASK_FIRE))
                 crit_chance += 5.f;
             //Master Demonologist part 3.2 (me): 5% additional critical chance for Shadow spells
-            if (lvl >= 35 && botPet && myPetType == BOT_PET_SUCCUBUS && (spellInfo->GetSchoolMask() & SPELL_SCHOOL_MASK_SHADOW))
+            if ((_spec == BOT_SPEC_WARLOCK_DEMONOLOGY) &&
+                lvl >= 35 && botPet && myPetType == BOT_PET_SUCCUBUS && (spellInfo->GetSchoolMask() & SPELL_SCHOOL_MASK_SHADOW))
                 crit_chance += 5.f;
 
             //Warlock T84P Bonus (64932): 5% additional critical chance for Shadow Bolt and Incinerate
@@ -982,7 +986,8 @@ public:
                     ((spellInfo->SpellFamilyFlags[0] & 0x13E5) || (spellInfo->SpellFamilyFlags[1] & 0xC310C0)))
                     pctbonus += 0.333f;
                 //Pandemic part 2,3: crit damage for periodics and haunt
-                if (lvl >= 50 && spellInfo->SpellFamilyName == SPELLFAMILY_WARLOCK &&
+                if ((_spec == BOT_SPEC_WARLOCK_AFFLICTION) &&
+                    lvl >= 50 && spellInfo->SpellFamilyName == SPELLFAMILY_WARLOCK &&
                     ((spellInfo->SpellFamilyFlags[0] & 0x2) || (spellInfo->SpellFamilyFlags[1] & 0x40100)))
                     pctbonus += 0.333f;
                 //Glyph of Searing Pain: 20% additional crit damage bonus for Searing Pain
@@ -996,18 +1001,21 @@ public:
             if (baseId == INCINERATE_1)
                 pctbonus += 0.05f;
             //Improved Immolate: 30% bonus damage for Immolate
-            if (lvl >= 30 && baseId == IMMOLATE_1)
+            if ((_spec == BOT_SPEC_WARLOCK_DESTRUCTION) && lvl >= 30 && baseId == IMMOLATE_1)
                 pctbonus += 0.3f;
             //EmberStorm part 1: 15% bonus damage for Fire spells
-            if (lvl >= 35 && spellInfo->SpellFamilyName == SPELLFAMILY_WARLOCK &&
+            if ((_spec == BOT_SPEC_WARLOCK_DESTRUCTION) &&
+                lvl >= 35 && spellInfo->SpellFamilyName == SPELLFAMILY_WARLOCK &&
                 ((spellInfo->SpellFamilyFlags[0] & 0x364) || (spellInfo->SpellFamilyFlags[1] & 0x8200C0)))
                 pctbonus += 0.15f;
             //Fire and Brimstone part 1: 10% bonus damage for Incinerate and Chaos Bolt
-            if (lvl >= 55 && (baseId == INCINERATE_1 || baseId == CHAOS_BOLT_1) &&
+            if ((_spec == BOT_SPEC_WARLOCK_DESTRUCTION) &&
+                lvl >= 55 && (baseId == INCINERATE_1 || baseId == CHAOS_BOLT_1) &&
                 damageinfo.target->GetAuraEffect(SPELL_AURA_PERIODIC_DAMAGE, SPELLFAMILY_WARLOCK, 0x4, 0x0, 0x0, me->GetGUID()))
                 pctbonus += 0.1f;
             //Molten Core part 1: 18% bonus damage for Incinerate and Soul Fire
-            if (lvl >= 35 && (baseId == INCINERATE_1 || baseId == SOUL_FIRE_1))
+            if ((_spec == BOT_SPEC_WARLOCK_DESTRUCTION) &&
+                lvl >= 35 && (baseId == INCINERATE_1 || baseId == SOUL_FIRE_1))
             {
                 if (me->HasAura(MOLTEN_CORE_BUFF))
                     pctbonus += 0.18f;
@@ -1019,10 +1027,11 @@ public:
             if (lvl >= 40 && baseId == CORRUPTION_1)
                 pctbonus += 0.12f;
             //Malediction part 1: 3% bonus damage for All spells
-            if (lvl >= 45)
+            if ((_spec == BOT_SPEC_WARLOCK_AFFLICTION) && lvl >= 45)
                 pctbonus += 0.03f;
             //Death's Embrace part 2: 12% bonus damage for Shadow spells on targets below 35 pct health
-            if (lvl >= 50 && damageinfo.target->HasAuraState(AURA_STATE_HEALTHLESS_35_PERCENT) &&
+            if ((_spec == BOT_SPEC_WARLOCK_AFFLICTION) &&
+                lvl >= 50 && damageinfo.target->HasAuraState(AURA_STATE_HEALTHLESS_35_PERCENT) &&
                 ((spellInfo->SpellFamilyFlags[0] & 0x8248B) || (spellInfo->SpellFamilyFlags[1] & 0x59913)))
                 pctbonus += 0.12f;
 
@@ -1030,11 +1039,12 @@ public:
             if (lvl >= 25 && baseId == CORRUPTION_1)
                 fdamage += me->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_MAGIC) * 0.36f * me->CalculateDefaultCoefficient(spellInfo, DOT) * me->CalculateSpellpowerCoefficientLevelPenalty(spellInfo);
             //Shadow and Flame: 20% spellpower bonus for Shadow Bolt, Shadowburn, Chaos Bolt and Incineration
-            if (lvl >= 45 &&
+            if ((_spec == BOT_SPEC_WARLOCK_DESTRUCTION) && lvl >= 45 &&
                 (baseId == SHADOW_BOLT_1 || baseId == CHAOS_BOLT_1 || baseId == SHADOWBURN_1 || baseId == INCINERATE_1))
                 fdamage += me->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_MAGIC) * 0.2f * me->CalculateDefaultCoefficient(spellInfo, SPELL_DIRECT_DAMAGE) * me->CalculateSpellpowerCoefficientLevelPenalty(spellInfo);
             //Everlasting Affliction part 1: 5% spellpower bonus for Corruption and Unstable Affliction
-            if (lvl >= 55 && (baseId == CORRUPTION_1 || baseId == UNSTABLE_AFFLICTION_1))
+            if ((_spec == BOT_SPEC_WARLOCK_AFFLICTION) &&
+                lvl >= 55 && (baseId == CORRUPTION_1 || baseId == UNSTABLE_AFFLICTION_1))
                 fdamage += me->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_MAGIC) * 0.05f * me->CalculateDefaultCoefficient(spellInfo, DOT) * me->CalculateSpellpowerCoefficientLevelPenalty(spellInfo);
 
             //Firestone/Spellstone: 1% bonus damage for all spells
@@ -1051,10 +1061,12 @@ public:
             if (lvl >= 10 && baseId == CURSE_OF_AGONY_1)
                 pctbonus += 0.1f;
             //Shadow Mastery: 15% bonus damage for Shadow Spells
-            if (lvl >= 35 && ((spellInfo->SpellFamilyFlags[0] & 0x80091) || spellInfo->SpellFamilyFlags[1] & 0x451910))
+            if ((_spec == BOT_SPEC_WARLOCK_AFFLICTION) &&
+                lvl >= 35 && ((spellInfo->SpellFamilyFlags[0] & 0x80091) || spellInfo->SpellFamilyFlags[1] & 0x451910))
                 pctbonus += 0.15f;
             //Contagion: 5% bonus damage for Curse of Agony, Corruption and Seed of Corruption
-            if (lvl >= 40 && (baseId == CORRUPTION_1 || baseId == SEED_OF_CORRUPTION_1 ||
+            if ((_spec == BOT_SPEC_WARLOCK_AFFLICTION) &&
+                lvl >= 40 && (baseId == CORRUPTION_1 || baseId == SEED_OF_CORRUPTION_1 ||
                 baseId == SEED_OF_CORRUPTION_FINAL_DAMAGE_1 || baseId == CURSE_OF_AGONY_1))
                 pctbonus += 0.05f;
 
@@ -1072,13 +1084,15 @@ public:
                 pctbonus += 0.1f;
 
             //Demonic Pact part 1: 10% bonus damage for all spells
-            if (lvl >= 55)
+            if ((_spec == BOT_SPEC_WARLOCK_DEMONOLOGY) && lvl >= 55)
                 pctbonus *= 1.1f;
             //Master Demonologist part 1.1 (me): 5% bonus damage for Fire spells
-            if (lvl >= 35 && botPet && myPetType == BOT_PET_IMP && (spellInfo->GetSchoolMask() & SPELL_SCHOOL_MASK_FIRE))
+            if ((_spec == BOT_SPEC_WARLOCK_DEMONOLOGY) &&
+                lvl >= 35 && botPet && myPetType == BOT_PET_IMP && (spellInfo->GetSchoolMask() & SPELL_SCHOOL_MASK_FIRE))
                 pctbonus *= 1.05f;
             //Master Demonologist part 3.1 (me): 5% bonus damage for Shadow spells
-            if (lvl >= 35 && botPet && myPetType == BOT_PET_SUCCUBUS && (spellInfo->GetSchoolMask() & SPELL_SCHOOL_MASK_SHADOW))
+            if ((_spec == BOT_SPEC_WARLOCK_DEMONOLOGY) &&
+                lvl >= 35 && botPet && myPetType == BOT_PET_SUCCUBUS && (spellInfo->GetSchoolMask() & SPELL_SCHOOL_MASK_SHADOW))
                 pctbonus *= 1.05f;
 
             damage = int32(fdamage * pctbonus);
@@ -1147,7 +1161,7 @@ public:
                     timebonus += casttime;
             }
             //Improved Howl of Terror: -1.5sec (-100%) cast time for Howl of Terror
-            if (lvl >= 45 && baseId == HOWL_OF_TERROR_1)
+            if ((_spec == BOT_SPEC_WARLOCK_AFFLICTION) && lvl >= 45 && baseId == HOWL_OF_TERROR_1)
                 timebonus += casttime;
             //Chaotic Mind (custom)
             if (baseId == SOUL_FIRE_1)
@@ -1188,7 +1202,7 @@ public:
                     timebonus += 2000;
             }
             //EmberStorm part 2: -0.25 sec cast time for Incinerate
-            if (lvl >= 35 && baseId == INCINERATE_1)
+            if ((_spec == BOT_SPEC_WARLOCK_DESTRUCTION) && lvl >= 35 && baseId == INCINERATE_1)
                 timebonus += 250;
             //Fear Cast Time Reduction (23047): -0.2 sec cast time for Fear
             if (baseId == FEAR_1)
@@ -1199,12 +1213,12 @@ public:
             const_cast<warlock_botAI*>(this)->instaCast = (casttime <= 500); //triggered GCD is too long
         }
 
-        void ApplyClassSpellCooldownMods(SpellInfo const* /*spellInfo*/, uint32& cooldown) const override
+        void ApplyClassSpellCooldownMods(SpellInfo const* spellInfo, uint32& cooldown) const override
         {
             //cooldown is in milliseconds
-            //uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
+            uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
             //SpellSchool school = GetFirstSchoolInMask(spellInfo->GetSchoolMask());
-            //uint8 lvl = me->GetLevel();
+            uint8 lvl = me->GetLevel();
             int32 timebonus = 0;
             float pctbonus = 0.0f;
 
@@ -1251,14 +1265,15 @@ public:
 
             //pct mods
             //BackDraft: -30% global cooldown for Destruction spells
-            if (lvl >= 50 && spellInfo->SpellFamilyName == SPELLFAMILY_WARLOCK &&
+            if ((_spec == BOT_SPEC_WARLOCK_DESTRUCTION) &&
+                lvl >= 50 && spellInfo->SpellFamilyName == SPELLFAMILY_WARLOCK &&
                 ((spellInfo->SpellFamilyFlags[0] & 0x165) || (spellInfo->SpellFamilyFlags[1] & 0x310C0)) &&
                 me->HasAura(BACKDRAFT_BUFF))
                 pctbonus += 0.3f;
 
             //flat mods
             //Amplify Curse: -0.5 sec global cooldown for Curses
-            if (lvl >= 25 && spellInfo->SpellFamilyName == SPELLFAMILY_WARLOCK &&
+            if (lvl >= 20 && spellInfo->SpellFamilyName == SPELLFAMILY_WARLOCK &&
                 ((spellInfo->SpellFamilyFlags[0] & 0x408400) || (spellInfo->SpellFamilyFlags[1] & 0x200202) ||
                 (spellInfo->SpellFamilyFlags[2] & 0x800)))
                 timebonus += 500.f;
@@ -1408,7 +1423,7 @@ public:
                 me->CastSpell(me, LIFE_TAP_ENERGIZE, args);
 
                 //Mana Feed
-                if (botPet)
+                if ((_spec == BOT_SPEC_WARLOCK_DEMONOLOGY) && me->GetLevel() >= 35 && botPet)
                     me->EnergizeBySpell(botPet, LIFE_TAP_ENERGIZE_PET, manaGain, POWER_MANA);
             }
 
@@ -1470,7 +1485,7 @@ public:
             }
 
             //Improved Felhunter part 3
-            if (lvl >= 35 && baseId == FEL_INTELLIGENCE_1 && botPet)
+            if ((_spec == BOT_SPEC_WARLOCK_AFFLICTION) && lvl >= 35 && baseId == FEL_INTELLIGENCE_1 && botPet)
             {
                 Aura const* feli = target->GetAura(spellId, botPet->GetGUID());
                 if (feli)
@@ -1504,7 +1519,7 @@ public:
                     //Improved Corruption and Immolate (37380): +3 sec duration for Immolate and Corruption
                     uint32 dur = per->GetDuration() + 3000;
                     //Molten Core: + 9 sec duration for Immolate
-                    if (lvl >= 35 && baseId == IMMOLATE_1)
+                    if ((_spec == BOT_SPEC_WARLOCK_DESTRUCTION) && lvl >= 35 && baseId == IMMOLATE_1)
                         dur += 9000;
                     per->SetDuration(dur);
                     per->SetMaxDuration(dur);
@@ -1598,7 +1613,7 @@ public:
                     entry = BOT_PET_IMP;
                 else if (me->GetLevel() >= 10 && IsTank())
                     entry = BOT_PET_VOIDWALKER;
-                else if (me->GetLevel() >= 50)
+                else if (me->GetLevel() >= 50 && _spec == BOT_SPEC_WARLOCK_DEMONOLOGY)
                     entry = BOT_PET_FELGUARD;
                 else if (me->GetLevel() >= 20 && !IsMeleeClass(master->GetClass()))
                     entry = BOT_PET_SUCCUBUS;
@@ -1614,7 +1629,7 @@ public:
             if ((entry == BOT_PET_VOIDWALKER && me->GetLevel() < 10) ||
                 (entry == BOT_PET_SUCCUBUS && me->GetLevel() < 20) ||
                 (entry == BOT_PET_FELHUNTER && me->GetLevel() < 30) ||
-                (entry == BOT_PET_FELGUARD && me->GetLevel() < 50) ||
+                (entry == BOT_PET_FELGUARD && (me->GetLevel() < 50 || _spec != BOT_SPEC_WARLOCK_DEMONOLOGY)) ||
                 (entry != BOT_PET_IMP && entry != BOT_PET_VOIDWALKER && entry != BOT_PET_SUCCUBUS &&
                 entry != BOT_PET_FELHUNTER && entry != BOT_PET_FELGUARD))
                 entry = 0;
@@ -1632,7 +1647,7 @@ public:
 
             me->CastSpell(me, SUMMON_DEMON_VISUAL, true);
             Creature* myPet = me->SummonCreature(myPetType, *me, TEMPSUMMON_CORPSE_DESPAWN);
-            me->GetNearPoint(myPet, pos.m_positionX, pos.m_positionY, pos.m_positionZ, 0, me->GetOrientation() + float(M_PI_2));
+            me->GetNearPoint(myPet, pos.m_positionX, pos.m_positionY, pos.m_positionZ, 0, me->GetOrientation() + M_PI / 2);
             myPet->GetMotionMaster()->MovePoint(me->GetMapId(), pos);
             myPet->SetCreatorGUID(master->GetGUID());
             myPet->SetOwnerGUID(me->GetGUID());
@@ -1711,7 +1726,7 @@ public:
                 case BOTAI_MISC_PET_AVAILABLE_4:
                     return me->GetLevel() >= 30 ? BOT_PET_FELHUNTER : 0;
                 case BOTAI_MISC_PET_AVAILABLE_5:
-                    return me->GetLevel() >= 50 ? BOT_PET_FELGUARD : 0;
+                    return me->GetLevel() >= 50 && _spec == BOT_SPEC_WARLOCK_DEMONOLOGY ? BOT_PET_FELGUARD : 0;
                 default:
                     return 0;
             }
@@ -1777,11 +1792,13 @@ public:
         void InitSpells() override
         {
             uint8 lvl = me->GetLevel();
+            bool isAffl = _spec == BOT_SPEC_WARLOCK_AFFLICTION;
+            //bool isDemo = _spec == BOT_SPEC_WARLOCK_DEMONOLOGY;
+            bool isDest = _spec == BOT_SPEC_WARLOCK_DESTRUCTION;
 
             InitSpellMap(CURSE_OF_WEAKNESS_1);
             InitSpellMap(CURSE_OF_AGONY_1);
             InitSpellMap(CURSE_OF_TONGUES_1);
-  /*Talent*/lvl >= 30 ? InitSpellMap(CURSE_OF_EXHAUSTION_1) : RemoveSpell(CURSE_OF_EXHAUSTION_1);
             InitSpellMap(CURSE_OF_THE_ELEMENTS_1);
             InitSpellMap(SHADOW_BOLT_1);
             InitSpellMap(IMMOLATE_1);
@@ -1789,16 +1806,10 @@ public:
             InitSpellMap(SEED_OF_CORRUPTION_1);
             InitSpellMap(INCINERATE_1);
             InitSpellMap(SEARING_PAIN_1);
-  /*Talent*/lvl >= 20 ? InitSpellMap(SHADOWBURN_1) : RemoveSpell(SHADOWBURN_1);
-  /*Talent*/lvl >= 40 ? InitSpellMap(CONFLAGRATE_1) : RemoveSpell(CONFLAGRATE_1);
             InitSpellMap(SOUL_FIRE_1);
-  /*Talent*/lvl >= 60 ? InitSpellMap(CHAOS_BOLT_1) : RemoveSpell(CHAOS_BOLT_1);
             InitSpellMap(RAIN_OF_FIRE_1);
             InitSpellMap(HELLFIRE_1);
             InitSpellMap(SHADOWFLAME_1);
-  /*Talent*/lvl >= 50 ? InitSpellMap(SHADOWFURY_1) : RemoveSpell(SHADOWFURY_1);
-  /*Talent*/lvl >= 60 ? InitSpellMap(HAUNT_1) : RemoveSpell(HAUNT_1);
-///*Talent*/lvl >= 50 ? InitSpellMap(UNSTABLE_AFFLICTION_1) : RemoveSpell(UNSTABLE_AFFLICTION_1);
             InitSpellMap(FEAR_1);
             InitSpellMap(HOWL_OF_TERROR_1);
             InitSpellMap(DEATH_COIL_1);
@@ -1821,35 +1832,49 @@ public:
 
             InitSpellMap(RITUAL_OF_SUMMONING_1); //manual only
             InitSpellMap(RITUAL_OF_SOULS_1); //not casted
+
+  /*Talent*/lvl >= 30 && isAffl ? InitSpellMap(CURSE_OF_EXHAUSTION_1) : RemoveSpell(CURSE_OF_EXHAUSTION_1);
+///*Talent*/lvl >= 50 && isAffl ? InitSpellMap(UNSTABLE_AFFLICTION_1) : RemoveSpell(UNSTABLE_AFFLICTION_1);
+  /*Talent*/lvl >= 60 && isAffl ? InitSpellMap(HAUNT_1) : RemoveSpell(HAUNT_1);
+
+  /*Talent*/lvl >= 20 && isDest ? InitSpellMap(SHADOWBURN_1) : RemoveSpell(SHADOWBURN_1);
+  /*Talent*/lvl >= 40 && isDest ? InitSpellMap(CONFLAGRATE_1) : RemoveSpell(CONFLAGRATE_1);
+  /*Talent*/lvl >= 50 && isDest ? InitSpellMap(SHADOWFURY_1) : RemoveSpell(SHADOWFURY_1);
+  /*Talent*/lvl >= 60 && isDest ? InitSpellMap(CHAOS_BOLT_1) : RemoveSpell(CHAOS_BOLT_1);
         }
 
         void ApplyClassPassives() const override
         {
             uint8 level = master->GetLevel();
+            bool isAffl = _spec == BOT_SPEC_WARLOCK_AFFLICTION;
+            bool isDemo = _spec == BOT_SPEC_WARLOCK_DEMONOLOGY;
+            bool isDest = _spec == BOT_SPEC_WARLOCK_DESTRUCTION;
 
             RefreshAura(CHAOS_BOLT_PASSIVE);
             RefreshAura(DEMONIC_IMMOLATE_PASSIVE);
 
-            RefreshAura(IMPROVED_SHADOW_BOLT, level >= 10 ? 1 : 0);
             RefreshAura(IMPROVED_DRAIN_SOUL, level >= 15 ? 1 : 0);
             RefreshAura(SOUL_SIPHON, level >= 15 ? 1 : 0);
-            RefreshAura(AFTERMATH, level >= 15 ? 1 : 0);
             RefreshAura(IMPROVED_FEAR, level >= 20 ? 1 : 0);
             RefreshAura(NIGHTFALL, level >= 25 ? 1 : 0);
-            RefreshAura(SHADOW_EMBRACE, level >= 30 ? 1 : 0);
-            RefreshAura(SIPHON_LIFE, level >= 30 ? 1 : 0);
+            RefreshAura(SHADOW_EMBRACE, isAffl && level >= 30 ? 1 : 0);
+            RefreshAura(SIPHON_LIFE, isAffl && level >= 30 ? 1 : 0);
+            RefreshAura(ERADICATION, isAffl && level >= 40 ? 1 : 0);
+            RefreshAura(PANDEMIC, isAffl && level >= 50 ? 1 : 0);
+            RefreshAura(EVERLASTING_AFFLICTION, isAffl && level >= 55 ? 1 : 0);
+
+            RefreshAura(DEMONIC_RESILIENCE, isDemo && level >= 40 ? 1 : 0);
+            RefreshAura(DECIMATION, isDemo && level >= 45 ? 1 : 0);
+
+            RefreshAura(IMPROVED_SHADOW_BOLT, level >= 10 ? 1 : 0);
+            RefreshAura(AFTERMATH, level >= 15 ? 1 : 0);
             RefreshAura(BACKLASH, level >= 30 ? 1 : 0);
-            RefreshAura(MOLTEN_CORE, level >= 35 ? 1 : 0);
-            RefreshAura(NETHER_PROTECTION, level >= 35 ? 1 : 0);
-            RefreshAura(ERADICATION, level >= 40 ? 1 : 0);
-            RefreshAura(DEMONIC_RESILIENCE, level >= 40 ? 1 : 0);
-            RefreshAura(SOUL_LEECH, level >= 40 ? 1 : 0);
-            RefreshAura(PYROCLASM, level >= 40 ? 1 : 0);
-            RefreshAura(DECIMATION, level >= 45 ? 1 : 0);
-            RefreshAura(IMPROVED_SOUL_LEECH, level >= 45 ? 1 : 0);
-            RefreshAura(PANDEMIC, level >= 50 ? 1 : 0);
-            RefreshAura(BACKDRAFT, level >= 50 ? 1 : 0);
-            RefreshAura(EVERLASTING_AFFLICTION, level >= 55 ? 1 : 0);
+            RefreshAura(MOLTEN_CORE, isDest && level >= 35 ? 1 : 0);
+            RefreshAura(NETHER_PROTECTION, isDest && level >= 35 ? 1 : 0);
+            RefreshAura(SOUL_LEECH, isDest && level >= 40 ? 1 : 0);
+            RefreshAura(PYROCLASM, isDest && level >= 40 ? 1 : 0);
+            RefreshAura(IMPROVED_SOUL_LEECH, isDest && level >= 45 ? 1 : 0);
+            RefreshAura(BACKDRAFT, isDest && level >= 50 ? 1 : 0);
 
             RefreshAura(GLYPH_CORRUPTION, level >= 15 ? 1 : 0);
             RefreshAura(GLYPH_FEAR, level >= 15 ? 1 : 0);

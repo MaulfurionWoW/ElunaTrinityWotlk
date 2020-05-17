@@ -48,13 +48,12 @@ public:
 
         void StartAttack(Unit* u, bool force = false)
         {
-            if (GetBotCommandState() == COMMAND_ATTACK && !force) return;
-            SetBotCommandState(COMMAND_ATTACK);
-            OnStartAttack(u);
+            if (!bot_pet_ai::StartAttack(u, force))
+                return;
             GetInPosition(force, u);
         }
 
-        void DoPetActions(uint32 /*diff*/)
+        void DoPetActions(uint32 diff)
         {
         }
 
@@ -103,6 +102,7 @@ public:
                 }
 
                 if (IsSpellReady(LEAP_1, diff) && energy >= 10 &&
+                    !HasBotCommandState(BOT_COMMAND_STAY) &&
                     !(opponent->GetTypeId() == TYPEID_UNIT && opponent->ToCreature()->isWorldBoss()) &&
                     dist > 5 && dist < 30)
                 {

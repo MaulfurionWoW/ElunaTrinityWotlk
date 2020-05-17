@@ -3428,6 +3428,11 @@ class spell_gen_tournament_pennant : public AuraScript
 
     bool Load() override
     {
+        //npcbot
+        if (GetCaster() && GetCaster()->GetTypeId() == TYPEID_UNIT && GetCaster()->ToCreature()->IsNPCBot())
+            return true;
+        //end npcbot
+
         return GetCaster() && GetCaster()->GetTypeId() == TYPEID_PLAYER;
     }
 
@@ -3660,6 +3665,11 @@ class spell_gen_vehicle_scaling : public AuraScript
 
     bool Load() override
     {
+        //npcbot
+        if (GetCaster() && GetCaster()->GetTypeId() == TYPEID_UNIT && GetCaster()->ToCreature()->IsNPCBot())
+            return true;
+        //end npcbot
+
         return GetCaster() && GetCaster()->GetTypeId() == TYPEID_PLAYER;
     }
 
@@ -3984,6 +3994,11 @@ class spell_gen_mixology_bonus : public AuraScript
 
     bool Load() override
     {
+        //npcbot
+        if (GetCaster() && GetCaster()->GetTypeId() == TYPEID_UNIT && GetCaster()->ToCreature()->IsNPCBot())
+            return true;
+        //end npcbot
+
         return GetCaster() && GetCaster()->GetTypeId() == TYPEID_PLAYER;
     }
 

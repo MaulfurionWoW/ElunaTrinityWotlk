@@ -376,6 +376,7 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
         Unit* GetBotsPet() const;
         bool IsNPCBot() const;
         bool IsNPCBotPet() const;
+        bool IsNPCBotOrPet() const;
         bool IsFreeBot() const;
         uint8 GetBotClass() const;
         uint16 GetBotRoles() const;
@@ -383,10 +384,6 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
         bot_pet_ai* GetBotPetAI() const { return bot_pet_AI; }
         void SetBotAI(bot_ai* ai) { bot_AI = ai; }
         void SetBotPetAI(bot_pet_ai* ai) { bot_pet_AI = ai; }
-        void SetBotCommandState(CommandStates st, bool force = false);
-        CommandStates GetBotCommandState() const;
-        static float GetBotDamageModPhysical();
-        static float GetBotDamageModSpell();
         void ApplyBotDamageMultiplierMelee(uint32& damage, CalcDamageInfo& damageinfo) const;
         void ApplyBotDamageMultiplierMelee(int32& damage, SpellNonMeleeDamage& damageinfo, SpellInfo const* spellInfo, WeaponAttackType attackType, bool crit) const;
         void ApplyBotDamageMultiplierSpell(int32& damage, SpellNonMeleeDamage& damageinfo, SpellInfo const* spellInfo, WeaponAttackType attackType, bool crit) const;
@@ -402,7 +399,6 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
         void OnBotSummon(Creature* summon);
         void OnBotDespawn(Creature* summon);
         void BotStopMovement();
-        void ResetBotAI(uint8 resetType = 0);
 
         bool CanParry() const;
         bool CanDodge() const;
@@ -416,7 +412,6 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
         float GetCreatureCritChance() const;
         float GetCreatureMissChance() const;
         float GetCreatureArmorPenetrationCoef() const;
-        float GetCreatureDamageTakenMod() const;
         uint32 GetCreatureExpertise() const;
         uint32 GetCreatureSpellPenetration() const;
         uint32 GetCreatureSpellPower() const;

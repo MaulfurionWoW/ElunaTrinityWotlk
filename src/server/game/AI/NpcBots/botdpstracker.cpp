@@ -97,11 +97,9 @@ void DPSTracker::_AccumulateDamage(uint64 guid, uint32 damage)
     if (itr == _damages.end())
     {
         uint32* dmgarray = new uint32[MAX_DAMAGES];
-        dmgarray[0] = damage;
+        memset(dmgarray, 0, sizeof(uint32)*MAX_DAMAGES);
 
-        //just in case
-        for (uint8 i = 0+1; i != MAX_DAMAGES; ++i)
-            dmgarray[i] = 0;
+        dmgarray[0] = damage;
 
         _damages[guid] = dmgarray;
         return;
@@ -110,8 +108,6 @@ void DPSTracker::_AccumulateDamage(uint64 guid, uint32 damage)
     itr->second[0] += damage;
 }
 //victim is bot owner, bot, party player or party bot; checked in Unit::DealDamage()
-//bots' guidlows may theoretically match with player ones but it doesn't matter since
-//(bot min guidlow) > (db creature max guidlow) which is typically far behind (db max player guid)
 void DPSTracker::TrackDamage(Unit const* victim, uint32 damage)
 {
     //TC_LOG_ERROR("entities.player", "DPSTracker::OnDamage(): on %s, damage %u", victim->GetName().c_str(), damage);

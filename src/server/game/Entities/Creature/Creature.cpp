@@ -3453,41 +3453,42 @@ bool Creature::LoadBotCreatureFromDB(ObjectGuid::LowType spawnId, Map* map, bool
         TC_LOG_ERROR("sql.sql", "Bot creature (GUID: %u) not found in table `creature`, can't load. ", spawnId);
         return false;
     }
-
+    
     m_spawnId = spawnId;
     ASSERT(map->GetInstanceId() == 0);
-
+    
     m_respawnCompatibilityMode = true;
     m_creatureData = data;
     m_wanderDistance = data->wander_distance;
     m_respawnDelay = data->spawntimesecs;
-
-    if (!Create(map->GenerateLowGuid<HighGuid::Unit>(), map, data->phaseMask, data->id, data->spawnPoint, data, 0U , !m_respawnCompatibilityMode))
+    
+    if (!Create(map->GenerateLowGuid<HighGuid::Unit>(), map, data->phaseMask, data->id, data->spawnPoint, data, 0U, !m_respawnCompatibilityMode))
         return false;
-
+    
     //We should set first home position, because then AI calls home movement
     SetHomePosition(*this);
-
+    
     m_deathState = ALIVE;
     m_respawnTime = GetMap()->GetCreatureRespawnTime(m_spawnId);
-
+    
     SetSpawnHealth();
 
     // checked at creature_template loading
     m_defaultMovementType = MovementGeneratorType(data->movementType);
-
+    
     TC_LOG_INFO("entities.unit", "Creature: loading npcbot %s (id: %u)", GetName().c_str(), GetEntry());
     ASSERT(!IsInWorld());
-
+    
     //don't allow removing dead bot's corpse
     m_corpseDelay = std::numeric_limits<uint32>::max();
     m_respawnDelay = 0;
     setActive(true);
-
+    
     if (addToMap && !GetMap()->AddToMap(this))
         return false;
-
+    
     return true;
+    
 }
 
 uint8 Creature::GetBotClass() const
@@ -3495,11 +3496,11 @@ uint8 Creature::GetBotClass() const
     return bot_AI ? bot_AI->GetBotClass() : GetClass();
 }
 
-Player* Creature::GetBotOwner() const
+Player * Creature::GetBotOwner() const
 {
     return bot_AI ? bot_AI->GetBotOwner() : bot_pet_AI ? bot_pet_AI->GetPetsOwner()->GetBotOwner() : nullptr;
 }
-Unit* Creature::GetBotsPet() const
+Unit * Creature::GetBotsPet() const
 {
     return bot_AI ? bot_AI->GetBotsPet() : nullptr;
 }
@@ -3514,6 +3515,11 @@ bool Creature::IsNPCBotPet() const
     return GetCreatureTemplate()->flags_extra & CREATURE_FLAG_EXTRA_NPCBOT_PET;
 }
 
+bool Creature::IsNPCBotOrPet() const
+{
+    return IsNPCBot() || IsNPCBotPet();
+}
+
 bool Creature::IsFreeBot() const
 {
     return bot_AI ? bot_AI->IAmFree() : bot_pet_AI ? bot_pet_AI->IAmFree() : false;
@@ -3523,43 +3529,18 @@ uint16 Creature::GetBotRoles() const
 {
     return bot_AI ? bot_AI->GetBotRoles() : 0;
 }
-//unused
-void Creature::SetBotCommandState(CommandStates st, bool force)
-{
-    if (bot_AI)
-        bot_AI->SetBotCommandState(st, force);
-    else if (bot_pet_AI)
-        bot_pet_AI->SetBotCommandState(st, force);
-}
-
-CommandStates Creature::GetBotCommandState() const
-{
-    return bot_AI ? bot_AI->GetBotCommandState() : bot_pet_AI ? bot_pet_AI->GetBotCommandState() : COMMAND_ABANDON;
-}
 //Bot damage mods
-//unused
-float Creature::GetBotDamageModPhysical()
-{
-    //return BotMgr::GetBotDamageModPhysical();
-    return 1.0f;
-}
-//unused
-float Creature::GetBotDamageModSpell()
-{
-    //return BotMgr::GetBotDamageModSpell();
-    return 1.0f;
-}
-void Creature::ApplyBotDamageMultiplierMelee(uint32& damage, CalcDamageInfo& damageinfo) const
+void Creature::ApplyBotDamageMultiplierMelee(uint32 & damage, CalcDamageInfo & damageinfo) const
 {
     if (bot_AI)
         bot_AI->ApplyBotDamageMultiplierMelee(damage, damageinfo);
 }
-void Creature::ApplyBotDamageMultiplierMelee(int32& damage, SpellNonMeleeDamage& damageinfo, SpellInfo const* spellInfo, WeaponAttackType attackType, bool crit) const
+void Creature::ApplyBotDamageMultiplierMelee(int32 & damage, SpellNonMeleeDamage & damageinfo, SpellInfo const* spellInfo, WeaponAttackType attackType, bool crit) const
 {
     if (bot_AI)
         bot_AI->ApplyBotDamageMultiplierMelee(damage, damageinfo, spellInfo, attackType, crit);
 }
-void Creature::ApplyBotDamageMultiplierSpell(int32& damage, SpellNonMeleeDamage& damageinfo, SpellInfo const* spellInfo, WeaponAttackType attackType, bool crit) const
+void Creature::ApplyBotDamageMultiplierSpell(int32 & damage, SpellNonMeleeDamage & damageinfo, SpellInfo const* spellInfo, WeaponAttackType attackType, bool crit) const
 {
     if (bot_AI)
         bot_AI->ApplyBotDamageMultiplierSpell(damage, damageinfo, spellInfo, attackType, crit);
@@ -3576,12 +3557,12 @@ void Creature::ApplyBotCritMultiplierAll(Unit const* victim, float& crit_chance,
     if (bot_AI)
         bot_AI->ApplyBotCritMultiplierAll(victim, crit_chance, spellInfo, schoolMask, attackType);
 }
-void Creature::ApplyCreatureSpellCostMods(SpellInfo const* spellInfo, int32& cost) const
+void Creature::ApplyCreatureSpellCostMods(SpellInfo const* spellInfo, int32 & cost) const
 {
     if (bot_AI)
         bot_AI->ApplyBotSpellCostMods(spellInfo, cost);
 }
-void Creature::ApplyCreatureSpellCastTimeMods(SpellInfo const* spellInfo, int32& casttime) const
+void Creature::ApplyCreatureSpellCastTimeMods(SpellInfo const* spellInfo, int32 & casttime) const
 {
     if (bot_AI)
         bot_AI->ApplyBotSpellCastTimeMods(spellInfo, casttime);
@@ -3596,7 +3577,7 @@ void Creature::ApplyCreatureSpellRangeMods(SpellInfo const* spellInfo, float& ma
     if (bot_AI)
         bot_AI->ApplyBotSpellRangeMods(spellInfo, maxrange);
 }
-void Creature::ApplyCreatureSpellMaxTargetsMods(SpellInfo const* spellInfo, uint32& targets) const
+void Creature::ApplyCreatureSpellMaxTargetsMods(SpellInfo const* spellInfo, uint32 & targets) const
 {
     if (bot_AI)
         bot_AI->ApplyBotSpellMaxTargetsMods(spellInfo, targets);
@@ -3613,12 +3594,12 @@ void Creature::ApplyCreatureEffectMods(SpellInfo const* spellInfo, uint8 effInde
         bot_AI->ApplyBotEffectMods(spellInfo, effIndex, value);
 }
 
-void Creature::OnBotSummon(Creature* summon)
+void Creature::OnBotSummon(Creature * summon)
 {
     if (bot_AI)
         bot_AI->OnBotSummon(summon);
 }
-void Creature::OnBotDespawn(Creature* summon)
+void Creature::OnBotDespawn(Creature * summon)
 {
     if (bot_AI)
         bot_AI->OnBotDespawn(summon);
@@ -3633,12 +3614,6 @@ void Creature::BotStopMovement()
     }
     StopMoving();
     DisableSpline();
-}
-//unused
-void Creature::ResetBotAI(uint8 resetType)
-{
-    if (bot_AI)
-        bot_AI->ResetBotAI(resetType);
 }
 
 bool Creature::CanParry() const
@@ -3689,11 +3664,6 @@ float Creature::GetCreatureArmorPenetrationCoef() const
 {
     return bot_AI ? bot_AI->GetBotArmorPenetrationCoef() : 0.0f;
 }
-//unused
-float Creature::GetCreatureDamageTakenMod() const
-{
-    return 1.0f;
-}
 uint32 Creature::GetCreatureExpertise() const
 {
     return bot_AI ? bot_AI->GetBotExpertise() : 0;
@@ -3735,7 +3705,7 @@ MeleeHitOutcome Creature::BotRollMeleeOutcomeAgainst(Unit const* victim, WeaponA
     return bot_AI ? bot_AI->BotRollCustomMeleeOutcomeAgainst(victim, attType) : RollMeleeOutcomeAgainst(victim, attType);
 }
 
-void Creature::CastCreatureItemCombatSpell(Unit* target, WeaponAttackType attType, uint32 procVictim, uint32 procEx)
+void Creature::CastCreatureItemCombatSpell(Unit * target, WeaponAttackType attType, uint32 procVictim, uint32 procEx)
 {
     if (bot_AI)
         bot_AI->CastBotItemCombatSpell(target, attType, procVictim, procEx);
@@ -3755,7 +3725,7 @@ bool Creature::HasSpellCooldown(uint32 spell_id) const
         return !bot_AI->IsSpellReady(sSpellMgr->GetSpellInfo(spell_id)->GetFirstRankSpell()->Id, bot_AI->GetLastDiff(), false);
     else if (bot_pet_AI)
         return !bot_pet_AI->IsSpellReady(sSpellMgr->GetSpellInfo(spell_id)->GetFirstRankSpell()->Id, bot_pet_AI->GetLastDiff(), false);
-
+    
     return false;
 }
 void Creature::AddBotSpellCooldown(uint32 spellId, uint32 cooldown)
@@ -3780,11 +3750,11 @@ void Creature::SpendBotRunes(SpellInfo const* spellInfo, bool didHit)
 }
 
 //equips
-Item* Creature::GetBotEquips(uint8 slot) const
+Item * Creature::GetBotEquips(uint8 slot) const
 {
     return bot_AI ? bot_AI->GetEquips(slot) : nullptr;
 }
-Item* Creature::GetBotEquipsByGuid(ObjectGuid itemGuid) const
+Item * Creature::GetBotEquipsByGuid(ObjectGuid itemGuid) const
 {
     return bot_AI ? bot_AI->GetEquipsByGuid(itemGuid) : nullptr;
 }

@@ -1649,6 +1649,9 @@ bool WorldObject::CanDetect(WorldObject const* obj, bool ignoreStealth, bool che
 {
     WorldObject const* seer = this;
 
+    //npcbot: master's invisibility should not affect bots' sight
+    if (!(GetTypeId() == TYPEID_UNIT && ToCreature()->IsNPCBot()))
+    //end npcbot
     // Pets don't have detection, they use the detection of their masters
     if (Unit const* thisUnit = ToUnit())
         if (Unit* controller = thisUnit->GetCharmerOrOwner())

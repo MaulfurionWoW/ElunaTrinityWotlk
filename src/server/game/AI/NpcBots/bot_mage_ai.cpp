@@ -183,9 +183,8 @@ public:
 
         void StartAttack(Unit* u, bool force = false)
         {
-            if (GetBotCommandState() == COMMAND_ATTACK && !force) return;
-            SetBotCommandState(COMMAND_ATTACK);
-            OnStartAttack(u);
+            if (!bot_ai::StartAttack(u, force))
+                return;
             GetInPosition(force, u);
         }
 
@@ -299,7 +298,7 @@ public:
             }
         }
 
-        bool BuffTarget(Unit* target, uint32 /*diff*/) override
+        bool BuffTarget(Unit* target, uint32 diff) override
         {
             if (me->IsInCombat() && !master->GetMap()->IsRaid()) return false;
 
@@ -364,8 +363,8 @@ public:
             if (me->HasInvisibilityAura()) return;
             if (!HasRole(BOT_ROLE_DPS)) return;
 
-            Unit::AttackerSet m_attackers = master->getAttackers();
-            Unit::AttackerSet b_attackers = me->getAttackers();
+            Unit::AttackerSet const& m_attackers = master->getAttackers();
+            Unit::AttackerSet const& b_attackers = me->getAttackers();
 
             float dist = me->GetDistance(opponent);
 
@@ -524,16 +523,12 @@ public:
                     return;
             }
             //Main rotation
-            if (me->GetMap()->IsDungeon() &&
-                (FROSTFIREBOLT == FROSTFIRE_BOLT_1 ||
-                opponent->GetResistance(SPELL_SCHOOL_FIRE) <= opponent->GetResistance(SPELL_SCHOOL_FROST)) &&
-                IsSpellReady(FROSTFIREBOLT, diff) && dist < CalcSpellMaxRange(FROSTFIREBOLT))
+            if (IsSpellReady(FROSTFIREBOLT, diff) && _spec == BOT_SPEC_MAGE_FIRE && dist < CalcSpellMaxRange(FROSTFIREBOLT))
             {
                 if (doCast(opponent, GetSpell(FROSTFIREBOLT)))
                     return;
             }
-            //Frostbolt (default attack spell)
-            if (IsSpellReady(FROSTBOLT_1, diff) && dist < CalcSpellMaxRange(FROSTBOLT_1))
+            if (IsSpellReady(FROSTBOLT_1, diff) && _spec == BOT_SPEC_MAGE_FROST && dist < CalcSpellMaxRange(FROSTBOLT_1))
             {
                 if (doCast(opponent, GetSpell(FROSTBOLT_1)))
                     return;
@@ -544,7 +539,7 @@ public:
                 if (shot->GetSpellInfo()->Id == SHOOT_WAND && shot->m_targets.GetUnitTarget() != opponent)
                     me->InterruptSpell(CURRENT_AUTOREPEAT_SPELL);
             }
-            else if (IsSpellReady(SHOOT_WAND, diff, false) && me->GetDistance(opponent) < 30 && GetEquips(BOT_SLOT_RANGED) &&
+            else if (IsSpellReady(SHOOT_WAND, diff) && me->GetDistance(opponent) < 30 && GetEquips(BOT_SLOT_RANGED) &&
                 doCast(opponent, SHOOT_WAND))
                 return;
         }
@@ -601,7 +596,7 @@ public:
         {
             if (!me->IsAlive())
                 return;
-            if (GetBotCommandState() == COMMAND_STAY || me->IsMounted())
+            if (HasBotCommandState(BOT_COMMAND_STAY) || me->IsMounted())
                 return;
             if (!IsSpellReady(BLINK_1, diff) || IsCasting() || Rand() > 70)
                 return;
@@ -614,18 +609,6 @@ public:
                     if (doCast(me, GetSpell(BLINK_1)))
                         return;
                 }
-                //if (!me->getAttackers().empty() && me->GetExactDist2d(master) > 15)
-                //{
-                //    if (Unit const* op = me->SelectNearestTarget(7))
-                //    {
-                //        if (op->GetVictim() == me)
-                //        {
-                //            me->SetFacingTo(me->GetAbsoluteAngle(master));
-                //            if (doCast(me, GetSpell(BLINK_1)))
-                //                return;
-                //        }
-                //    }
-                //}
             }
             if (me->IsInCombat() && !me->getAttackers().empty() && HasRole(BOT_ROLE_RANGED))
             {
@@ -648,8 +631,8 @@ public:
                     {
                         //turn away from target
                         me->AttackStop();
-                        //me->SetFacingTo(me->GetAbsoluteAngle(u) + float(M_PI));
-                        me->SetOrientation(me->GetAbsoluteAngle(u) + float(M_PI));
+                        //me->SetFacingTo(me->GetAbsoluteAngle(u) + M_PI);
+                        me->SetOrientation(me->GetAbsoluteAngle(u) + M_PI);
                     }
                     if (doCast(me, GetSpell(BLINK_1)))
                         return;
@@ -708,7 +691,9 @@ public:
                                 Creature* cre = it->second;
                                 if (!cre || !cre->IsInWorld() || cre == me || !cre->IsAlive() ||
                                     cre->GetPowerType() != POWER_MANA || cre->GetBotAI()->HasRole(BOT_ROLE_TANK) ||
-                                    cre->GetBotClass() == BOT_CLASS_BM || cre->GetBotClass() == BOT_CLASS_HUNTER) continue;
+                                    cre->GetBotClass() == BOT_CLASS_BM || cre->GetBotClass() == BOT_CLASS_HUNTER ||
+                                    cre->GetBotClass() == BOT_CLASS_SPELLBREAKER || cre->GetBotClass() == BOT_CLASS_DARK_RANGER)
+                                    continue;
                                 if (cre->GetBotAI()->HasRole(BOT_ROLE_DPS) && me->GetExactDist(cre) < 30 &&
                                     !cre->HasAura(FOCUSMAGIC))
                                 {
@@ -732,7 +717,9 @@ public:
                                 Creature* cre = it->second;
                                 if (!cre || !cre->IsInWorld() || cre == me || !cre->IsAlive() ||
                                     cre->GetPowerType() != POWER_MANA || cre->GetBotAI()->HasRole(BOT_ROLE_TANK) ||
-                                    cre->GetBotClass() == BOT_CLASS_BM || cre->GetBotClass() == BOT_CLASS_HUNTER) continue;
+                                    cre->GetBotClass() == BOT_CLASS_BM || cre->GetBotClass() == BOT_CLASS_HUNTER ||
+                                    cre->GetBotClass() == BOT_CLASS_SPELLBREAKER || cre->GetBotClass() == BOT_CLASS_DARK_RANGER)
+                                    continue;
                                 if (me->GetExactDist(cre) < 30 &&
                                     !cre->HasAura(FOCUSMAGIC))
                                 {
@@ -819,7 +806,7 @@ public:
                 return;
         }
 
-        void ApplyClassSpellCritMultiplierAll(Unit const* /*victim*/, float& crit_chance, SpellInfo const* spellInfo, SpellSchoolMask /*schoolMask*/, WeaponAttackType /*attackType*/) const override
+        void ApplyClassSpellCritMultiplierAll(Unit const* /*victim*/, float& crit_chance, SpellInfo const* spellInfo, SpellSchoolMask schoolMask, WeaponAttackType /*attackType*/) const override
         {
             uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
             uint8 lvl = me->GetLevel();
@@ -854,10 +841,10 @@ public:
             if (lvl >= 20 && (/*baseId == SCORCH_1 || */baseId == FIREBALL_1 || baseId == FROSTFIRE_BOLT_1))
                 crit_chance += 3.f;
             //Critical Mass: 6% additional critical chance for Fire spells
-            if (lvl >= 30 && (SPELL_SCHOOL_MASK_FIRE & spellInfo->GetSchoolMask()))
+            if ((_spec == BOT_SPEC_MAGE_FIRE) && lvl >= 30 && (SPELL_SCHOOL_MASK_FIRE & spellInfo->GetSchoolMask()))
                 crit_chance += 6.f;
             //Winter's chill part 1: 3% additional crit chance for Frostbolt
-            if (lvl >= 35 && baseId == FROSTBOLT_1)
+            if ((_spec == BOT_SPEC_MAGE_FROST) && lvl >= 35 && baseId == FROSTBOLT_1)
                 crit_chance += 3.f;
 
             //Glyph of Frostfire Bolt part 2: 2% additional critical chance for Frostfire Bolt
@@ -883,7 +870,7 @@ public:
                 if (lvl >= 15 && (SPELL_SCHOOL_MASK_FROST & spellInfo->GetSchoolMask()))
                     pctbonus += 0.334f;
                 //Spell Power: 50% additional crit damage bonus for All spells
-                if (lvl >= 55)
+                if ((_spec == BOT_SPEC_MAGE_ARCANE) && lvl >= 55)
                     pctbonus += 0.334f;
                 //Combustion: 50% additional crit damage bonus for Fire spells
                 if ((SPELL_SCHOOL_MASK_FIRE & spellInfo->GetSchoolMask()) && me->HasAura(COMBUSTION_1))
@@ -900,32 +887,34 @@ public:
             if (lvl >= 20 && (SPELL_SCHOOL_MASK_FROST & spellInfo->GetSchoolMask()))
                 pctbonus += 0.06f;
             //Playing with Fire part 1: 3% bonus damage for all spells
-            if (lvl >= 30)
+            if ((_spec == BOT_SPEC_MAGE_FIRE) && lvl >= 30)
                 pctbonus += 0.03f;
             //Improved Cone of Cold: 35% bonus damage for Cone of Cold
-            if (lvl >= 30 && baseId == CONE_OF_COLD_1)
+            if ((_spec == BOT_SPEC_MAGE_FROST) && lvl >= 30 && baseId == CONE_OF_COLD_1)
                 pctbonus += 0.35f;
             //Arcane Instability part 1: 3% bonus damage for all spells
-            if (lvl >= 35)
+            if ((_spec == BOT_SPEC_MAGE_ARCANE) && lvl >= 35)
                 pctbonus += 0.03f;
             //Fire Power: 10% bonus damage for Fire spells
-            if (lvl >= 35 && (SPELL_SCHOOL_MASK_FIRE & spellInfo->GetSchoolMask()))
+            if ((_spec == BOT_SPEC_MAGE_FIRE) && lvl >= 35 && (SPELL_SCHOOL_MASK_FIRE & spellInfo->GetSchoolMask()))
                 pctbonus += 0.1f;
             //Molten Fury: 12% bonus damage for All spells against target with less than 35% hp
-            if (lvl >= 40 && damageinfo.target->HasAuraState(AURA_STATE_HEALTHLESS_35_PERCENT))
+            if ((_spec == BOT_SPEC_MAGE_FIRE) &&
+                lvl >= 40 && damageinfo.target->HasAuraState(AURA_STATE_HEALTHLESS_35_PERCENT))
                 pctbonus += 0.12f;
             //Arctic Winds part 1: 5% bonus damage for Frost spells
-            if (lvl >= 40 && (SPELL_SCHOOL_MASK_FROST & spellInfo->GetSchoolMask()))
+            if ((_spec == BOT_SPEC_MAGE_FROST) && lvl >= 40 && (SPELL_SCHOOL_MASK_FROST & spellInfo->GetSchoolMask()))
                 pctbonus += 0.05f;
-            //Epowered Fire part 1: 15% bonus damage (from spellpower) for Fireball, Frostfire Bolt and Pyroblast
-            if (lvl >= 45 && (baseId == FIREBALL_1 || baseId == FROSTFIRE_BOLT_1 || baseId == PYROBLAST_1))
+            //Empowered Fire part 1: 15% bonus damage (from spellpower) for Fireball, Frostfire Bolt and Pyroblast
+            if ((_spec == BOT_SPEC_MAGE_FIRE) &&
+                lvl >= 45 && (baseId == FIREBALL_1 || baseId == FROSTFIRE_BOLT_1 || baseId == PYROBLAST_1))
                 fdamage += me->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_MAGIC) * 0.15f * me->CalculateDefaultCoefficient(spellInfo, SPELL_DIRECT_DAMAGE) * me->CalculateSpellpowerCoefficientLevelPenalty(spellInfo);
             //Empowered Frostbolt part 1: 10% of spellpower to Frostbolt damage
-            //Epowered Frostbolt part 1: 10% bonus damage (from spellpower) for Frostbolt
-            if (lvl >= 45 && baseId == FROSTBOLT_1)
+            if ((_spec == BOT_SPEC_MAGE_FROST) && lvl >= 45 && baseId == FROSTBOLT_1)
                 fdamage += me->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_MAGIC) * 0.1f * me->CalculateDefaultCoefficient(spellInfo, SPELL_DIRECT_DAMAGE) * me->CalculateSpellpowerCoefficientLevelPenalty(spellInfo);
             //Chilled to the Bone part 1: 5% bonus damage for Frostbolt, Frostfire Bolt and Ice Lance
-            if (lvl >= 55 && (baseId == FROSTBOLT_1 || baseId == FROSTFIRE_BOLT_1 || baseId == ICE_LANCE_1))
+            if ((_spec == BOT_SPEC_MAGE_FROST) &&
+                lvl >= 55 && (baseId == FROSTBOLT_1 || baseId == FROSTFIRE_BOLT_1 || baseId == ICE_LANCE_1))
                 pctbonus += 0.05f;
 
             //Glyph of Frostfire Bolt part 1: 2% bonus damage for Frostfire Bolt
@@ -967,7 +956,7 @@ public:
             if (lvl >= 25)
                 pctbonus += 0.1f;
             //Improved Blink part 1: -50% mana cost for Blink
-            if (lvl >= 30 && baseId == BLINK_1)
+            if ((_spec == BOT_SPEC_MAGE_ARCANE) && lvl >= 30 && baseId == BLINK_1)
                 pctbonus += 0.5f;
 
             //Glyph of Arcane Intellect: -50% mana cost for Arcane Intellect/Brilliance
@@ -1033,7 +1022,7 @@ public:
                 (baseId == FROST_NOVA_1 || baseId == CONE_OF_COLD_1 || baseId == ICE_BLOCK_1 || baseId == ICY_VEINS_1))
                 pctbonus += 0.2f;
             //Cold as Ice: -20% cooldown for Ice Barrier, Cold Snap and Summon Water Elemental
-            if (lvl >= 35 &&
+            if ((_spec == BOT_SPEC_MAGE_FROST) && lvl >= 35 &&
                 (baseId == ICE_BARRIER_1/* || baseId == COLD_SNAP_1*/ || baseId == SUMMON_WATER_ELEMENTAL_1))
                 pctbonus += 0.2f;
 
@@ -1042,7 +1031,7 @@ public:
             if (lvl >= 10 && baseId == FIRE_BLAST_1)
                 timebonus += 2000;
             //Arcane Flows part 2: -2 min cooldown for Evocation
-            if (lvl >= 45 && baseId == EVOCATION_1)
+            if ((_spec == BOT_SPEC_MAGE_ARCANE) && lvl >= 45 && baseId == EVOCATION_1)
                 timebonus += 120000;
             //Glyph of Water Elemental: -30 sec cooldown for Summon Water Elemental
             if (lvl >= 50 && baseId == SUMMON_WATER_ELEMENTAL_1)
@@ -1300,7 +1289,7 @@ public:
                         int32 amount = chillEff->GetAmount();
                         if (lvl >= 15)
                             amount -= 10; //permafrost
-                        if (lvl >= 55)
+                        if ((_spec == BOT_SPEC_MAGE_FROST) && lvl >= 55)
                             amount -= 10; //chilled to the bone
                         chillEff->ChangeAmount(amount);
                     }
@@ -1335,7 +1324,7 @@ public:
 
         void SpellHit(Unit* caster, SpellInfo const* spell) override
         {
-            //uint32 spellId = spell->Id;
+            uint32 spellId = spell->Id;
 
             //Ward helper
             if (!canFrostWard && (spell->GetSchoolMask() & SPELL_SCHOOL_MASK_FROST) &&
@@ -1460,6 +1449,10 @@ public:
         void InitSpells() override
         {
             uint8 lvl = me->GetLevel();
+            //bool isArca = _spec == BOT_SPEC_MAGE_ARCANE;
+            bool isFire = _spec == BOT_SPEC_MAGE_FIRE;
+            bool isFros = _spec == BOT_SPEC_MAGE_FROST;
+
             InitSpellMap(DAMPENMAGIC_1);
             InitSpellMap(AMPLIFYMAGIC_1);
             InitSpellMap(ARCANEINTELLECT_1);
@@ -1471,14 +1464,9 @@ public:
             InitSpellMap(BLINK_1);
             InitSpellMap(REMOVE_CURSE_1);
             InitSpellMap(INVISIBILITY_1);
-  /*Talent*/lvl >= 30 ? InitSpellMap(BLAST_WAVE_1) : RemoveSpell(BLAST_WAVE_1);
-  /*Talent*/lvl >= 40 ? InitSpellMap(DRAGON_BREATH_1) : RemoveSpell(DRAGON_BREATH_1);
             InitSpellMap(FIRE_BLAST_1);
-  /*Talent*/lvl >= 20 ? InitSpellMap(PYROBLAST_1) : RemoveSpell(PYROBLAST_1);
-  /*Talent*/lvl >= 60 ? InitSpellMap(LIVING_BOMB_1) : RemoveSpell(LIVING_BOMB_1);
             InitSpellMap(FLAMESTRIKE_1);
             InitSpellMap(DAMPENMAGIC_1);
-  /*Talent*/lvl >= 50 ? InitSpellMap(COMBUSTION_1) : RemoveSpell(COMBUSTION_1);
             InitSpellMap(FROSTBOLT_1);
             InitSpellMap(FROST_NOVA_1);
             InitSpellMap(CONE_OF_COLD_1);
@@ -1486,15 +1474,11 @@ public:
             InitSpellMap(FROST_ARMOR_1);
             InitSpellMap(ICE_ARMOR_1);
             InitSpellMap(MOLTEN_ARMOR_1);
-  /*Talent*/lvl >= 40 ? InitSpellMap(ICE_BARRIER_1) : RemoveSpell(ICE_BARRIER_1);
             InitSpellMap(ICE_BLOCK_1);
-  /*Talent*/lvl >= 20 ? InitSpellMap(FOCUS_MAGIC_1) : RemoveSpell(FOCUS_MAGIC_1);
  /*Special*/InitSpellMap(BLIZZARD_DAMAGE_1); //important
  /*Special*/InitSpellMap(LIVING_BOMB_DAMAGE_1); //important
             InitSpellMap(SLOW_FALL_1);
             InitSpellMap(ICE_LANCE_1);
-  /*Talent*/lvl >= 20 ? InitSpellMap(ICY_VEINS_1) : RemoveSpell(ICY_VEINS_1);
-  /*Talent*/lvl >= 60 ? InitSpellMap(DEEP_FREEZE_1) : RemoveSpell(DEEP_FREEZE_1);
             InitSpellMap(FROST_WARD_1);
             InitSpellMap(FIRE_WARD_1);
 
@@ -1503,7 +1487,18 @@ public:
 
             InitSpellMap(RITUAL_OF_REFRESHMENT_1); //not casted
 
-  /*Talent*/lvl >= 50 ? InitSpellMap(SUMMON_WATER_ELEMENTAL_1) : RemoveSpell(SUMMON_WATER_ELEMENTAL_1);
+  /*Talent*/lvl >= 20 ? InitSpellMap(FOCUS_MAGIC_1) : RemoveSpell(FOCUS_MAGIC_1);
+
+  /*Talent*/lvl >= 20 ? InitSpellMap(PYROBLAST_1) : RemoveSpell(PYROBLAST_1);
+  /*Talent*/lvl >= 30 && isFire ? InitSpellMap(BLAST_WAVE_1) : RemoveSpell(BLAST_WAVE_1);
+  /*Talent*/lvl >= 40 && isFire ? InitSpellMap(DRAGON_BREATH_1) : RemoveSpell(DRAGON_BREATH_1);
+  /*Talent*/lvl >= 50 && isFire ? InitSpellMap(COMBUSTION_1) : RemoveSpell(COMBUSTION_1);
+  /*Talent*/lvl >= 60 && isFire ? InitSpellMap(LIVING_BOMB_1) : RemoveSpell(LIVING_BOMB_1);
+
+  /*Talent*/lvl >= 20 ? InitSpellMap(ICY_VEINS_1) : RemoveSpell(ICY_VEINS_1);
+  /*Talent*/lvl >= 40 && isFros ? InitSpellMap(ICE_BARRIER_1) : RemoveSpell(ICE_BARRIER_1);
+  /*Talent*/lvl >= 50 && isFros ? InitSpellMap(SUMMON_WATER_ELEMENTAL_1) : RemoveSpell(SUMMON_WATER_ELEMENTAL_1);
+  /*Talent*/lvl >= 60 && isFros ? InitSpellMap(DEEP_FREEZE_1) : RemoveSpell(DEEP_FREEZE_1);
 
             InitSpellMap(FROSTFIRE_BOLT_1);
             InitSpellMap(FIREBALL_1);
@@ -1513,44 +1508,50 @@ public:
         void ApplyClassPassives() const override
         {
             uint8 level = master->GetLevel();
+            bool isArca = _spec == BOT_SPEC_MAGE_ARCANE;
+            bool isFire = _spec == BOT_SPEC_MAGE_FIRE;
+            bool isFros = _spec == BOT_SPEC_MAGE_FROST;
+
+            RefreshAura(ARCANE_CONCENTRATION, level >= 15 ? 1 : 0);
+            RefreshAura(ARCANE_MEDITATION, level >= 25 ? 1 : 0); //mana regen 1
+            RefreshAura(TORMENT_THE_WEAK, level >= 25 ? 1 : 0);
+            RefreshAura(IMPROVED_COUNTERSPELL2, isArca && level >= 26 ? 1 : 0);
+            RefreshAura(IMPROVED_COUNTERSPELL1, isArca && level >= 25 && level < 26 ? 1 : 0);
+            RefreshAura(ARCANE_POTENCY2, isArca && level >= 36 ? 1 : 0);
+            RefreshAura(ARCANE_POTENCY1, isArca && level >= 35 && level < 36 ? 1 : 0);
+            RefreshAura(ARCANE_EMPOWERMENT, isArca && level >= 40 ? 1 : 0);
+            RefreshAura(INCANTERS_ABSORPTION3, isArca && level >= 42 ? 1 : 0);
+            RefreshAura(INCANTERS_ABSORPTION2, isArca && level >= 41 && level < 42 ? 1 : 0);
+            RefreshAura(INCANTERS_ABSORPTION1, isArca && level >= 40 && level < 41 ? 1 : 0);
+
+            RefreshAura(IGNITE, level >= 15 ? 1 : 0);
+            RefreshAura(BURNING_DETERMINATION, level >= 15 ? 1 : 0);
+            RefreshAura(IMPACT, level >= 20 ? 1 : 0);
+            RefreshAura(MOLTEN_SHIELDS, level >= 25 ? 1 : 0);
+            RefreshAura(MASTER_OF_ELEMENTS, level >= 25 ? 1 : 0);
+            RefreshAura(BLAZING_SPEED, isFire && level >= 35 ? 1 : 0);
+            RefreshAura(PYROMANIAC, isFire && level >= 40 ? 1 : 0); //mana regen 2
+            RefreshAura(FIRESTARTER2, isFire && level >= 51 ? 1 : 0);
+            RefreshAura(FIRESTARTER1, isFire && level >= 50 && level < 51 ? 1 : 0);
+            RefreshAura(HOT_STREAK, isFire && level >= 50 ? 1 : 0);
 
             RefreshAura(FROSTBITE3, level >= 12 ? 1 : 0);
             RefreshAura(FROSTBITE2, level >= 11 && level < 12 ? 1 : 0);
             RefreshAura(FROSTBITE1, level >= 10 && level < 11 ? 1 : 0);
-            RefreshAura(ARCANE_CONCENTRATION, level >= 15 ? 1 : 0);
-            RefreshAura(IGNITE, level >= 15 ? 1 : 0);
-            RefreshAura(BURNING_DETERMINATION, level >= 15 ? 1 : 0);
             RefreshAura(FROST_WARDING, level >= 15 ? 1 : 0);
-            RefreshAura(IMPROVED_COUNTERSPELL2, level >= 26 ? 1 : 0);
-            RefreshAura(IMPROVED_COUNTERSPELL1, level >= 25 && level < 26 ? 1 : 0);
-            RefreshAura(ARCANE_MEDITATION, level >= 25 ? 1 : 0); //mana regen 1
-            RefreshAura(TORMENT_THE_WEAK, level >= 25 ? 1 : 0);
-            RefreshAura(IMPACT, level >= 20 ? 1 : 0);
             RefreshAura(IMPROVED_BLIZZARD, level >= 20 ? 1 : 0);
-            RefreshAura(MOLTEN_SHIELDS, level >= 25 ? 1 : 0);
-            RefreshAura(MASTER_OF_ELEMENTS, level >= 25 ? 1 : 0);
             RefreshAura(SHATTER3, level >= 27 ? 1 : 0);
             RefreshAura(SHATTER2, level >= 26 && level < 27 ? 1 : 0);
             RefreshAura(SHATTER1, level >= 25 && level < 26 ? 1 : 0);
-            RefreshAura(ARCANE_POTENCY2, level >= 36 ? 1 : 0);
-            RefreshAura(ARCANE_POTENCY1, level >= 35 && level < 36 ? 1 : 0);
-            RefreshAura(BLAZING_SPEED, level >= 35 ? 1 : 0);
-            RefreshAura(WINTERS_CHILL3, level >= 37 ? 1 : 0);
-            RefreshAura(WINTERS_CHILL2, level >= 36 && level < 37 ? 1 : 0);
-            RefreshAura(WINTERS_CHILL1, level >= 35 && level < 36 ? 1 : 0);
-            RefreshAura(ARCANE_EMPOWERMENT, level >= 40 ? 1 : 0);
-            RefreshAura(INCANTERS_ABSORPTION3, level >= 42 ? 1 : 0);
-            RefreshAura(INCANTERS_ABSORPTION2, level >= 41 && level < 42 ? 1 : 0);
-            RefreshAura(INCANTERS_ABSORPTION1, level >= 40 && level < 41 ? 1 : 0);
-            RefreshAura(PYROMANIAC, level >= 40 ? 1 : 0); //mana regen 2
-            RefreshAura(SHATTERED_BARRIER, level >= 45 ? 1 : 0);
-            RefreshAura(FINGERS_OF_FROST, level >= 45 ? 1 : 0);
-            RefreshAura(FIRESTARTER2, level >= 51 ? 1 : 0);
-            RefreshAura(FIRESTARTER1, level >= 50 && level < 51 ? 1 : 0);
-            RefreshAura(HOT_STREAK, level >= 50 ? 1 : 0);
-            RefreshAura(BRAIN_FREEZE3, level >= 53 ? 1 : 0);
-            RefreshAura(BRAIN_FREEZE2, level >= 51 && level < 52 ? 1 : 0);
-            RefreshAura(BRAIN_FREEZE1, level >= 50 && level < 51 ? 1 : 0);
+            RefreshAura(WINTERS_CHILL3, isFros && level >= 37 ? 1 : 0);
+            RefreshAura(WINTERS_CHILL2, isFros && level >= 36 && level < 37 ? 1 : 0);
+            RefreshAura(WINTERS_CHILL1, isFros && level >= 35 && level < 36 ? 1 : 0);
+            RefreshAura(SHATTERED_BARRIER, isFros && level >= 45 ? 1 : 0);
+            //RefreshAura(ARCTIC_WINDS, isFros && level >= 45 ? 1 : 0); //only miss chance
+            RefreshAura(FINGERS_OF_FROST, isFros && level >= 45 ? 1 : 0);
+            RefreshAura(BRAIN_FREEZE3, isFros && level >= 53 ? 1 : 0);
+            RefreshAura(BRAIN_FREEZE2, isFros && level >= 51 && level < 52 ? 1 : 0);
+            RefreshAura(BRAIN_FREEZE1, isFros && level >= 50 && level < 51 ? 1 : 0);
 
             RefreshAura(GLYPH_POLYMORPH, level >= 15 ? 1 : 0);
             RefreshAura(GLYPG_REMOVE_CURSE, level >= 18 ? 1 : 0);

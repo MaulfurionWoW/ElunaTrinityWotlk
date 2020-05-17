@@ -295,9 +295,8 @@ public:
 
         void StartAttack(Unit* u, bool force = false)
         {
-            if (GetBotCommandState() == COMMAND_ATTACK && !force) return;
-            SetBotCommandState(COMMAND_ATTACK);
-            OnStartAttack(u);
+            if (!bot_ai::StartAttack(u, force))
+                return;
             GetInPosition(force, u);
         }
 
@@ -896,14 +895,14 @@ public:
             }
         }
 
-        void ApplyClassDamageMultiplierMelee(uint32& /*damage*/, CalcDamageInfo& damageinfo) const override
+        void ApplyClassDamageMultiplierMelee(uint32& damage, CalcDamageInfo& damageinfo) const override
         {
             uint8 lvl = me->GetLevel();
             float fdamage = float(damageinfo.Damages[0].Damage);
             float pctbonus = 0.0f;
 
             //Blood Gorged part 1 (white attacks): 10% bonus damage for all attacks
-            if (lvl >= 64 && me->HasAuraState(AURA_STATE_HEALTH_ABOVE_75_PERCENT))
+            if ((_spec == BOT_SPEC_DK_BLOOD) && lvl >= 64 && me->HasAuraState(AURA_STATE_HEALTH_ABOVE_75_PERCENT))
                 pctbonus += 0.1f;
 
             damageinfo.Damages[0].Damage = uint32(fdamage * (1.0f + pctbonus));
@@ -938,10 +937,10 @@ public:
             if (baseId == PLAGUE_STRIKE_1 || baseId == SCOURGE_STRIKE_1)
                 crit_chance += 6.f;
             //Rime (part 1): 15% additional critical chance for Icy Touch and Obliterate
-            if (lvl >= 60 && (baseId == ICY_TOUCH_1 || baseId == OBLITERATE_1))
+            if ((_spec == BOT_SPEC_DK_FROST) && lvl >= 60 && (baseId == ICY_TOUCH_1 || baseId == OBLITERATE_1))
                 crit_chance += 15.f;
             //Improved Death Strike (part 2): 6% additional critical chance for Death Strike
-            if (lvl >= 62 && baseId == DEATH_STRIKE_1)
+            if ((_spec == BOT_SPEC_DK_BLOOD) && lvl >= 62 && baseId == DEATH_STRIKE_1)
                 crit_chance += 6.f;
 
             //Glyph of Rune Strike: 10% additional critical chance for Rune Strike
@@ -968,11 +967,11 @@ public:
                 //!!!Melee spell damage is not yet critical, all reduced by half
 
                 //Might of Mograine: 45% crit damage bonus for Blood Boil, Blood Strike, Death Strike and Heart Strike
-                if (lvl >= 63 &&
+                if ((_spec == BOT_SPEC_DK_BLOOD) && lvl >= 63 &&
                     (baseId == BLOOD_BOIL_1 || baseId == BLOOD_STRIKE_1 || baseId == DEATH_STRIKE_1 || baseId == HEART_STRIKE_1))
                     pctbonus += 0.45f / 2.f;
                 //Guile of Gorefiend (part 1 melee): 45% crit damage bonus for Blood Strike, Frost Strike, Howling Blast and Obliterate
-                if (lvl >= 63 &&
+                if ((_spec == BOT_SPEC_DK_FROST) && lvl >= 63 &&
                     (baseId == BLOOD_STRIKE_1 || baseId == FROST_STRIKE_1 ||
                     baseId == HOWLING_BLAST_1 || baseId == OBLITERATE_1))
                     pctbonus += 0.45f / 2.f;
@@ -1000,7 +999,7 @@ public:
                     pctbonus += 0.2f;
             }
             //Bloody Strikes: 15% bonus damage for Blood Strike, 45% for Heart Strike and 30% for Blood Boil
-            if (lvl >= 59)
+            if ((_spec == BOT_SPEC_DK_BLOOD) && lvl >= 59)
             {
                 if (baseId == BLOOD_STRIKE_1)
                     pctbonus += 0.15f;
@@ -1010,24 +1009,26 @@ public:
                     pctbonus += 0.3f;
             }
             //Merciless Combat (melee): 12% bonus damage for Icy Touch, Howling Blast, Obliterate and Frost Strike on targets with less than 35% hp
-            if (lvl >= 60 &&
+            if ((_spec == BOT_SPEC_DK_FROST) && lvl >= 60 &&
                 (baseId == ICY_TOUCH_1 || baseId == HOWLING_BLAST_1 || baseId == OBLITERATE_1 || baseId == FROST_STRIKE_1) &&
                 damageinfo.target->HasAuraState(AURA_STATE_HEALTHLESS_35_PERCENT))
                 pctbonus += 0.12f;
             //Improved Death Strike (part 1): 30% bonus damage for Death Strike
-            if (lvl >= 62 && baseId == DEATH_STRIKE_1)
+            if ((_spec == BOT_SPEC_DK_BLOOD) && lvl >= 62 && baseId == DEATH_STRIKE_1)
                 pctbonus += 0.3f;
             //Blood of the North (part 1): 10% bonus damage for Blood Strike and Frost Strike
-            if (lvl >= 62 && (baseId == BLOOD_STRIKE_1 || baseId == FROST_STRIKE_1))
+            if ((_spec == BOT_SPEC_DK_FROST) && lvl >= 62 && (baseId == BLOOD_STRIKE_1 || baseId == FROST_STRIKE_1))
                 pctbonus += 0.1f;
             //Blood Gorged part 1 (melee): 10% bonus damage for all spells
-            if (lvl >= 64 && me->HasAuraState(AURA_STATE_HEALTH_ABOVE_75_PERCENT))
+            if ((_spec == BOT_SPEC_DK_BLOOD) && lvl >= 64 && me->HasAuraState(AURA_STATE_HEALTH_ABOVE_75_PERCENT))
                 pctbonus += 0.1f;
             //Tundra Stalker (melee): 15% damage bonus on targets affected with Frost Fever
-            if (lvl >= 64 && damageinfo.target->GetAuraEffect(SPELL_AURA_MOD_RANGED_HASTE, SPELLFAMILY_DEATHKNIGHT, 0x0, 0x0, 0x2))
+            if ((_spec == BOT_SPEC_DK_FROST) &&
+                lvl >= 64 && damageinfo.target->GetAuraEffect(SPELL_AURA_MOD_RANGED_HASTE, SPELLFAMILY_DEATHKNIGHT, 0x0, 0x0, 0x2))
                 pctbonus += 0.15f;
             //Rage of Rivendare (melee): 10% damage bonus on targets affected with Blood Plague
-            if (lvl >= 64 && damageinfo.target->GetAuraEffect(SPELL_AURA_PERIODIC_DAMAGE, SPELLFAMILY_DEATHKNIGHT, 0x0, 0x2000000, 0x0))
+            if ((_spec == BOT_SPEC_DK_UNHOLY) &&
+                lvl >= 64 && damageinfo.target->GetAuraEffect(SPELL_AURA_PERIODIC_DAMAGE, SPELLFAMILY_DEATHKNIGHT, 0x0, 0x2000000, 0x0))
                 pctbonus += 0.1f;
 
             //Glyph of Blood Strike: 20% bonus damage for Blood Strike on snared targets
@@ -1082,7 +1083,7 @@ public:
                 pctbonus += 0.5f / 1.5f;
 
                 //Guile of Gorefiend (part 1 spell): 45% crit damage bonus for Blood Strike, Frost Strike, Howling Blast and Obliterate
-                if (lvl >= 63 &&
+                if ((_spec == BOT_SPEC_DK_FROST) && lvl >= 63 &&
                     (baseId == BLOOD_STRIKE_1 || baseId == FROST_STRIKE_1 ||
                     baseId == HOWLING_BLAST_1 || baseId == OBLITERATE_1))
                     pctbonus += 0.45f / 1.5f;
@@ -1098,26 +1099,29 @@ public:
             if (baseId == DEATH_COIL_1 || baseId == DEATH_COIL_DAMAGE)
                 pctbonus += 0.15f;
             //Glacier Rot: 20% bonus damage for Icy Touch, Howling Blast and Frost Strike on diseased targets
-            if (lvl >= 59 && (baseId == ICY_TOUCH_1 || baseId == HOWLING_BLAST_1 || baseId == FROST_STRIKE_1) &&
+            if ((_spec == BOT_SPEC_DK_FROST) &&
+                lvl >= 59 && (baseId == ICY_TOUCH_1 || baseId == HOWLING_BLAST_1 || baseId == FROST_STRIKE_1) &&
                 IsDiseased(damageinfo.target))
                 pctbonus += 0.2f;
             //Impurity: 20% bonus (from attack power) damage for all spells
-            if (lvl >= 59)
+            if ((_spec == BOT_SPEC_DK_UNHOLY) && lvl >= 59)
                 if (SpellBonusEntry const* bonus = sSpellMgr->GetSpellBonusData(spellInfo->Id))
                     fdamage += bonus->ap_bonus * 0.2f * me->GetTotalAttackPowerValue(BASE_ATTACK);
             //Merciless Combat (spell): 12% bonus damage for Icy Touch, Howling Blast, Obliterate and Frost Strike on targets with less than 35% hp
-            if (lvl >= 60 &&
+            if ((_spec == BOT_SPEC_DK_FROST) && lvl >= 60 &&
                 (baseId == ICY_TOUCH_1 || baseId == HOWLING_BLAST_1 || baseId == OBLITERATE_1 || baseId == FROST_STRIKE_1) &&
                 damageinfo.target->HasAuraState(AURA_STATE_HEALTHLESS_35_PERCENT))
                 pctbonus += 0.12f;
             //Blood Gorged part 1 (spell): 10% bonus damage for all spells
-            if (lvl >= 64 && me->HasAuraState(AURA_STATE_HEALTH_ABOVE_75_PERCENT))
+            if ((_spec == BOT_SPEC_DK_BLOOD) && lvl >= 64 && me->HasAuraState(AURA_STATE_HEALTH_ABOVE_75_PERCENT))
                 pctbonus += 0.1f;
             //Tundra Stalker (spell): 15% damage bonus on targets affected with Frost Fever
-            if (lvl >= 64 && damageinfo.target->GetAuraEffect(SPELL_AURA_MOD_RANGED_HASTE, SPELLFAMILY_DEATHKNIGHT, 0x0, 0x0, 0x2))
+            if ((_spec == BOT_SPEC_DK_FROST) &&
+                lvl >= 64 && damageinfo.target->GetAuraEffect(SPELL_AURA_MOD_RANGED_HASTE, SPELLFAMILY_DEATHKNIGHT, 0x0, 0x0, 0x2))
                 pctbonus += 0.15f;
             //Rage of Rivendare (spell): 10% damage bonus on targets affected with Blood Plague
-            if (lvl >= 64 && damageinfo.target->GetAuraEffect(SPELL_AURA_PERIODIC_DAMAGE, SPELLFAMILY_DEATHKNIGHT, 0x0, 0x2000000, 0x0))
+            if ((_spec == BOT_SPEC_DK_UNHOLY) &&
+                lvl >= 64 && damageinfo.target->GetAuraEffect(SPELL_AURA_PERIODIC_DAMAGE, SPELLFAMILY_DEATHKNIGHT, 0x0, 0x2000000, 0x0))
                 pctbonus += 0.1f;
 
             //Glyph of Dark Death part 1: 15% damage bonus for Death Coil
@@ -1140,7 +1144,7 @@ public:
             damage = int32(fdamage * (1.0f + pctbonus));
         }
 
-        void ApplyClassDamageMultiplierHeal(Unit const* /*victim*/, float& heal, SpellInfo const* spellInfo, DamageEffectType /*damagetype*/, uint32 /*stack*/) const override
+        void ApplyClassDamageMultiplierHeal(Unit const* /*victim*/, float& heal, SpellInfo const* spellInfo, DamageEffectType damagetype, uint32 stack) const override
         {
             uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
             uint8 lvl = me->GetLevel();
@@ -1155,7 +1159,7 @@ public:
             if (lvl >= 58 && baseId == RUNE_TAP_1)
                 pctbonus += 1.f;
             //Improved Death Strike (part 3): 50% bonus healing for Death Strike
-            if (lvl >= 62 && baseId == DEATH_STRIKE_HEAL)
+            if ((_spec == BOT_SPEC_DK_BLOOD) && lvl >= 62 && baseId == DEATH_STRIKE_HEAL)
                 pctbonus += 0.5f;
 
             //Glyph of Dark Death part 2: 15% bonus healing for Death Coil
@@ -1292,7 +1296,7 @@ public:
         {
             uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
             //SpellSchool school = GetFirstSchoolInMask(spellInfo->GetSchoolMask());
-            //uint8 lvl = me->GetLevel();
+            uint8 lvl = me->GetLevel();
             float flatbonus = 0.0f;
             float pctbonus = 0.0f;
 
@@ -1316,7 +1320,7 @@ public:
         {
             uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
             //SpellSchool school = GetFirstSchoolInMask(spellInfo->GetSchoolMask());
-            //uint8 lvl = me->GetLevel();
+            uint8 lvl = me->GetLevel();
             float flatbonus = 0.0f;
             float pctbonus = 0.0f;
 
@@ -1346,7 +1350,7 @@ public:
             if (baseId == EMPOWER_RUNE_WEAPON_1)
                 ActivateAllRunes();
 
-            //Improved Chains of Ice: convert frost rune into death rune
+            //Improved Chains of Ice (62142): convert frost rune into death rune
             if (lvl >= 80 && baseId == CHAINS_OF_ICE_1)
             {
                 ConvertRune(RUNE_FROST);
@@ -1358,7 +1362,7 @@ public:
                 ConvertRune(RUNE_FROST);
             }
             //Reaping: Blood Strike and Pestilence convert Blood Rune to Death Rune
-            if (lvl >= 60 && (baseId == BLOOD_STRIKE_1 || baseId == PESTILENCE_1))
+            if ((_spec == BOT_SPEC_DK_UNHOLY) && lvl >= 60 && (baseId == BLOOD_STRIKE_1 || baseId == PESTILENCE_1))
             {
                 ConvertRune(RUNE_BLOOD);
                 //Blood of the North (part 2): same effect
@@ -1436,7 +1440,7 @@ public:
                 }
             }
             //Rime (part 2): Obliterate has 15% chance to reset Howling Blast cooldown
-            if (baseId == OBLITERATE_1 && urand(1,100) <= 15)
+            if ((_spec == BOT_SPEC_DK_FROST) && baseId == OBLITERATE_1 && urand(1,100) <= 15)
             {
                 ResetSpellCooldown(HOWLING_BLAST_1);
                 me->CastSpell(me, RIME_BUFF, true);
@@ -1468,10 +1472,11 @@ public:
                 }
             }
             //Chilblains: proc Icy Clutch
-            if (lvl >= 61 && baseId == FROST_FEVER_AURA)
+            if ((_spec == BOT_SPEC_DK_FROST) && lvl >= 61 && baseId == FROST_FEVER_AURA)
                 me->CastSpell(target, CHILBLAINS_DEBUFF, true);
             //Sudden Doom: 15% ctc Death Coil on Blood Strike or Heart Strike
-            if ((baseId == BLOOD_STRIKE_1 || baseId == HEART_STRIKE_1) && GetSpell(DEATH_COIL_1) && urand(1,100) <= 15)
+            if ((_spec == BOT_SPEC_DK_BLOOD) &&
+                (baseId == BLOOD_STRIKE_1 || baseId == HEART_STRIKE_1) && GetSpell(DEATH_COIL_1) && urand(1,100) <= 15)
                 me->CastSpell(target, GetSpell(DEATH_COIL_1), true);
             //Glyph of Heart Strike
             if (baseId == HEART_STRIKE_1)
@@ -1497,7 +1502,7 @@ public:
             }
 
             //Improved Blood Presence
-            if (lvl >= 61 && baseId == BLOOD_PRESENCE_1)
+            if ((_spec == BOT_SPEC_DK_BLOOD) && lvl >= 61 && baseId == BLOOD_PRESENCE_1)
             {
                 if (AuraEffect* pres = me->GetAuraEffect(spellId, 1))
                     pres->ChangeAmount(pres->GetAmount() + 10);
@@ -1539,7 +1544,7 @@ public:
                     uint32 dur = fort->GetDuration() + 3000;
 
                     //Guile of Gorefiend (part 2): Icebound Fortitude 6 sec increased duration
-                    if (lvl >= 63)
+                    if ((_spec == BOT_SPEC_DK_FROST) && lvl >= 63)
                         dur += 6000;
 
                     fort->SetDuration(dur);
@@ -1605,7 +1610,7 @@ public:
             OnOwnerDamagedBy(u);
         }
 
-        uint8 GetPetPositionNumber(Creature const* /*summon*/) const override
+        uint8 GetPetPositionNumber(Creature const* summon) const override
         {
             //TODO: garg, aod, drw
             return 0;
@@ -1621,10 +1626,10 @@ public:
             Position pos;
 
             Creature* myPet = me->SummonCreature(entry, *me, TEMPSUMMON_CORPSE_DESPAWN);
-            me->GetNearPoint(myPet, pos.m_positionX, pos.m_positionY, pos.m_positionZ, 0, me->GetOrientation() + float(M_PI_2));
+            me->GetNearPoint(myPet, pos.m_positionX, pos.m_positionY, pos.m_positionZ, 0, me->GetOrientation() + M_PI / 2);
             myPet->GetMotionMaster()->MovePoint(me->GetMapId(), pos);
             myPet->SetCreatorGUID(master->GetGUID());
-            myPet->SetOwnerGUID(master->GetGUID());
+            myPet->SetOwnerGUID(me->GetGUID());
             myPet->SetFaction(master->GetFaction());
             myPet->SetControlledByPlayer(!IAmFree());
             myPet->SetPvP(me->IsPvP());
@@ -1640,7 +1645,7 @@ public:
                 botPet->ToTempSummon()->UnSummon();
         }
 
-        void SummonedCreatureDies(Creature* /*summon*/, Unit* /*killer*/) override
+        void SummonedCreatureDies(Creature* summon, Unit* /*killer*/) override
         {
             //TC_LOG_ERROR("entities.unit", "SummonedCreatureDies: %s's %s", me->GetName().c_str(), summon->GetName().c_str());
             //if (summon == botPet)
@@ -1722,15 +1727,16 @@ public:
         void InitSpells() override
         {
             uint8 lvl = me->GetLevel();
+            bool isBloo = _spec == BOT_SPEC_DK_BLOOD;
+            bool isFros = _spec == BOT_SPEC_DK_FROST;
+            bool isUnho = _spec == BOT_SPEC_DK_UNHOLY;
+
             InitSpellMap(ICY_TOUCH_1);
             InitSpellMap(PLAGUE_STRIKE_1);
             InitSpellMap(BLOOD_STRIKE_1);
             InitSpellMap(DEATH_STRIKE_1);
             InitSpellMap(OBLITERATE_1);
             InitSpellMap(RUNE_STRIKE_1);
-  /*Talent*/lvl >= 63 ? InitSpellMap(HEART_STRIKE_1) : RemoveSpell(HEART_STRIKE_1);
-  /*Talent*/lvl >= 63 ? InitSpellMap(FROST_STRIKE_1) : RemoveSpell(FROST_STRIKE_1);
-  /*Talent*/lvl >= 63 ? InitSpellMap(SCOURGE_STRIKE_1) : RemoveSpell(SCOURGE_STRIKE_1);
             InitSpellMap(BLOOD_BOIL_1);
             InitSpellMap(DEATH_AND_DECAY_1);
             InitSpellMap(DEATH_COIL_1);
@@ -1747,17 +1753,23 @@ public:
             InitSpellMap(HORN_OF_WINTER_1);
             InitSpellMap(EMPOWER_RUNE_WEAPON_1);
             InitSpellMap(BLOOD_TAP_1);
+
   /*Talent*/lvl >= 57 ? InitSpellMap(RUNE_TAP_1) : RemoveSpell(RUNE_TAP_1);
+  /*Talent*/lvl >= 59 && isBloo ? InitSpellMap(MARK_OF_BLOOD_1) : RemoveSpell(MARK_OF_BLOOD_1);
+  /*Talent*/lvl >= 61 && isBloo ? InitSpellMap(HYSTERIA_1) : RemoveSpell(HYSTERIA_1);
+  /*Talent*/lvl >= 62 && isBloo ? InitSpellMap(VAMPIRIC_BLOOD_1) : RemoveSpell(VAMPIRIC_BLOOD_1);
+  /*Talent*/lvl >= 63 && isBloo ? InitSpellMap(HEART_STRIKE_1) : RemoveSpell(HEART_STRIKE_1);
+
   /*Talent*/lvl >= 57 ? InitSpellMap(LICHBORNE_1) : RemoveSpell(LICHBORNE_1);
-  /*Talent*/lvl >= 59 ? InitSpellMap(MARK_OF_BLOOD_1) : RemoveSpell(MARK_OF_BLOOD_1);
-  /*Talent*/lvl >= 59 ? InitSpellMap(DEATHCHILL_1) : RemoveSpell(DEATHCHILL_1);
-  /*Talent*/lvl >= 61 ? InitSpellMap(HYSTERIA_1) : RemoveSpell(HYSTERIA_1);
-  /*Talent*/lvl >= 61 ? InitSpellMap(HUNGERING_COLD_1) : RemoveSpell(HUNGERING_COLD_1);
-  /*Talent*/lvl >= 61 ? InitSpellMap(ANTI_MAGIC_ZONE_1) : RemoveSpell(ANTI_MAGIC_ZONE_1);
-  /*Talent*/lvl >= 62 ? InitSpellMap(VAMPIRIC_BLOOD_1) : RemoveSpell(VAMPIRIC_BLOOD_1);
-  /*Talent*/lvl >= 62 ? InitSpellMap(UNBREAKABLE_ARMOR_1) : RemoveSpell(UNBREAKABLE_ARMOR_1);
-  /*Talent*/lvl >= 62 ? InitSpellMap(BONE_SHIELD_1) : RemoveSpell(BONE_SHIELD_1);
-  /*Talent*/lvl >= 65 ? InitSpellMap(HOWLING_BLAST_1) : RemoveSpell(HOWLING_BLAST_1);
+  /*Talent*/lvl >= 59 && isFros ? InitSpellMap(DEATHCHILL_1) : RemoveSpell(DEATHCHILL_1);
+  /*Talent*/lvl >= 61 && isFros ? InitSpellMap(HUNGERING_COLD_1) : RemoveSpell(HUNGERING_COLD_1);
+  /*Talent*/lvl >= 62 && isFros ? InitSpellMap(UNBREAKABLE_ARMOR_1) : RemoveSpell(UNBREAKABLE_ARMOR_1);
+  /*Talent*/lvl >= 63 && isFros ? InitSpellMap(FROST_STRIKE_1) : RemoveSpell(FROST_STRIKE_1);
+  /*Talent*/lvl >= 65 && isFros ? InitSpellMap(HOWLING_BLAST_1) : RemoveSpell(HOWLING_BLAST_1);
+
+  /*Talent*/lvl >= 61 && isUnho ? InitSpellMap(ANTI_MAGIC_ZONE_1) : RemoveSpell(ANTI_MAGIC_ZONE_1);
+  /*Talent*/lvl >= 62 && isUnho ? InitSpellMap(BONE_SHIELD_1) : RemoveSpell(BONE_SHIELD_1);
+  /*Talent*/lvl >= 63 && isUnho ? InitSpellMap(SCOURGE_STRIKE_1) : RemoveSpell(SCOURGE_STRIKE_1);
 
             InitSpellMap(BLOOD_PRESENCE_1, true);
             InitSpellMap(FROST_PRESENCE_1, true);
@@ -1767,47 +1779,52 @@ public:
         void ApplyClassPassives() const override
         {
             uint8 level = master->GetLevel();
+            bool isBloo = _spec == BOT_SPEC_DK_BLOOD;
+            bool isFros = _spec == BOT_SPEC_DK_FROST;
+            bool isUnho = _spec == BOT_SPEC_DK_UNHOLY;
 
             RefreshAura(BUTCHERY, level >= 55 ? 1 : 0);
-            RefreshAura(TOUGHNESS, level >= 55 ? 1 : 0);
             RefreshAura(BLADED_ARMOR, level >= 56 ? 1 : 0);
             RefreshAura(SCENT_OF_BLOOD, level >= 56 ? 1 : 0);
             RefreshAura(TWO_HANDED_WEAPON_SPECIALIZATION, level >= 56 ? 1 : 0);
+            RefreshAura(SPELL_DEFLECTION, isBloo && level >= 58 ? 1 : 0);
+            RefreshAura(VENDETTA, isBloo && level >= 58 ? 1 : 0);
+            RefreshAura(BLOODY_VENGEANCE3, isBloo && level >= 62 ? 1 : 0);
+            RefreshAura(BLOODY_VENGEANCE2, isBloo && level >= 61 && level < 62 ? 1 : 0);
+            RefreshAura(BLOODY_VENGEANCE1, isBloo && level >= 60 && level < 61 ? 1 : 0);
+            RefreshAura(ABOMINATIONS_MIGHT, isBloo && level >= 60 ? 1 : 0);
+            //RefreshAura(BLOODWORMS, isBloo && level >= 61 ? 1 : 0);
+            RefreshAura(IMPROVED_BLOOD_PRESENCE, isBloo && level >= 61 ? 1 : 0);
+            RefreshAura(WILL_OF_THE_NECROPOLIS, isBloo && level >= 63 ? 1 : 0);
+
+            RefreshAura(TOUGHNESS, level >= 55 ? 1 : 0);
             RefreshAura(ICY_TALONS, level >= 57 ? 1 : 0);
             RefreshAura(ANNIHILATION, level >= 57 ? 1 : 0);
-            RefreshAura(NECROSIS5, level >= 62 ? 1 : 0);
-            RefreshAura(NECROSIS4, level >= 60 && level < 61 ? 1 : 0);
-            RefreshAura(NECROSIS3, level >= 59 && level < 60 ? 1 : 0);
-            RefreshAura(NECROSIS2, level >= 58 && level < 59 ? 1 : 0);
-            RefreshAura(NECROSIS1, level >= 57 && level < 58 ? 1 : 0);
-            RefreshAura(SPELL_DEFLECTION, level >= 58 ? 1 : 0);
-            RefreshAura(VENDETTA, level >= 58 ? 1 : 0);
-            RefreshAura(KILLING_MACHINE, level >= 58 ? 1 : 0);
-            RefreshAura(CHILL_OF_THE_GRAVE, level >= 58 ? 1 : 0);
-            RefreshAura(ON_A_PALE_HORSE_A, level >= 58 ? 1 : 0);
-            RefreshAura(ON_A_PALE_HORSE_B, level >= 58 ? 1 : 0);
-            RefreshAura(BLOOD_CAKED_BLADE3, level >= 60 ? 1 : 0);
-            RefreshAura(BLOOD_CAKED_BLADE2, level >= 59 && level < 60 ? 1 : 0);
-            RefreshAura(BLOOD_CAKED_BLADE1, level >= 58 && level < 59 ? 1 : 0);
-            RefreshAura(FRIGID_DREADPLATE, level >= 59 ? 1 : 0);
-            RefreshAura(UNHOLY_BLIGHT, level >= 59 ? 1 : 0);
-            RefreshAura(DIRGE, level >= 59 ? 1 : 0);
-            RefreshAura(BLOODY_VENGEANCE3, level >= 62 ? 1 : 0);
-            RefreshAura(BLOODY_VENGEANCE2, level >= 61 && level < 62 ? 1 : 0);
-            RefreshAura(BLOODY_VENGEANCE1, level >= 60 && level < 61 ? 1 : 0);
-            RefreshAura(ABOMINATIONS_MIGHT, level >= 60 ? 1 : 0);
-            RefreshAura(IMPROVED_ICY_TALONS, level >= 60 ? 1 : 0);
-            RefreshAura(DESECRATION, level >= 60 ? 1 : 0);
-            //RefreshAura(BLOODWORMS, level >= 61 ? 1 : 0);
-            RefreshAura(IMPROVED_BLOOD_PRESENCE, level >= 61 ? 1 : 0);
-            RefreshAura(DESOLATION, level >= 61 ? 1 : 0);
-            RefreshAura(IMPROVED_UNHOLY_PRESENCE, level >= 61 ? 1 : 0);
-            RefreshAura(THREAT_OF_THASSARIAN, level >= 62 ? 1 : 0);
-            RefreshAura(CRYPT_FEVER, level >= 62 ? 1 : 0);
-            RefreshAura(WILL_OF_THE_NECROPOLIS, level >= 63 ? 1 : 0);
-            RefreshAura(ACCLIMATION, level >= 63 ? 1 : 0);
-            RefreshAura(WANDERING_PLAGUE, level >= 63 ? 1 : 0);
-            RefreshAura(EBON_PLAGUEBRINGER, level >= 63 ? 1 : 0);
+            RefreshAura(KILLING_MACHINE, isFros && level >= 58 ? 1 : 0);
+            RefreshAura(CHILL_OF_THE_GRAVE, isFros && level >= 58 ? 1 : 0);
+            RefreshAura(FRIGID_DREADPLATE, isFros && level >= 59 ? 1 : 0);
+            RefreshAura(IMPROVED_ICY_TALONS, isFros && level >= 60 ? 1 : 0);
+            RefreshAura(THREAT_OF_THASSARIAN, isFros && level >= 62 ? 1 : 0);
+            RefreshAura(ACCLIMATION, isFros && level >= 63 ? 1 : 0);
+
+            RefreshAura(NECROSIS5, isUnho && level >= 62 ? 1 : 0);
+            RefreshAura(NECROSIS4, isUnho && level >= 60 && level < 61 ? 1 : 0);
+            RefreshAura(NECROSIS3, isUnho && level >= 59 && level < 60 ? 1 : 0);
+            RefreshAura(NECROSIS2, isUnho && level >= 58 && level < 59 ? 1 : 0);
+            RefreshAura(NECROSIS1, isUnho && level >= 57 && level < 58 ? 1 : 0);
+            RefreshAura(ON_A_PALE_HORSE_A, isUnho && level >= 58 ? 1 : 0);
+            RefreshAura(ON_A_PALE_HORSE_B, isUnho && level >= 58 ? 1 : 0);
+            RefreshAura(BLOOD_CAKED_BLADE3, isUnho && level >= 60 ? 1 : 0);
+            RefreshAura(BLOOD_CAKED_BLADE2, isUnho && level >= 59 && level < 60 ? 1 : 0);
+            RefreshAura(BLOOD_CAKED_BLADE1, isUnho && level >= 58 && level < 59 ? 1 : 0);
+            RefreshAura(UNHOLY_BLIGHT, isUnho && level >= 59 ? 1 : 0);
+            RefreshAura(DIRGE, isUnho && level >= 59 ? 1 : 0);
+            RefreshAura(DESECRATION, isUnho && level >= 60 ? 1 : 0);
+            RefreshAura(DESOLATION, isUnho && level >= 61 ? 1 : 0);
+            RefreshAura(IMPROVED_UNHOLY_PRESENCE, isUnho && level >= 61 ? 1 : 0);
+            RefreshAura(CRYPT_FEVER, isUnho && level >= 62 ? 1 : 0);
+            RefreshAura(WANDERING_PLAGUE, isUnho && level >= 63 ? 1 : 0);
+            RefreshAura(EBON_PLAGUEBRINGER, isUnho && level >= 63 ? 1 : 0);
 
             //RefreshAura(GLYPH_DANCING_RUNE_WEAPON, level >= 60 ? 1 : 0);
             RefreshAura(GLYPH_DISEASE);

@@ -217,9 +217,8 @@ public:
 
         void StartAttack(Unit* u, bool force = false)
         {
-            if (GetBotCommandState() == COMMAND_ATTACK && !force) return;
-            SetBotCommandState(COMMAND_ATTACK);
-            OnStartAttack(u);
+            if (!bot_ai::StartAttack(u, force))
+                return;
             GetInPosition(force, u);
         }
 
@@ -374,7 +373,8 @@ public:
         {
             StartAttack(opponent, IsMelee());
 
-            bool const isFury = me->CanDualWield();
+            bool const isFury = _spec == BOT_SPEC_WARRIOR_FURY;
+            bool const isArms = _spec == BOT_SPEC_WARRIOR_ARMS;
 
             //Keep stance in combat
             if (stancetimer <= diff && Rand() < 10 + 15 * (me->GetPower(POWER_RAGE) <= 250))
@@ -466,7 +466,7 @@ public:
             }//end FEAR
 
             //LAST STAND
-            if (IsSpellReady(LAST_STAND_1, diff, false) && IsTank() &&
+            if (IsSpellReady(LAST_STAND_1, diff, false) &&
                 GetHealthPCT(me) < (30 + 20 * (b_attackers.size() > 1) + 10 * me->HasAuraType(SPELL_AURA_PERIODIC_DAMAGE)))
             {
                 if (doCast(me, GetSpell(LAST_STAND_1)))
@@ -501,6 +501,7 @@ public:
             }
             //CHARGE (warbringer)
             if (IsSpellReady(CHARGE_1, diff, false) && !HasRole(BOT_ROLE_RANGED) && Rand() < 70 &&
+                !HasBotCommandState(BOT_COMMAND_STAY) &&
                 !(IsTank() && opponent->GetTypeId() == TYPEID_UNIT && opponent->ToCreature()->isWorldBoss()) &&
                 dist > 8 && dist < CalcSpellMaxRange(CHARGE_1) &&
                 ((IsTank() && me->GetLevel() >= 50) ||
@@ -511,6 +512,7 @@ public:
             }
             //INTERCEPT (warbringer)
             if (IsSpellReady(INTERCEPT_1, diff, false) && !HasRole(BOT_ROLE_RANGED) && HasRole(BOT_ROLE_DPS) &&
+                !HasBotCommandState(BOT_COMMAND_STAY) &&
                 !(IsTank() && opponent->GetTypeId() == TYPEID_UNIT && opponent->ToCreature()->isWorldBoss()) &&
                 //!me->HasUnitState(UNIT_STATE_CHARGING) &&
                 !(me->GetMotionMaster()->GetCurrentMovementGenerator() && me->GetMotionMaster()->GetCurrentMovementGenerator()->BaseUnitState == UNIT_STATE_CHARGING) && //not charging
@@ -597,7 +599,7 @@ public:
                     return;
             }
             //SHOCKWAVE - frontal cone
-            if (IsSpellReady(SHOCKWAVE_1, diff) && HasRole(BOT_ROLE_DPS) && CanBlock() && dist < 8.f && !CCed(opponent) &&
+            if (IsSpellReady(SHOCKWAVE_1, diff) && HasRole(BOT_ROLE_DPS) && dist < 8.f && !CCed(opponent) &&
                 rage >= rcost(SHOCKWAVE_1) && Rand() < (70 + 70 * opponent->IsNonMeleeSpellCast(false)) &&
                 me->HasInArc(float(M_PI_2), opponent) && opponent->IsWithinLOSInMap(me))
             {
@@ -637,7 +639,7 @@ public:
                 }
             }
             //CONCUSSION BLOW
-            if (IsSpellReady(CONCUSSION_BLOW_1, diff) && HasRole(BOT_ROLE_DPS) && IsTank() && !CCed(opponent) &&
+            if (IsSpellReady(CONCUSSION_BLOW_1, diff) && HasRole(BOT_ROLE_DPS) && !CCed(opponent) &&
                 dist < 5 && rage >= rcost(CONCUSSION_BLOW_1) &&
                 opponent->GetDiminishing(DIMINISHING_STUN) <= DIMINISHING_LEVEL_2 &&
                 Rand() < (30 + 60 * opponent->IsNonMeleeSpellCast(false,false,true)))
@@ -704,7 +706,7 @@ public:
             }
             //DEMORALIZING SHOUT
             if (IsSpellReady(DEMORALIZING_SHOUT_1, diff) && Rand() < 15 + 25 * IsTank() && dist < 10 &&
-                (opponent->GetClass() == CLASS_WARRIOR ||
+                (opponent->GetClass() == CLASS_WARRIOR || opponent->GetClass() == CLASS_ROGUE ||
                 (opponent->GetTypeId() == TYPEID_UNIT && opponent->ToCreature()->GetCreatureTemplate()->rank != CREATURE_ELITE_NORMAL)) &&
                 opponent->GetHealth() > me->GetMaxHealth() / 8 * (1 + opponent->getAttackers().size()) &&
                 rage >= rcost(DEMORALIZING_SHOUT_1) &&
@@ -786,10 +788,10 @@ public:
                     getrage();
             }
             //REND
-            if (IsSpellReady(REND_1, diff) && HasRole(BOT_ROLE_DPS) && !IsTank() && Rand() < 80 &&
+            if (IsSpellReady(REND_1, diff) && HasRole(BOT_ROLE_DPS) && Rand() < 80 &&
                 opponent->GetHealth() > me->GetMaxHealth() / 4 * (1 + opponent->getAttackers().size()) &&
-                (!isFury || opponent->IsControlledByPlayer()) && dist < 5 && rage >= rcost(REND_1) &&
-                opponent->GetCreatureType() != CREATURE_TYPE_MECHANICAL &&
+                (isArms || opponent->GetClass() == CLASS_ROGUE || opponent->GetShapeshiftForm() == FORM_CAT) &&
+                dist < 5 && rage >= rcost(REND_1) && opponent->GetCreatureType() != CREATURE_TYPE_MECHANICAL &&
                 !(opponent->GetTypeId() == TYPEID_UNIT &&
                 (opponent->ToCreature()->GetCreatureTemplate()->MechanicImmuneMask & (1<<(MECHANIC_BLEED-1)))) &&
                 !opponent->GetAuraEffect(SPELL_AURA_PERIODIC_DAMAGE, SPELLFAMILY_WARRIOR, 0x20, 0x0, 0x0, me->GetGUID()) &&
@@ -799,21 +801,21 @@ public:
                     return;
             }
             //BLOODTHIRST
-            if (IsSpellReady(BLOODTHIRST_1, diff) && isFury && HasRole(BOT_ROLE_DPS) &&
+            if (IsSpellReady(BLOODTHIRST_1, diff) && HasRole(BOT_ROLE_DPS) &&
                 dist < 5 && rage >= rcost(BLOODTHIRST_1))
             {
                 if (doCast(opponent, GetSpell(BLOODTHIRST_1)))
                     return;
             }
             //MORTAL STRIKE
-            if (IsSpellReady(MORTAL_STRIKE_1, diff) && !isFury && HasRole(BOT_ROLE_DPS) && !CanBlock() &&
+            if (IsSpellReady(MORTAL_STRIKE_1, diff) && HasRole(BOT_ROLE_DPS) && !CanBlock() &&
                 dist < 5 && rage >= rcost(MORTAL_STRIKE_1))
             {
                 if (doCast(opponent, GetSpell(MORTAL_STRIKE_1)))
                     return;
             }
             //OVERPOWER
-            if (IsSpellReady(OVERPOWER_1, diff) && !isFury && HasRole(BOT_ROLE_DPS) && !IsTank() &&
+            if (IsSpellReady(OVERPOWER_1, diff) && HasRole(BOT_ROLE_DPS) && !IsTank() && (!isFury || rage < 250) &&
                 (_inStance(1) || stancetimer <= diff) && dist < 5 && rage >= rcost(OVERPOWER_1) &&
                 (me->HasReactive(REACTIVE_OVERPOWER) ||
                 me->GetAuraEffect(SPELL_AURA_ABILITY_IGNORE_AURASTATE, SPELLFAMILY_WARRIOR, 2961, 0)
@@ -826,7 +828,7 @@ public:
                 }
             }
             //BLADESTORM
-            if (IsSpellReady(BLADESTORM_1, diff) && !isFury && HasRole(BOT_ROLE_DPS) && !IsTank() && !CanBlock() &&
+            if (IsSpellReady(BLADESTORM_1, diff) && HasRole(BOT_ROLE_DPS) && !IsTank() && !CanBlock() &&
                dist < 10 && rage >= rcost(BLADESTORM_1) &&
                (b_attackers.size() > 1 || opponent->GetHealth() > me->GetHealth() / 3 * (1 + opponent->getAttackers().size()) ||
                opponent->IsControlledByPlayer()) &&
@@ -849,7 +851,7 @@ public:
             }
             //EXECUTE
             if (IsSpellReady(EXECUTE_1, diff) && HasRole(BOT_ROLE_DPS) && !IsTank() && Rand() < 110 &&
-                (!isFury || !me->GetMap()->IsRaid()) &&
+                (isFury || !me->GetMap()->IsRaid()) &&
                 (opponent->HasAuraState(AURA_STATE_HEALTHLESS_20_PERCENT) ||
                 me->GetAuraEffect(SPELL_AURA_ABILITY_IGNORE_AURASTATE, SPELLFAMILY_WARRIOR, 0x0, 0x2000000, 0x0)) &&
                 dist < 5 && rage >= rcost(EXECUTE_1) &&
@@ -858,10 +860,10 @@ public:
                 if (doCast(opponent, GetSpell(EXECUTE_1)))
                     return;
             }
-            //SLAM only with improved
+            //SLAM only with improved, has SPELL_ATTR2_NOT_RESET_AUTO_ACTIONS
             if (IsSpellReady(SLAM_1, diff) && HasRole(BOT_ROLE_DPS) && !IsTank() && !CanBlock() &&
                 me->GetLevel() >= 40 && dist < 5 && rage >= rcost(SLAM_1) &&
-                ((!isFury && !opponent->isMoving() && me->getAttackTimer(BASE_ATTACK) > 500) ||
+                ((isArms && !opponent->isMoving() && me->getAttackTimer(BASE_ATTACK) > 500) ||
                 me->GetAuraEffect(SPELL_AURA_ADD_PCT_MODIFIER, SPELLFAMILY_WARRIOR, 0x0, 0x1000000, 0x0))
                 /*me->HasAura(BLOODSURGE_BUFF)*/)
             {
@@ -1071,7 +1073,7 @@ public:
         void CheckIntervene(uint32 diff)
         {
             //lvl 70 - warbringer always present
-            if (IsSpellReady(INTERVENE_1, diff, false) && GetBotCommandState() != COMMAND_STAY &&
+            if (IsSpellReady(INTERVENE_1, diff, false) && !HasBotCommandState(BOT_COMMAND_STAY) &&
                 !me->IsMounted() && rage >= rcost(INTERVENE_1) &&
                 !IAmFree() && !IsCasting() && Rand() < (IsTank() ? 40 : 80))
             {
@@ -1234,7 +1236,7 @@ public:
             {
                 //!!!Melee spell damage is not yet critical, all reduced by half
                 //Poleaxe Specialization: 5% additional critical damage for all attacks
-                if (me->GetLevel() >= 30)
+                if (_spec == BOT_SPEC_WARRIOR_ARMS && me->GetLevel() >= 30)
                     if (Item const* weap = GetEquips(uint8(damageinfo.AttackType)))
                         if (ItemTemplate const* proto = weap->GetTemplate())
                             if (proto->SubClass == ITEM_SUBCLASS_WEAPON_AXE || proto->SubClass == ITEM_SUBCLASS_WEAPON_AXE2 ||
@@ -1264,7 +1266,7 @@ public:
                         crit_chance += 25.f;
 
             //Poleaxe Specialization: 5% additional critical chance for all attacks
-            if (lvl >= 30)
+            if (_spec == BOT_SPEC_WARRIOR_ARMS && lvl >= 30)
                 if (Item const* weap = GetEquips(uint8(attackType)))
                     if (ItemTemplate const* proto = weap->GetTemplate())
                         if (proto->SubClass == ITEM_SUBCLASS_WEAPON_AXE || proto->SubClass == ITEM_SUBCLASS_WEAPON_AXE2 ||
@@ -1272,13 +1274,16 @@ public:
                             crit_chance += 5.f;
 
             //Incite: 15% additional critical chance for Cleave, Heroic Strike and Thunder Clap
-            if (lvl >= 15 && (baseId == CLEAVE_1 || baseId == HEROIC_STRIKE_1 || baseId == THUNDER_CLAP_1))
+            if (((_spec == BOT_SPEC_WARRIOR_PROTECTION && lvl >= 15) ||
+                ((_spec == BOT_SPEC_WARRIOR_ARMS || _spec == BOT_SPEC_WARRIOR_FURY) && lvl >= 75)) &&
+                (baseId == CLEAVE_1 || baseId == HEROIC_STRIKE_1 || baseId == THUNDER_CLAP_1))
                 crit_chance += 15.f;
             //Improved Overpower: 50% additional critical chance for Overpower
-            if (lvl >= 20 && baseId == OVERPOWER_1)
+            if ((_spec == BOT_SPEC_WARRIOR_ARMS) && lvl >= 20 && baseId == OVERPOWER_1)
                 crit_chance += 50.f;
             //Critical Block: 15% additional critical chance for Shield Slam
-            if (lvl >= 50 && baseId == SHIELD_SLAM_1)
+            if ((_spec == BOT_SPEC_WARRIOR_PROTECTION) &&
+                lvl >= 50 && baseId == SHIELD_SLAM_1)
                 crit_chance += 15.f;
             //Sword and Board: 15% additional critical chance for Devastate
             if (lvl >= 55 && baseId == DEVASTATE_1)
@@ -1289,7 +1294,7 @@ public:
                 crit_chance += 30.f;
 
             //Warrior T8 Protection Bonus (id: 64933): 10% additional critical chance for Devastate (tanks only)
-            if (lvl >= 78 && IsTank() && baseId == DEVASTATE_1)
+            if (lvl >= 78 && baseId == DEVASTATE_1)
                 crit_chance += 10.f;
         }
 
@@ -1308,7 +1313,7 @@ public:
                 if (lvl >= 20)
                     pctbonus *= 1.1f;
                 //Poleaxe Specialization: 5% additional critical damage for all attacks
-                if (lvl >= 30)
+                if ((_spec == BOT_SPEC_WARRIOR_PROTECTION) && lvl >= 30)
                     if (Item const* weap = GetEquips(uint8(attackType)))
                         if (ItemTemplate const* proto = weap->GetTemplate())
                             if (proto->SubClass == ITEM_SUBCLASS_WEAPON_AXE || proto->SubClass == ITEM_SUBCLASS_WEAPON_AXE2 ||
@@ -1330,22 +1335,24 @@ public:
             if (lvl >= 10 && baseId == THUNDER_CLAP_1)
                 pctbonus *= 1.3f;
             //Improved Revenge (part 1): 60% bonus damage for Revenge
-            if (lvl >= 20 && baseId == REVENGE_1)
+            if ((_spec == BOT_SPEC_WARRIOR_PROTECTION) && lvl >= 20 && baseId == REVENGE_1)
                 pctbonus *= 1.6f;
             //Gag Order (part 2): 10% bonus damage for Shield Slam
-            if (lvl >= 30 && baseId == SHIELD_SLAM_1)
+            if ((_spec == BOT_SPEC_WARRIOR_PROTECTION) && lvl >= 30 && baseId == SHIELD_SLAM_1)
                 pctbonus *= 1.1f;
             //Improved Whirlwind: 20% bonus damage for Whirlwind
-            if (lvl >= 40 && baseId == WHIRLWIND_1)
+            if ((_spec == BOT_SPEC_WARRIOR_FURY) && lvl >= 40 && baseId == WHIRLWIND_1)
                 pctbonus *= 1.2f;
             //Improved Mortal Strike (part 1): 10% bonus damage for Mortal Strike
             if (lvl >= 45 && baseId == MORTAL_STRIKE_1)
                 pctbonus *= 1.1f;
             //Unrelenting Assault (part 2): 20% bonus damage for Overpower and Revenge
-            if (lvl >= 45 && (baseId == OVERPOWER_1 || baseId == REVENGE_1))
+            if ((_spec == BOT_SPEC_WARRIOR_ARMS) &&
+                lvl >= 45 && (baseId == OVERPOWER_1 || baseId == REVENGE_1))
                 pctbonus *= 1.2f;
             //Unending Fury: 10% bonus damage for Whirlwind, Slam and Bloodthirst
-            if (lvl >= 55 && (baseId == WHIRLWIND_1 || baseId == SLAM_1 || baseId == BLOODTHIRST_1))
+            if ((_spec == BOT_SPEC_WARRIOR_FURY) &&
+                lvl >= 55 && (baseId == WHIRLWIND_1 || baseId == SLAM_1 || baseId == BLOODTHIRST_1))
                 pctbonus *= 1.1f;
 
             //Glyph of Mocking Blow: 25% bonus damage for Mocking Blow
@@ -1358,12 +1365,12 @@ public:
             //Warrior T9 Protection 2P Bonus (id: 67269): 5% bonus damage for Devastate
             if (lvl >= 77 && baseId == DEVASTATE_1)
                 pctbonus *= 1.05f;
-            //Warrior T10 Protection 2P Bonus (id: 70843): 20% bonus damage for Shield Slam and Shockwave (tanks only)
-            if (lvl >= 78 && IsTank() && (baseId == SHIELD_SLAM_1 || baseId == SHOCKWAVE_1))
+            //Warrior T10 Protection 2P Bonus (id: 70843): 20% bonus damage for Shield Slam and Shockwave
+            if (lvl >= 78 && (baseId == SHIELD_SLAM_1 || baseId == SHOCKWAVE_1))
                 pctbonus *= 1.2f;
 
             //Improved Cleave: 120% increased '!bonus damage!' done by Cleave (flat mod)
-            if (lvl >= 25 && baseId == CLEAVE_1)
+            if ((_spec == BOT_SPEC_WARRIOR_FURY) && lvl >= 25 && baseId == CLEAVE_1)
             {
                 float bp = spellInfo->Effects[EFFECT_0].BasePoints; //SPELL_EFFECT_WEAPON_DAMAGE (values: 15 - 222)
                 fdamage += bp * 1.2;
@@ -1410,13 +1417,16 @@ public:
             if (lvl >= 10 && baseId == THUNDER_CLAP_1)
                 fcost -= 40;
             //Improved Execute: -5 rage cost for Execute
-            if (lvl >= 25 && baseId == EXECUTE_1)
+            if ((_spec == BOT_SPEC_WARRIOR_FURY) &&
+                lvl >= 25 && baseId == EXECUTE_1)
                 fcost -= 50;
             //Puncture: -3 rage cost for Sunder Armor and Devastate
-            if (lvl >= 25 && (baseId == SUNDER_ARMOR_1 || baseId == DEVASTATE_1))
+            if ((_spec == BOT_SPEC_WARRIOR_PROTECTION) &&
+                lvl >= 25 && (baseId == SUNDER_ARMOR_1 || baseId == DEVASTATE_1))
                 fcost -= 30;
             //Focused Rage: -3 rage cost for all offensive abilities (using rage)
-            if (lvl >= 40 && ((spellInfo->SpellFamilyFlags[0] & 0x6E6E4EEE) || (spellInfo->SpellFamilyFlags[1] & 0x40E664)))
+            if ((_spec == BOT_SPEC_WARRIOR_PROTECTION) &&
+                lvl >= 40 && ((spellInfo->SpellFamilyFlags[0] & 0x6E6E4EEE) || (spellInfo->SpellFamilyFlags[1] & 0x40E664)))
                 fcost -= 30;
 
             //Glyph of Resonating Power: -5 rage cost for Thunder Clap
@@ -1446,7 +1456,8 @@ public:
 
             //flat mods
             //Improved Slam: -1.0 sec cast time for Slam
-            if (lvl >= 40 && baseId == SLAM_1)
+            if ((_spec == BOT_SPEC_WARRIOR_ARMS) &&
+                lvl >= 40 && baseId == SLAM_1)
                 casttime -= 1000;
 
             casttime = std::max<int32>(casttime, 0);
@@ -1462,7 +1473,7 @@ public:
 
             //pct mods
             //Intensify Rage: -33% cooldown for Bloodrage, Berserker Rage, Recklessness and Death Wish
-            if (lvl >= 40 &&
+            if ((_spec == BOT_SPEC_WARRIOR_FURY) && lvl >= 40 &&
                 (baseId == BLOODRAGE_1 || baseId == BERSERKER_RAGE_1 || baseId == RECKLESSNESS_1 || baseId == DEATH_WISH_1))
                 pctbonus *= 0.67f;
 
@@ -1472,10 +1483,12 @@ public:
                 cooldown -= 120000;
 
             //Shield Mastery (part 2): -20 sec cooldown for Shield Block
-            if (lvl >= 20 && baseId == SHIELD_BLOCK_1)
+            if ((_spec == BOT_SPEC_WARRIOR_PROTECTION) &&
+                lvl >= 20 && baseId == SHIELD_BLOCK_1)
                 cooldown -= 20000;
             //Improved Disciplines: -60 sec cooldown for Shield Wall, Retaliation and Recklessness
-            if (lvl >= 35 && (baseId == SHIELD_WALL_1 || baseId == RETALIATION_1 || baseId == RECKLESSNESS_1))
+            if ((_spec == BOT_SPEC_WARRIOR_PROTECTION) &&
+                lvl >= 35 && (baseId == SHIELD_WALL_1 || baseId == RETALIATION_1 || baseId == RECKLESSNESS_1))
                 cooldown -= 60000;
 
             //Glyph of Bladestorm: -15 sec cooldown for Bladestorm
@@ -1503,16 +1516,19 @@ public:
 
             //flat bonuses
             //Improved Disarm part 1: -20 sec cooldown for Disarm
-            if (lvl >= 25 && baseId == DISARM_1)
+            if ((_spec == BOT_SPEC_WARRIOR_PROTECTION) &&
+                lvl >= 25 && baseId == DISARM_1)
                 cooldown -= 20000;
             //Improved Intercept: -10 sec cooldown for Intercept
-            if (lvl >= 30 && baseId == INTERCEPT_1)
+            if ((_spec == BOT_SPEC_WARRIOR_FURY) &&
+                lvl >= 30 && baseId == INTERCEPT_1)
                 cooldown -= 10000;
             //Improved Mortal Strike (part 2): -1 sec cooldown for Mortal Strike
             if (lvl >= 45 && baseId == MORTAL_STRIKE_1)
                 cooldown -= 1000;
             //Unrelenting Assault (part 1): -4 sec cooldown for Overpower and Revenge
-            if (lvl >= 45 && (baseId == OVERPOWER_1 || baseId == REVENGE_1))
+            if ((_spec == BOT_SPEC_WARRIOR_ARMS) &&
+                lvl >= 45 && (baseId == OVERPOWER_1 || baseId == REVENGE_1))
                 cooldown -= 4000;
 
             //Glyph of Last Stand: -1 min cooldown for Last Stand
@@ -1537,7 +1553,8 @@ public:
             uint8 lvl = me->GetLevel();
 
             //Unrelenting Assault (part 1, special): -0.5 sec global cooldown for Overpower and Revenge
-            if (lvl >= 45 && (baseId == OVERPOWER_1 || baseId == REVENGE_1))
+            if ((_spec == BOT_SPEC_WARRIOR_ARMS) &&
+                lvl >= 45 && (baseId == OVERPOWER_1 || baseId == REVENGE_1))
                 cooldown -= 500.f;
         }
 
@@ -1582,12 +1599,12 @@ public:
 
         void ApplyClassSpellMaxTargetsMods(SpellInfo const* spellInfo, uint32& targets) const override
         {
-            //uint32 bonusTargets = 0;
+            uint32 bonusTargets = 0;
             uint8 lvl = me->GetLevel();
 
             //Improved Revenge: +1 target (actually 2 in dbc)
             if (lvl >= 20 && (spellInfo->SpellFamilyFlags[0] & 0x400))
-                targets += 2;
+                targets += 1;
 
             //Glyph of Sunder Armor: +1 target
             if (lvl >= 15 && (spellInfo->SpellFamilyFlags[0] & 0x4000))
@@ -1678,7 +1695,7 @@ public:
                     //Improved Thunder Clap (part 3): 10% extra slow
                     amount += (-10);
                     //Conqueror Thunder Clap Bonus: 50% increased effect
-                    if (lvl >= 60)
+                    if ((_spec == BOT_SPEC_WARRIOR_PROTECTION) && lvl >= 60)
                         amount = amount + amount / 2;
 
                     clap->ChangeAmount(amount);
@@ -1727,7 +1744,7 @@ public:
                 if (lvl >= 25 && target->GetTypeId() != TYPEID_PLAYER && urand(1,100) <= 25)
                     me->CastSpell(target, REVENGE_STUN_SPELL, true);
             }
-            if (baseId == DISARM_1 && lvl >= 25)
+            if (baseId == DISARM_1 && (_spec == BOT_SPEC_WARRIOR_PROTECTION) && lvl >= 25)
             {
                 //Improved Disarm part 2
                 if (AuraEffect* disa = target->GetAuraEffect(spellId, 1, me->GetGUID()))
@@ -1737,13 +1754,13 @@ public:
             {
                 me->ClearReactive(REACTIVE_OVERPOWER);
                 //Unrelenting Assault (part 3): reduce spells efficiency on players
-                if (lvl >= 45 &&
+                if (lvl >= 45 && (_spec == BOT_SPEC_WARRIOR_ARMS) &&
                     target->GetTypeId() == TYPEID_PLAYER && target->IsNonMeleeSpellCast(false, false, true))
-                    {
-                        CastSpellExtraArgs args(true);
-                        args.SetOriginalCaster(me->GetGUID());
-                        target->CastSpell(target, UNRELENTING_ASSAULT_SPELL, args);
-                    }
+                {
+                    CastSpellExtraArgs args(true);
+                    args.SetOriginalCaster(me->GetGUID());
+                    target->CastSpell(target, UNRELENTING_ASSAULT_SPELL, args);
+                }
             }
             if (baseId == REND_1 && lvl >= 15)
             {
@@ -1774,7 +1791,7 @@ public:
                     }
                 }
             }
-            if (baseId == SHIELD_BASH_1 && lvl >= 30)
+            if (baseId == SHIELD_BASH_1 && (_spec == BOT_SPEC_WARRIOR_PROTECTION) && lvl >= 30)
             {
                 //Gag Order part 1: silence target
                 me->CastSpell(target, GAG_ORDER_DEBUFF, true);
@@ -1784,7 +1801,9 @@ public:
                 //Victory rush disable helper
                 me->RemoveAura(VICTORIOUS_SPELL);
             }
-            if ((baseId == DEVASTATE_1 || baseId == REVENGE_1) && lvl >= 55 && urand(1,100) <= 30)
+            if ((baseId == DEVASTATE_1 || baseId == REVENGE_1) &&
+                (_spec == BOT_SPEC_WARRIOR_PROTECTION) &&
+                lvl >= 55 && urand(1,100) <= 30)
             {
                 //Sword and Board: trigger
                 me->CastSpell(me, SWORD_AND_BOARD_BUFF, true);
@@ -1823,7 +1842,8 @@ public:
             }
 
             //Iron Will: -20% duration for stuns and charms
-            if (lvl >= 15 && !spell->IsPositive() && (spell->Mechanic == MECHANIC_STUN || spell->Mechanic == MECHANIC_CHARM))
+            if ((_spec == BOT_SPEC_WARRIOR_ARMS || _spec == BOT_SPEC_WARRIOR_FURY) &&
+                lvl >= 15 && !spell->IsPositive() && (spell->Mechanic == MECHANIC_STUN || spell->Mechanic == MECHANIC_CHARM))
             {
                 if (Aura* chun = me->GetAura(spellId, caster->GetGUID()))
                 {
@@ -1879,8 +1899,9 @@ public:
 
         void DamageDealt(Unit* victim, uint32& damage, DamageEffectType damageType) override
         {
-            //Unbridled Wrath (fury)
-            if (damage && me->GetLevel() >= 15 && me->CanDualWield() &&
+            //Unbridled Wrath
+            if ((_spec == BOT_SPEC_WARRIOR_FURY || _spec == BOT_SPEC_WARRIOR_ARMS) &&
+                damage && me->GetLevel() >= 15 && me->CanDualWield() &&
                 (damageType == DIRECT_DAMAGE || damageType == SPELL_DIRECT_DAMAGE))
             {
                 if (roll_chance_f(me->GetPPMProcChance(me->GetFloatValue(UNIT_FIELD_BASEATTACKTIME+BASE_ATTACK), 15.f, nullptr)))
@@ -1903,6 +1924,21 @@ public:
             if (!u)
                 return;
             OnOwnerDamagedBy(u);
+        }
+
+        void SetAIMiscValue(uint32 data, uint32 /*value*/)
+        {
+            switch (data)
+            {
+                case BOTAI_MISC_WEAPON_SPEC:
+                {
+                    //AXE and MACE specs are handled elsewhere
+                    _checkSwordSpec();
+                    break;
+                }
+                default:
+                    break;
+            }
         }
 
         void Reset() override
@@ -1943,16 +1979,20 @@ public:
         void InitSpells() override
         {
             uint8 lvl = me->GetLevel();
+            bool isArms = _spec == BOT_SPEC_WARRIOR_ARMS;
+            bool isFury = _spec == BOT_SPEC_WARRIOR_FURY;
+            bool isProt = _spec == BOT_SPEC_WARRIOR_PROTECTION;
 
             InitSpellMap(BATTLE_STANCE_1);
    /*Quest*/lvl >= 10 ? InitSpellMap(DEFENSIVE_STANCE_1) : RemoveSpell(DEFENSIVE_STANCE_1);
    /*Quest*/lvl >= 30 ? InitSpellMap(BERSERKER_STANCE_1) : RemoveSpell(BERSERKER_STANCE_1);
 
+   /*Quest*/lvl >= 10 ? InitSpellMap(TAUNT_1) : RemoveSpell(TAUNT_1);
+   /*Quest*/lvl >= 10 ? InitSpellMap(SUNDER_ARMOR_1) : RemoveSpell(SUNDER_ARMOR_1);
             InitSpellMap(INTIMIDATING_SHOUT_1);
             InitSpellMap(ENRAGED_REGENERATION_1);
             InitSpellMap(CHARGE_1);
             InitSpellMap(OVERPOWER_1);
-   /*Quest*/lvl >= 10 ? InitSpellMap(TAUNT_1) : RemoveSpell(TAUNT_1);
             InitSpellMap(BLOODRAGE_1);
             InitSpellMap(BERSERKER_RAGE_1);
             InitSpellMap(INTERCEPT_1);
@@ -1960,22 +2000,15 @@ public:
             InitSpellMap(HAMSTRING_1);
             InitSpellMap(INTERVENE_1);
             InitSpellMap(WHIRLWIND_1);
-  /*Talent*/lvl >= 60 ? InitSpellMap(BLADESTORM_1) : RemoveSpell(BLADESTORM_1);
             InitSpellMap(BATTLE_SHOUT_1);
             InitSpellMap(REND_1);
             InitSpellMap(EXECUTE_1);
             InitSpellMap(PUMMEL_1);
-  /*Talent*/lvl >= 40 ? InitSpellMap(BLOODTHIRST_1) : RemoveSpell(BLOODTHIRST_1);
-  /*Talent*/lvl >= 40 ? InitSpellMap(MORTAL_STRIKE_1) : RemoveSpell(MORTAL_STRIKE_1);
             InitSpellMap(SLAM_1);
-   /*Quest*/lvl >= 10 ? InitSpellMap(SUNDER_ARMOR_1) : RemoveSpell(SUNDER_ARMOR_1);
-  /*Talent*/lvl >= 30 ? InitSpellMap(SWEEPING_STRIKES_1) : RemoveSpell(SWEEPING_STRIKES_1);
             InitSpellMap(RECKLESSNESS_1);
             InitSpellMap(RETALIATION_1);
-  /*Talent*/lvl >= 30 ? InitSpellMap(DEATH_WISH_1) : RemoveSpell(DEATH_WISH_1);
             InitSpellMap(VICTORY_RUSH_1);
             InitSpellMap(THUNDER_CLAP_1);
-  /*Talent*/lvl >= 20 ? InitSpellMap(LAST_STAND_1) : RemoveSpell(LAST_STAND_1);
             InitSpellMap(REVENGE_1);
             InitSpellMap(SHIELD_BLOCK_1);
             InitSpellMap(SHIELD_SLAM_1);
@@ -1984,67 +2017,77 @@ public:
             InitSpellMap(SHIELD_WALL_1);
             InitSpellMap(SHIELD_BASH_1);
             InitSpellMap(HEROIC_THROW_1);
-  /*Talent*/lvl >= 30 ? InitSpellMap(CONCUSSION_BLOW_1) : RemoveSpell(CONCUSSION_BLOW_1);
-  /*Talent*/lvl >= 40 ? InitSpellMap(VIGILANCE_1) : RemoveSpell(VIGILANCE_1);
-  /*Talent*/lvl >= 50 ? InitSpellMap(DEVASTATE_1) : RemoveSpell(DEVASTATE_1);
             InitSpellMap(MOCKING_BLOW_1);
-  /*Talent*/lvl >= 60 ? InitSpellMap(SHOCKWAVE_1) : RemoveSpell(SHOCKWAVE_1);
-  /*Talent*/lvl >= 20 ? InitSpellMap(PIERCING_HOWL_1) : RemoveSpell(PIERCING_HOWL_1);
             InitSpellMap(HEROIC_STRIKE_1);
             InitSpellMap(CHALLENGING_SHOUT_1);
             InitSpellMap(COMMANDING_SHOUT_1);
             InitSpellMap(SHATTERING_THROW_1);
             InitSpellMap(DEMORALIZING_SHOUT_1);
-  /*Talent*/lvl >= 50 ? InitSpellMap(HEROIC_FURY_1) : RemoveSpell(HEROIC_FURY_1);
+
+  /*Talent*/lvl >= 30 && isArms ? InitSpellMap(SWEEPING_STRIKES_1) : RemoveSpell(SWEEPING_STRIKES_1);
+  /*Talent*/lvl >= 40 && isArms ? InitSpellMap(MORTAL_STRIKE_1) : RemoveSpell(MORTAL_STRIKE_1);
+  /*Talent*/lvl >= 60 && isArms ? InitSpellMap(BLADESTORM_1) : RemoveSpell(BLADESTORM_1);
+
+  /*Talent*/lvl >= (isFury ? 20 : isArms ? 70 : 99) ? InitSpellMap(PIERCING_HOWL_1) : RemoveSpell(PIERCING_HOWL_1);
+  /*Talent*/lvl >= 30 && isFury ? InitSpellMap(DEATH_WISH_1) : RemoveSpell(DEATH_WISH_1);
+  /*Talent*/lvl >= 40 && isFury ? InitSpellMap(BLOODTHIRST_1) : RemoveSpell(BLOODTHIRST_1);
+  /*Talent*/lvl >= 50 && isFury ? InitSpellMap(HEROIC_FURY_1) : RemoveSpell(HEROIC_FURY_1);
+
+  /*Talent*/lvl >= 20 && isProt ? InitSpellMap(LAST_STAND_1) : RemoveSpell(LAST_STAND_1);
+  /*Talent*/lvl >= 30 && isProt ? InitSpellMap(CONCUSSION_BLOW_1) : RemoveSpell(CONCUSSION_BLOW_1);
+  /*Talent*/lvl >= 40 && isProt ? InitSpellMap(VIGILANCE_1) : RemoveSpell(VIGILANCE_1);
+  /*Talent*/lvl >= 50 && isProt ? InitSpellMap(DEVASTATE_1) : RemoveSpell(DEVASTATE_1);
+  /*Talent*/lvl >= 60 && isProt ? InitSpellMap(SHOCKWAVE_1) : RemoveSpell(SHOCKWAVE_1);
         }
 
         void ApplyClassPassives() const override
         {
             uint8 level = master->GetLevel();
+            bool isArms = _spec == BOT_SPEC_WARRIOR_ARMS;
+            bool isFury = _spec == BOT_SPEC_WARRIOR_FURY;
+            bool isProt = _spec == BOT_SPEC_WARRIOR_PROTECTION;
+
+            RefreshAura(DEEP_WOUNDS_3, (isArms || isFury) && level >= 24 ? 1 : 0);
+            RefreshAura(DEEP_WOUNDS_2, (isArms || isFury) && level >= 23 && level < 24 ? 1 : 0);
+            RefreshAura(DEEP_WOUNDS_1, (isArms || isFury) && level >= 22 && level < 23 ? 1 : 0);
+            RefreshAura(TWO_HANDED_WEAPON_SPECIALIZATION, isArms && level >= 25 ? 1 : 0);
+            RefreshAura(TASTE_FOR_BLOOD3, isArms && level >= 27 ? 1 : 0);
+            RefreshAura(TASTE_FOR_BLOOD2, isArms && level >= 26 && level < 27 ? 1 : 0);
+            RefreshAura(TASTE_FOR_BLOOD1, isArms && level >= 25 && level < 26 ? 1 : 0);
+            RefreshAura(IMPROVED_HAMSTRING, isArms && level >= 15 ? 1 : 0);
+            RefreshAura(TRAUMA2, isArms && level >= 36 ? 1 : 0);
+            RefreshAura(TRAUMA1, isArms && level >= 35 && level < 36 ? 1 : 0);
+            RefreshAura(SECOND_WIND, isArms && level >= 40 ? 1 : 0);
+            RefreshAura(JUGGERNAUGHT, isArms && level >= 45 ? 1 : 0);
+            RefreshAura(SUDDEN_DEATH, isArms && level >= 50 ? 1 : 0);
+            RefreshAura(ENDLESS_RAGE, isArms && level >= 50 ? 1 : 0);
+            RefreshAura(BLOOD_FRENZY, isArms && level >= 50 ? 1 : 0);
+            RefreshAura(WRECKING_CREW, isArms && level >= 55 ? 1 : 0);
+            _checkSwordSpec();
 
             RefreshAura(ARMORED_TO_THE_TEETH, level >= 10 ? 1 : 0);
-            RefreshAura(SHIELD_SPECIALIZATION, level >= 10 ? 1 : 0);
-            RefreshAura(DEEP_WOUNDS_3, level >= 24 ? 1 : 0);
-            RefreshAura(DEEP_WOUNDS_2, level >= 23 && level < 24 ? 1 : 0);
-            RefreshAura(DEEP_WOUNDS_1, level >= 22 && level < 23 ? 1 : 0);
-            RefreshAura(BLOOD_CRAZE3, level >= 22 ? 1 : 0);
-            RefreshAura(BLOOD_CRAZE2, level >= 21 && level < 22 ? 1 : 0);
-            RefreshAura(BLOOD_CRAZE1, level >= 20 && level < 21 ? 1 : 0);
-            RefreshAura(TOUGHNESS, level >= 20 ? 1 : 0);
-            RefreshAura(TWO_HANDED_WEAPON_SPECIALIZATION, level >= 25 ? 1 : 0);
-            RefreshAura(TASTE_FOR_BLOOD3, level >= 27 ? 1 : 0);
-            RefreshAura(TASTE_FOR_BLOOD2, level >= 26 && level < 27 ? 1 : 0);
-            RefreshAura(TASTE_FOR_BLOOD1, level >= 25 && level < 26 ? 1 : 0);
+            RefreshAura(BLOOD_CRAZE3, (isArms || isFury) && level >= 22 ? 1 : 0);
+            RefreshAura(BLOOD_CRAZE2, (isArms || isFury) && level >= 21 && level < 22 ? 1 : 0);
+            RefreshAura(BLOOD_CRAZE1, (isArms || isFury) && level >= 20 && level < 21 ? 1 : 0);
             RefreshAura(DUAL_WIELD_SPECIALIZATION, level >= 25 ? 1 : 0);
-            RefreshAura(IMPROVED_SPELL_REFLECTION, level >= 25 ? 1 : 0);
-            RefreshAura(SWORD_SPEC5, level >= 34 ? 1 : 0);
-            RefreshAura(SWORD_SPEC4, level >= 33 && level < 34 ? 1 : 0);
-            RefreshAura(SWORD_SPEC3, level >= 32 && level < 33 ? 1 : 0);
-            RefreshAura(SWORD_SPEC2, level >= 31 && level < 32 ? 1 : 0);
-            RefreshAura(SWORD_SPEC1, level >= 30 && level < 31 ? 1 : 0);
-            RefreshAura(IMPROVED_HAMSTRING, level >= 15 ? 1 : 0);
-            RefreshAura(TRAUMA2, level >= 36 ? 1 : 0);
-            RefreshAura(TRAUMA1, level >= 35 && level < 36 ? 1 : 0);
-            RefreshAura(FLURRY5, level >= 39 ? 1 : 0);
-            RefreshAura(FLURRY4, level >= 38 && level < 39 ? 1 : 0);
-            RefreshAura(FLURRY3, level >= 37 && level < 38 ? 1 : 0);
-            RefreshAura(FLURRY2, level >= 36 && level < 37 ? 1 : 0);
-            RefreshAura(FLURRY1, level >= 35 && level < 36 ? 1 : 0);
-            RefreshAura(ONE_HANDED_WEAPON_SPECIALIZATION, level >= 35 ? 1 : 0);
-            RefreshAura(SECOND_WIND, level >= 40 ? 1 : 0);
-            RefreshAura(IMPROVED_DEFENSIVE_STANCE, level >= 40 && IsTank() ? 1 : 0);
-            RefreshAura(JUGGERNAUGHT, level >= 45 && !IsTank() ? 1 : 0);
-            RefreshAura(FURIOUS_ATTACKS, level >= 45 && !IsTank() ? 1 : 0);
-            RefreshAura(SAFEGUARD, level >= 45 ? 1 : 0);
-            RefreshAura(SUDDEN_DEATH, level >= 50 && !IsTank() ? 1 : 0);
-            RefreshAura(ENDLESS_RAGE, level >= 50 ? 1 : 0);
-            RefreshAura(BLOOD_FRENZY, level >= 50 ? 1 : 0);
-            RefreshAura(RAMPAGE, level >= 50 && !IsTank() ? 1 : 0);
-            RefreshAura(BLOODSURGE, level >= 50 && !IsTank() ? 1 : 0);
-            RefreshAura(WARBRINGER, level >= 50 ? 1 : 0);
-            RefreshAura(CRITICAL_BLOCK, level >= 50 ? 1 : 0);
-            RefreshAura(WRECKING_CREW, level >= 55 && !IsTank() ? 1 : 0);
-            RefreshAura(DAMAGE_SHIELD, level >= 55 && IsTank() ? 1 : 0);
+            RefreshAura(FLURRY5, isFury && level >= 39 ? 1 : 0);
+            RefreshAura(FLURRY4, isFury && level >= 38 && level < 39 ? 1 : 0);
+            RefreshAura(FLURRY3, isFury && level >= 37 && level < 38 ? 1 : 0);
+            RefreshAura(FLURRY2, isFury && level >= 36 && level < 37 ? 1 : 0);
+            RefreshAura(FLURRY1, isFury && level >= 35 && level < 36 ? 1 : 0);
+            RefreshAura(FURIOUS_ATTACKS, isFury && level >= 45 ? 1 : 0);
+            RefreshAura(RAMPAGE, isFury && level >= 50 ? 1 : 0);
+            RefreshAura(BLOODSURGE, isFury && level >= 50 ? 1 : 0);
+
+            RefreshAura(SHIELD_SPECIALIZATION, isProt && level >= 10 ? 1 : 0);
+            RefreshAura(TOUGHNESS, isProt && level >= 20 ? 1 : 0);
+            RefreshAura(IMPROVED_SPELL_REFLECTION, isProt && level >= 25 ? 1 : 0);
+            RefreshAura(ONE_HANDED_WEAPON_SPECIALIZATION, isProt && level >= 35 ? 1 : 0);
+            RefreshAura(IMPROVED_DEFENSIVE_STANCE, isProt && level >= 40 ? 1 : 0);
+            RefreshAura(SAFEGUARD, isProt && level >= 45 ? 1 : 0);
+            RefreshAura(WARBRINGER, isProt && level >= 50 ? 1 : 0);
+            RefreshAura(CRITICAL_BLOCK, isProt && level >= 50 ? 1 : 0);
+            RefreshAura(DAMAGE_SHIELD, isProt && level >= 55 ? 1 : 0);
 
             RefreshAura(GLYPH_HEROIC_STRIKE, level >= 15 ? 1 : 0);
             RefreshAura(GLYPH_REVENGE, level >= 15 ? 1 : 0);
@@ -2053,7 +2096,7 @@ public:
             RefreshAura(GLYPH_VIGILANCE, level >= 40 ? 1 : 0);
             RefreshAura(GLYPH_DEVASTATE, level >= 50 ? 1 : 0);
 
-            RefreshAura(WARRIOR_T10_PROT_4P, level >= 60 ? 1 : 0);
+            RefreshAura(WARRIOR_T10_PROT_4P, level >= 70 ? 1 : 0);
         }
 
         bool CanUseManually(uint32 basespell) const override
@@ -2086,7 +2129,7 @@ public:
                     return CanBlock();
                 case LAST_STAND_1:
                 case VIGILANCE_1:
-                    return IsTank();
+                    return true;
                 default:
                     return false;
             }
@@ -2105,7 +2148,7 @@ public:
             }
 
             //Mace Specialization: 15% armor penetration
-            if (me->GetLevel() >= 30)
+            if (_spec == BOT_SPEC_WARRIOR_ARMS && me->GetLevel() >= 30)
                 if (Item const* weap = GetEquips(BOT_SLOT_MAINHAND))
                     if (ItemTemplate const* proto = weap->GetTemplate())
                         if (proto->SubClass == ITEM_SUBCLASS_WEAPON_MACE || proto->SubClass == ITEM_SUBCLASS_WEAPON_MACE2)
@@ -2126,6 +2169,20 @@ public:
                 case 5: return _stance == STANCE_BATTLE || _stance == STANCE_BERSERKER;
                 default: return false;
             }
+        }
+
+        void _checkSwordSpec() const
+        {
+            uint8 level = me->GetLevel();
+            bool isArms = _spec == BOT_SPEC_WARRIOR_ARMS;
+            Item const* mhWeap = GetEquips(BOT_SLOT_MAINHAND);
+            uint32 weaponSubClass = mhWeap ? mhWeap->GetTemplate()->SubClass : ITEM_SUBCLASS_WEAPON_WAND;
+            bool sword = (weaponSubClass == ITEM_SUBCLASS_WEAPON_SWORD || weaponSubClass == ITEM_SUBCLASS_WEAPON_SWORD2);
+            RefreshAura(SWORD_SPEC5, isArms && sword && level >= 34 ? 1 : 0);
+            RefreshAura(SWORD_SPEC4, isArms && sword && level >= 33 && level < 34 ? 1 : 0);
+            RefreshAura(SWORD_SPEC3, isArms && sword && level >= 32 && level < 33 ? 1 : 0);
+            RefreshAura(SWORD_SPEC2, isArms && sword && level >= 31 && level < 32 ? 1 : 0);
+            RefreshAura(SWORD_SPEC1, isArms && sword && level >= 30 && level < 31 ? 1 : 0);
         }
 
 /*tmrs*/uint32 stancetimer, ragetimer, ragetimer2, shoutCheckTimer, shatterCheckTimer, vigiCheckTimer;

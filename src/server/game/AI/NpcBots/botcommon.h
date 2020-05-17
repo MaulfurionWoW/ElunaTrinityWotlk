@@ -11,9 +11,9 @@ enum BotCommonValues
 //MISC
     BOT_ENTRY_BEGIN                     = 70001,
     BOT_ENTRY_END                       = 71000,
-    BOT_ENTRY_MIRROR_IMAGE_BM           = 70552,
     BOT_PET_ENTRY_BEGIN                 = 70501,
     BOT_PET_ENTRY_END                   = 70550,
+    BOT_ENTRY_MIRROR_IMAGE_BM           = 70552,
     BOT_ICON_ON                         = 9,    //GOSSIP_ICON_BATTLE,
     BOT_ICON_OFF                        = 0,    //GOSSIP_ICON_CHAT,
     BOT_MAX_CHASE_RANGE                 = 120,  //yds
@@ -23,6 +23,7 @@ enum BotCommonValues
     BERSERK                             = 46587,//68378,//900%/150%
     MODEL_TRANSITION                    = 24753,//"Trick" cannot cast or attack
     SUMMONING_DISORIENTATION            = 32752,
+    ACTIVATE_SPEC                       = 63645,//Activate Primary Spec
     SHOOT_WAND                          = 5019,
 ///Passives
     DAMAGE_REDUCTION                    = 68066,//Vigilance, Blessing of Sanctuary, etc.
@@ -144,6 +145,8 @@ enum BotCommonValues
     GOSSIP_SENDER_ABILITIES_SPECIFICS_LIST,
     GOSSIP_SENDER_ABILITIES_USAGE_LIST,
     GOSSIP_SENDER_ABILITIES_USAGE_TOGGLE,
+    GOSSIP_SENDER_SPEC,
+    GOSSIP_SENDER_SPEC_SET,
     GOSSIP_SENDER_USEITEM,
     GOSSIP_SENDER_USEITEM_USE,
     GOSSIP_SENDER_HIRE,
@@ -155,6 +158,9 @@ enum BotCommonValues
     GOSSIP_SENDER_FORMATION_ATTACK,
     GOSSIP_SENDER_FORMATION_ATTACK_DISTANCE_SET,
     GOSSIP_SENDER_MODEL_UPDATE,
+    GOSSIP_SENDER_HOLDPOSITION,
+    GOSSIP_SENDER_DONOTHING,
+    GOSSIP_SENDER_FOLLOWME,
     GOSSIP_SENDER_TROUBLESHOOTING,
     GOSSIP_SENDER_TROUBLESHOOTING_FIX,
     GOSSIP_SENDER_TROUBLESHOOTING_AURA,
@@ -203,6 +209,7 @@ enum BotCommonValues
     BOTAI_MISC_PET_AVAILABLE_9,
     BOTAI_MISC_PET_AVAILABLE_10,
     BOTAI_MISC_PET_AVAILABLE_11,
+    BOTAI_MISC_WEAPON_SPEC,
     BOTPETAI_MISC_DURATION,
     BOTPETAI_MISC_MAXLEVEL,
 //ADVANCED
@@ -370,116 +377,150 @@ enum BotRoles
     //BOT_ROLE_TANK_RANGED_NODPS          = (BOT_ROLE_TANK | BOT_ROLE_RANGED),
 };
 
+enum BotTalentSpecs
+{
+    BOT_SPEC_WARRIOR_ARMS               = 1,
+    BOT_SPEC_WARRIOR_FURY               = 2,
+    BOT_SPEC_WARRIOR_PROTECTION         = 3,
+    BOT_SPEC_PALADIN_HOLY               = 1,
+    BOT_SPEC_PALADIN_PROTECTION         = 2,
+    BOT_SPEC_PALADIN_RETRIBUTION        = 3,
+    BOT_SPEC_HUNTER_BEASTMASTERY        = 1,
+    BOT_SPEC_HUNTER_MARKSMANSHIP        = 2,
+    BOT_SPEC_HUNTER_SURVIVAL            = 3,
+    BOT_SPEC_ROGUE_ASSASINATION         = 1,
+    BOT_SPEC_ROGUE_COMBAT               = 2,
+    BOT_SPEC_ROGUE_SUBTLETY             = 3,
+    BOT_SPEC_PRIEST_DISCIPLINE          = 1,
+    BOT_SPEC_PRIEST_HOLY                = 2,
+    BOT_SPEC_PRIEST_SHADOW              = 3,
+    BOT_SPEC_DK_BLOOD                   = 1,
+    BOT_SPEC_DK_FROST                   = 2,
+    BOT_SPEC_DK_UNHOLY                  = 3,
+    BOT_SPEC_SHAMAN_ELEMENTAL           = 1,
+    BOT_SPEC_SHAMAN_ENHANCEMENT         = 2,
+    BOT_SPEC_SHAMAN_RESTORATION         = 3,
+    BOT_SPEC_MAGE_ARCANE                = 1,
+    BOT_SPEC_MAGE_FIRE                  = 2,
+    BOT_SPEC_MAGE_FROST                 = 3,
+    BOT_SPEC_WARLOCK_AFFLICTION         = 1,
+    BOT_SPEC_WARLOCK_DEMONOLOGY         = 2,
+    BOT_SPEC_WARLOCK_DESTRUCTION        = 3,
+    BOT_SPEC_DRUID_BALANCE              = 1,
+    BOT_SPEC_DRUID_FERAL                = 2,
+    BOT_SPEC_DRUID_RESTORATION          = 3
+};
+
 enum BotPetTypes
 {
     //Warlock
-    BOT_PET_IMP                 = 70501,
-    BOT_PET_VOIDWALKER          = 70502,
-    BOT_PET_SUCCUBUS            = 70503,
-    BOT_PET_FELHUNTER           = 70504,
-    BOT_PET_FELGUARD            = 70505,
+    BOT_PET_IMP                         = 70501,
+    BOT_PET_VOIDWALKER                  = 70502,
+    BOT_PET_SUCCUBUS                    = 70503,
+    BOT_PET_FELHUNTER                   = 70504,
+    BOT_PET_FELGUARD                    = 70505,
 
-    BOT_PET_WARLOCK_START       = BOT_PET_IMP,
-    BOT_PET_WARLOCK_END         = BOT_PET_FELGUARD,
+    BOT_PET_WARLOCK_START               = BOT_PET_IMP,
+    BOT_PET_WARLOCK_END                 = BOT_PET_FELGUARD,
 
     //Hunter
     //cunning
-    BOT_PET_SPIDER              = 70506,
-    BOT_PET_SERPENT             = 70507,
-    BOT_PET_BIRDOFPREY          = 70508,
-    BOT_PET_BAT                 = 70509,
-    BOT_PET_WINDSERPENT         = 70510,
-    BOT_PET_RAVAGER             = 70511,
-    BOT_PET_DRAGONHAWK          = 70512,
-    BOT_PET_NETHERRAY           = 70513,
-    BOT_PET_SPOREBAT            = 70514,
+    BOT_PET_SPIDER                      = 70506,
+    BOT_PET_SERPENT                     = 70507,
+    BOT_PET_BIRDOFPREY                  = 70508,
+    BOT_PET_BAT                         = 70509,
+    BOT_PET_WINDSERPENT                 = 70510,
+    BOT_PET_RAVAGER                     = 70511,
+    BOT_PET_DRAGONHAWK                  = 70512,
+    BOT_PET_NETHERRAY                   = 70513,
+    BOT_PET_SPOREBAT                    = 70514,
     //ferocity
-    BOT_PET_CARRIONBIRD         = 70515,
-    BOT_PET_RAPTOR              = 70516,
-    BOT_PET_WOLF                = 70517,
-    BOT_PET_TALLSTRIDER         = 70518,
-    BOT_PET_CAT                 = 70519,
-    BOT_PET_HYENA               = 70520,
-    BOT_PET_WASP                = 70521,
-    BOT_PET_TEROMOTH            = 70522,
+    BOT_PET_CARRIONBIRD                 = 70515,
+    BOT_PET_RAPTOR                      = 70516,
+    BOT_PET_WOLF                        = 70517,
+    BOT_PET_TALLSTRIDER                 = 70518,
+    BOT_PET_CAT                         = 70519,
+    BOT_PET_HYENA                       = 70520,
+    BOT_PET_WASP                        = 70521,
+    BOT_PET_TEROMOTH                    = 70522,
     //tenacity
-    BOT_PET_SCORPID             = 70523,
-    BOT_PET_TURTLE              = 70524,
-    BOT_PET_GORILLA             = 70525,
-    BOT_PET_BEAR                = 70526,
-    BOT_PET_BOAR                = 70527,
-    BOT_PET_CRAB                = 70528,
-    BOT_PET_CROCOLISK           = 70529,
-    BOT_PET_WARPSTALKER         = 70530,
+    BOT_PET_SCORPID                     = 70523,
+    BOT_PET_TURTLE                      = 70524,
+    BOT_PET_GORILLA                     = 70525,
+    BOT_PET_BEAR                        = 70526,
+    BOT_PET_BOAR                        = 70527,
+    BOT_PET_CRAB                        = 70528,
+    BOT_PET_CROCOLISK                   = 70529,
+    BOT_PET_WARPSTALKER                 = 70530,
     //cunning (exotic)
-    BOT_PET_SILITHID            = 70531,
-    BOT_PET_CHIMAERA            = 70532,
+    BOT_PET_SILITHID                    = 70531,
+    BOT_PET_CHIMAERA                    = 70532,
     //ferocity (exotic)
-    BOT_PET_SPIRITBEAST         = 70533,
-    BOT_PET_COREHOUND           = 70534,
-    BOT_PET_DEVILSAUR           = 70535,
+    BOT_PET_SPIRITBEAST                 = 70533,
+    BOT_PET_COREHOUND                   = 70534,
+    BOT_PET_DEVILSAUR                   = 70535,
     //tenacity (exotic)
-    BOT_PET_RHINO               = 70536,
-    BOT_PET_WORM                = 70537,
+    BOT_PET_RHINO                       = 70536,
+    BOT_PET_WORM                        = 70537,
 
-    BOT_PET_HUNTER_START        = BOT_PET_SPIDER,
-    BOT_PET_HUNTER_END_GENERAL  = BOT_PET_WARPSTALKER,
-    BOT_PET_HUNTER_END_EXOTIC   = BOT_PET_WORM,
+    BOT_PET_HUNTER_START                = BOT_PET_SPIDER,
+    BOT_PET_HUNTER_END_GENERAL          = BOT_PET_WARPSTALKER,
+    BOT_PET_HUNTER_END_EXOTIC           = BOT_PET_WORM,
 
-    BOT_PET_CUNNING_START       = BOT_PET_SPIDER,
-    BOT_PET_CUNNING_END         = BOT_PET_SPOREBAT,
-    BOT_PET_FEROCITY_START      = BOT_PET_CARRIONBIRD,
-    BOT_PET_FEROCITY_END        = BOT_PET_TEROMOTH,
-    BOT_PET_TENACITY_START      = BOT_PET_SCORPID,
-    BOT_PET_TENACITY_END        = BOT_PET_WARPSTALKER,
+    BOT_PET_CUNNING_START               = BOT_PET_SPIDER,
+    BOT_PET_CUNNING_END                 = BOT_PET_SPOREBAT,
+    BOT_PET_FEROCITY_START              = BOT_PET_CARRIONBIRD,
+    BOT_PET_FEROCITY_END                = BOT_PET_TEROMOTH,
+    BOT_PET_TENACITY_START              = BOT_PET_SCORPID,
+    BOT_PET_TENACITY_END                = BOT_PET_WARPSTALKER,
 
-    BOT_PET_EXOTIC_START        = BOT_PET_SILITHID,
-    BOT_PET_EXOTIC_END          = BOT_PET_WORM,
+    BOT_PET_EXOTIC_START                = BOT_PET_SILITHID,
+    BOT_PET_EXOTIC_END                  = BOT_PET_WORM,
 
     //DK
-    BOT_PET_GHOUL               = 70538,
-    BOT_PET_GARGOYLE            = 70539,//NYI
-    BOT_PET_DANCING_RUNE_WEAPON = 70540,//NYI
-    BOT_PET_AOD_GHOUL           = 70541,//NYI
+    BOT_PET_GHOUL                       = 70538,
+    BOT_PET_GARGOYLE                    = 70539,//NYI
+    BOT_PET_DANCING_RUNE_WEAPON         = 70540,//NYI
+    BOT_PET_AOD_GHOUL                   = 70541,//NYI
 
     //Priest
-    BOT_PET_SHADOWFIEND         = 70542,
+    BOT_PET_SHADOWFIEND                 = 70542,
 
     //Shaman
-    BOT_PET_SPIRIT_WOLF         = 70543,
+    BOT_PET_SPIRIT_WOLF                 = 70543,
 
     //Mage
-    BOT_PET_WATER_ELEMENTAL     = 70544,
+    BOT_PET_WATER_ELEMENTAL             = 70544,
 
     //Druid
-    BOT_PET_FORCE_OF_NATURE     = 70545,
+    BOT_PET_FORCE_OF_NATURE             = 70545,
 
     //Archmage
-    BOT_PET_AWATER_ELEMENTAL    = 70556,
+    BOT_PET_AWATER_ELEMENTAL            = 70556,
 
     //Dreadlord
-    BOT_PET_INFERNAL            = 70562,
+    BOT_PET_INFERNAL                    = 70562,
 
     //Dark Ranger
-    BOT_PET_DARK_MINION         = 70573,
-    BOT_PET_DARK_MINION_ELITE   = 70574,
+    BOT_PET_DARK_MINION                 = 70573,
+    BOT_PET_DARK_MINION_ELITE           = 70574,
 
-    BOT_PET_INVALID             = 99999
+    BOT_PET_INVALID                     = 99999
 };
 
 enum BotPetOriginalEntries
 {
-    ORIGINAL_ENTRY_IMP              = 416,
-    ORIGINAL_ENTRY_VOIDWALKER       = 1860,
-    ORIGINAL_ENTRY_SUCCUBUS         = 1863,
-    ORIGINAL_ENTRY_FELHUNTER        = 417,
-    ORIGINAL_ENTRY_FELGUARD         = 17252,
-    //ORIGINAL_ENTRY_GHOUL            = 26125,
-    //ORIGINAL_ENTRY_SHADOWFIEND      = 19668,
-    //ORIGINAL_ENTRY_SPIRIT_WOLF      = 29264,
-    ORIGINAL_ENTRY_WATER_ELEMENTAL  = 510,
-    //ORIGINAL_ENTRY_FORCE_OF_NATURE  = 1964,
-    ORIGINAL_ENTRY_HUNTER_PET       = 1 // from Pet.cpp InitStatsForLevel()
+    ORIGINAL_ENTRY_IMP                  = 416,
+    ORIGINAL_ENTRY_VOIDWALKER           = 1860,
+    ORIGINAL_ENTRY_SUCCUBUS             = 1863,
+    ORIGINAL_ENTRY_FELHUNTER            = 417,
+    ORIGINAL_ENTRY_FELGUARD             = 17252,
+    //ORIGINAL_ENTRY_GHOUL                = 26125,
+    //ORIGINAL_ENTRY_SHADOWFIEND          = 19668,
+    //ORIGINAL_ENTRY_SPIRIT_WOLF          = 29264,
+    ORIGINAL_ENTRY_WATER_ELEMENTAL      = 510,
+    //ORIGINAL_ENTRY_FORCE_OF_NATURE      = 1964,
+    ORIGINAL_ENTRY_HUNTER_PET           = 1 // from Pet.cpp InitStatsForLevel()
 };
 
 enum BotEquipSlot
@@ -577,6 +618,18 @@ enum BotAIResetType
     BOTAI_RESET_LOGOUT                  = 0x08,
 
     BOTAI_RESET_MASK_ABANDON_MASTER     = (BOTAI_RESET_INIT | BOTAI_RESET_DISMISS)
+};
+
+enum BotCommandStates
+{
+    BOT_COMMAND_STAY                    = 0x01,
+    BOT_COMMAND_FOLLOW                  = 0x02,
+    BOT_COMMAND_ATTACK                  = 0x04,
+    BOT_COMMAND_COMBATRESET             = 0x08,
+    BOT_COMMAND_FULLSTOP                = 0x10,
+
+    BOT_COMMAND_MASK_UNCHASE            = BOT_COMMAND_STAY | BOT_COMMAND_FOLLOW | BOT_COMMAND_FULLSTOP,
+    BOT_COMMAND_MASK_UNMOVING           = BOT_COMMAND_STAY | BOT_COMMAND_FULLSTOP
 };
 
 #endif

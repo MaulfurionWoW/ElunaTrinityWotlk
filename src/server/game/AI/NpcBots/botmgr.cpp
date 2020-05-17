@@ -253,6 +253,11 @@ bool BotMgr::IsNpcBotDungeonFinderEnabled()
     return _enableDungeonFinder;
 }
 
+bool BotMgr::DisplayEquipment()
+{
+    return _displayEquipment;
+}
+
 bool BotMgr::ShowEquippedCloak()
 {
     return _showCloak;
@@ -287,6 +292,26 @@ bool BotMgr::IsClassEnabled(uint8 m_class)
 bool BotMgr::IsBotStatsLimitsEnabled()
 {
     return _botStatLimits;
+}
+bool BotMgr::IsPvPEnabled()
+{
+    return _botPvP;
+}
+bool BotMgr::IsFoodInterruptedByMovement()
+{
+    return _botMovementFoodInterrupt;
+}
+uint8 BotMgr::GetMaxClassBots()
+{
+    return _maxClassNpcBots;
+}
+uint8 BotMgr::GetHealTargetIconFlags()
+{
+    return _healTargetIconFlags;
+}
+uint32 BotMgr::GetBaseUpdateDelay()
+{
+    return _npcBotUpdateDelayBase;
 }
 float BotMgr::GetBotStatLimitDodge()
 {
@@ -385,7 +410,7 @@ void BotMgr::Update(uint32 diff)
 
         if (_owner->IsAlive() && (bot->IsAlive() || restrictBots) && !ai->IsTempBot() && !ai->IsDuringTeleport() &&
             (restrictBots || bot->GetMap() != _owner->GetMap() ||
-            (bot->GetBotCommandState() != COMMAND_STAY && _owner->GetDistance(bot) > SIZE_OF_GRIDS)))
+            (!bot->GetBotAI()->HasBotCommandState(BOT_COMMAND_STAY) && _owner->GetDistance(bot) > SIZE_OF_GRIDS)))
         {
             //_owner->m_Controlled.erase(bot);
             TeleportBot(bot, _owner->GetMap(), _owner);
@@ -491,8 +516,8 @@ void BotMgr::_reviveBot(Creature* bot)
     if (bot->GetMaxPower(POWER_MANA) > 1)
         bot->SetPower(POWER_MANA, bot->GetMaxPower(POWER_MANA) / 4); //25% of max mana
 
-    if (!bot->GetBotAI()->IAmFree())
-        bot->GetBotAI()->SetBotCommandState(COMMAND_FOLLOW, true);
+    if (!bot->GetBotAI()->IAmFree() && !bot->GetBotAI()->HasBotCommandState(BOT_COMMAND_MASK_UNMOVING))
+        bot->GetBotAI()->SetBotCommandState(BOT_COMMAND_FOLLOW, true);
 }
 
 Creature* BotMgr::GetBot(ObjectGuid guid) const
@@ -663,10 +688,7 @@ void BotMgr::CleanupsBeforeBotDelete(ObjectGuid guid, uint8 removetype)
         //}
     }
 
-    //if player is logging out group will be disbanded (and bots removed) normal way
-    //WorldSession.cpp:: if (_player->GetGroup() && !_player->GetGroup()->isRaidGroup() && m_Socket)
-    if (!_owner->GetSession()->PlayerLogout())
-        RemoveBotFromGroup(bot, removetype); //Is this code never executed?
+    RemoveBotFromGroup(bot, removetype);
 
     //remove any summons
     bot->GetBotAI()->UnsummonAll();
@@ -848,7 +870,7 @@ BotAddResult BotMgr::AddBot(Creature* bot, bool takeMoney)
 
     if (!temporary)
     {
-        bot->GetBotAI()->SetBotCommandState(COMMAND_FOLLOW, true);
+        bot->GetBotAI()->SetBotCommandState(BOT_COMMAND_FOLLOW, true);
         if (bot->GetBotAI()->HasRole(BOT_ROLE_PARTY))
             AddBotToGroup(bot);
 
@@ -908,7 +930,7 @@ bool BotMgr::RemoveBotFromGroup(Creature* bot, uint8 removetype)
     if (!gr || !gr->IsMember(bot->GetGUID()))
         return false;
 
-    if (bot->GetBotAI()->HasRole(BOT_ROLE_PARTY))
+    if (bot->GetBotAI()->HasRole(BOT_ROLE_PARTY) && !_owner->GetSession()->PlayerLogout())
         bot->GetBotAI()->ToggleRole(BOT_ROLE_PARTY, true);
 
     //debug
@@ -1011,10 +1033,10 @@ void BotMgr::ReviveAllBots()
         _reviveBot(itr->second);
 }
 
-void BotMgr::SendBotCommandState(CommandStates state)
+void BotMgr::SendBotCommandState(uint8 state)
 {
     for (BotMap::const_iterator itr = _bots.begin(); itr != _bots.end(); ++itr)
-        itr->second->SetBotCommandState(state, true);
+        itr->second->GetBotAI()->SetBotCommandState(state, true);
 }
 
 void BotMgr::RecallAllBots()
@@ -1180,8 +1202,8 @@ int32 BotMgr::GetHPSTaken(Unit const* unit) const
                         continue;
                 }
 
-                //do not get target which may be invalid, use caster instead
-                int32 healing = u->SpellHealingBonusDone(u, spellInfo, spellInfo->Effects[0].CalcValue(u), HEAL, 0, nullptr);
+                int32 healing = u->SpellHealingBonusDone(const_cast<Unit*>(unit), spellInfo, spellInfo->Effects[0].CalcValue(u), HEAL, 0, nullptr);
+                healing = unit->SpellHealingBonusTaken(u, spellInfo, healing, HEAL);
 
                 if (i == CURRENT_CHANNELED_SPELL)
                     amount += healing / (spellInfo->Effects[j].Amplitude * 0.001f);
@@ -1234,4 +1256,8 @@ float BotMgr::GetBotDamageModPhysical()
 float BotMgr::GetBotDamageModSpell()
 {
     return _mult_dmg_spell;
+}
+float BotMgr::GetBotHealingMod()
+{
+    return _mult_healing;
 }

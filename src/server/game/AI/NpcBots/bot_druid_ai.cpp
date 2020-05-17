@@ -313,9 +313,8 @@ public:
 
         void StartAttack(Unit* u, bool force = false)
         {
-            if (GetBotCommandState() == COMMAND_ATTACK && !force) return;
-            SetBotCommandState(COMMAND_ATTACK);
-            OnStartAttack(u);
+            if (!bot_ai::StartAttack(u, force))
+                return;
             if (_form == DRUID_BEAR_FORM && HasRole(BOT_ROLE_RANGED) && IsSpellReady(BASH_1, GetLastDiff(), false))
                 return;
             GetInPosition(force, u);
@@ -793,6 +792,7 @@ public:
 
             //Feral Charge
             if (IsSpellReady(FERAL_CHARGE_BEAR_1, diff, false) && rage >= acost(FERAL_CHARGE_BEAR_1) &&
+                !HasBotCommandState(BOT_COMMAND_STAY) &&
                 !CCed(opponent, true) && dist > 9 && dist < 25)
             {
                 if (doCast(opponent, GetSpell(FERAL_CHARGE_BEAR_1)))
@@ -902,6 +902,7 @@ public:
                 //leap here
                 //Feral Charge (Cat)
                 if (IsSpellReady(FERAL_CHARGE_CAT_1, diff, false) && energy >= acost(FERAL_CHARGE_CAT_1) && !me->GetMap()->IsDungeon() &&
+                    !HasBotCommandState(BOT_COMMAND_STAY) &&
                     !me->HasAuraType(SPELL_AURA_MOD_STEALTH) && Rand() < 65 &&
                     !me->GetAuraEffect(SPELL_AURA_MOD_INCREASE_SPEED, SPELLFAMILY_DRUID, 0x0, 0x0, 0x8) &&//not dashing
                     me->GetDistance(opponent) > 10 && me->GetDistance(opponent) < 25)
@@ -1309,7 +1310,7 @@ public:
             return false;
         }
 
-        bool BuffTarget(Unit* target, uint32 /*diff*/) override
+        bool BuffTarget(Unit* target, uint32 diff) override
         {
             if (me->IsInCombat() && !master->GetMap()->IsRaid()) return false;
 
@@ -1334,7 +1335,7 @@ public:
 
         void CheckTravelForm(uint32 diff)
         {
-            if (!IsSpellReady(TRAVEL_FORM_1, diff) || GetBotCommandState() != COMMAND_FOLLOW || Rand() > 15 ||
+            if (!IsSpellReady(TRAVEL_FORM_1, diff) || !HasBotCommandState(BOT_COMMAND_FOLLOW) || Rand() > 15 ||
                 me->GetShapeshiftForm() == FORM_TRAVEL || me->GetVictim() || me->IsMounted() || IAmFree() || IsCasting())
                 return;
 
@@ -1352,7 +1353,7 @@ public:
 
             RezGroup(GetSpell(REVIVE_1));
 
-            if (!IAmFree() && GetBotCommandState() == COMMAND_FOLLOW && !master->IsMounted() && Rand() < 35)
+            if (!IAmFree() && HasBotCommandState(BOT_COMMAND_FOLLOW) && !master->IsMounted() && Rand() < 35)
             {
                 int32 dist = int32(me->GetDistance(master));
                 if (me->HasUnitMovementFlag(MOVEMENTFLAG_SWIMMING))
@@ -1503,7 +1504,7 @@ public:
                     target = (Unit*)master->GetCorpse();
                 if (!target || !target->IsInWorld())
                     return;
-                if (me->GetExactDist(target) > 30)
+                if (me->GetExactDist(target) > 30 && !HasBotCommandState(BOT_COMMAND_STAY))
                 {
                     me->GetMotionMaster()->MovePoint(master->GetMapId(), *target);
                     SetSpellCooldown(REBIRTH_1, 1500);
@@ -1545,7 +1546,7 @@ public:
 
             if (Unit* targetOrCorpse = !targets.empty() ? Trinity::Containers::SelectRandomContainerElement(targets) : nullptr)
             {
-                if (me->GetExactDist(targetOrCorpse) > 30)
+                if (me->GetExactDist(targetOrCorpse) > 30 && !HasBotCommandState(BOT_COMMAND_STAY))
                 {
                     me->GetMotionMaster()->MovePoint(targetOrCorpse->GetMapId(), *targetOrCorpse);
                     return;
@@ -1582,9 +1583,12 @@ public:
                         me->SetPowerType(POWER_RAGE);
                     }
                     RefreshAura(MASTER_SHAPESHIFTER_BEAR_BUFF, me->GetLevel() >= 20);
-                    RefreshAura(NATURAL_REACTION, me->GetLevel() >= 35);
-                    RefreshAura(SURVIVAL_OF_THE_FITTEST_BUFF, me->GetLevel() >= 35);
-                    RefreshAura(SAVAGE_DEFENSE_PASSIVE, me->GetLevel() >= 40);
+                    if (_spec == BOT_SPEC_DRUID_FERAL)
+                    {
+                        RefreshAura(NATURAL_REACTION, me->GetLevel() >= 35);
+                        RefreshAura(SURVIVAL_OF_THE_FITTEST_BUFF, me->GetLevel() >= 35);
+                        RefreshAura(SAVAGE_DEFENSE_PASSIVE, me->GetLevel() >= 40);
+                    }
                     break;
                 case DRUID_CAT_FORM:
                     if (me->GetPowerType() != POWER_ENERGY)
@@ -1594,8 +1598,11 @@ public:
                     }
                     RefreshAura(MASTER_SHAPESHIFTER_CAT_BUFF, me->GetLevel() >= 20);
                     RefreshAura(FERAL_SWIFTNESS, me->GetLevel() >= 20); //talents ignore forms for creatures so put that here
-                    RefreshAura(NURTURING_INSTINCT_BUFF, me->GetLevel() >= 30);
-                    RefreshAura(PREDATORY_INSTINCTS, me->GetLevel() >= 45);
+                    if (_spec == BOT_SPEC_DRUID_FERAL)
+                    {
+                        RefreshAura(NURTURING_INSTINCT_BUFF, me->GetLevel() >= 30);
+                        RefreshAura(PREDATORY_INSTINCTS, me->GetLevel() >= 45);
+                    }
                     break;
                 case DRUID_MOONKIN_FORM:
                     if (me->GetPowerType() != POWER_MANA)
@@ -1661,10 +1668,10 @@ public:
             {
                 //!!!Melee spell damage is not yet critical, all reduced by half
                 //Primal Fury (white attacks): 100% to gain 5 rage at crit in (Dire) Bear Form
-                if (lvl >= 25 && _form == DRUID_BEAR_FORM)
+                if ((_spec == BOT_SPEC_DRUID_FERAL) && lvl >= 25 && _form == DRUID_BEAR_FORM)
                     me->CastSpell(me, PRIMAL_FURY_EFFECT_ENERGIZE, true);
                 //Predatory Instincts (part 1): 10% additional crit damage bonus for melee attacks in Cat form
-                if (lvl >= 45 && _form == DRUID_CAT_FORM)
+                if ((_spec == BOT_SPEC_DRUID_FERAL) && lvl >= 45 && _form == DRUID_CAT_FORM)
                     pctbonus += 0.05f;
             }
 
@@ -1703,7 +1710,8 @@ public:
                 baseId == MAUL_1))
                 pctbonus += 0.2f;
             //Rend and Tear: 20% bonus damage on bleeding targets for Maul and Shred
-            if (lvl >= 55 && damageinfo.target && damageinfo.target->HasAuraState(AURA_STATE_BLEEDING) &&
+            if ((_spec == BOT_SPEC_DRUID_FERAL) &&
+                lvl >= 55 && damageinfo.target && damageinfo.target->HasAuraState(AURA_STATE_BLEEDING) &&
                 (baseId == MAUL_1 || baseId == SHRED_1))
                 pctbonus += 0.2f;
             //Glyph of Mangle: 10% bonus damage for Mangle (all)
@@ -1722,14 +1730,14 @@ public:
             damage = int32(fdamage * (1.0f + pctbonus));
         }
 
-        void ApplyClassSpellCritMultiplierAll(Unit const* /*victim*/, float& crit_chance, SpellInfo const* spellInfo, SpellSchoolMask /*schoolMask*/, WeaponAttackType /*attackType*/) const override
+        void ApplyClassSpellCritMultiplierAll(Unit const* victim, float& crit_chance, SpellInfo const* spellInfo, SpellSchoolMask /*schoolMask*/, WeaponAttackType /*attackType*/) const override
         {
             //uint32 spellId = spellInfo->Id;
             uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
             uint8 lvl = me->GetLevel();
 
             //Nature's bounty: 25% additional critical chance for Regrowth and Nourish
-            if (lvl >= 35 && (baseId == REGROWTH_1 || baseId == NOURISH_1))
+            if ((_spec == BOT_SPEC_DRUID_RESTORATION) && lvl >= 35 && (baseId == REGROWTH_1 || baseId == NOURISH_1))
                 crit_chance += 25.f;
             //Rend and Tear (part 2): 25% additional critical chance on bleeding targets for Ferocious Bite (handled in Unit.cpp)
             //if (lvl >= 55 && victim->HasAuraState(AURA_STATE_BLEEDING) && baseId == FEROCIOUS_BITE_1)
@@ -1744,7 +1752,7 @@ public:
             if (lvl >= 50 && baseId == STARFIRE_1 && me->HasAura(ECLIPSE_LUNAR_BUFF))
                 crit_chance += 40.f;
             //Natural Perfection: 3% additional critical chance for all spells
-            if (lvl >= 40)
+            if ((_spec == BOT_SPEC_DRUID_RESTORATION) && lvl >= 40)
                 crit_chance += 3.f;
         }
 
@@ -1779,7 +1787,7 @@ public:
             if (lvl >= 70 && (spellInfo->SpellFamilyFlags[1] & 0x800000))
                 pctbonus += 0.1f;
             //Wrath of Cenarius: 20%/10% Increased spellpower bonus for Starfire/Wrath
-            if (lvl >= 45)
+            if ((_spec == BOT_SPEC_DRUID_BALANCE) && lvl >= 45)
             {
                 if (baseId == STARFIRE_1)
                     fdamage += me->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_MAGIC) * 0.2f * me->CalculateDefaultCoefficient(spellInfo, SPELL_DIRECT_DAMAGE) * me->CalculateSpellpowerCoefficientLevelPenalty(spellInfo);
@@ -1790,7 +1798,8 @@ public:
             if (lvl >= 50 && baseId == WRATH_1 && me->HasAura(ECLIPSE_SOLAR_BUFF))
                 pctbonus += 0.4f;
             //Gale Winds: 30% bonus damage for Hurricane and Typhoon
-            if (lvl >= 50 && ((spellInfo->SpellFamilyFlags[0] & 0x400000) || (spellInfo->SpellFamilyFlags[1] & 0x1000000)))
+            if ((_spec == BOT_SPEC_DRUID_BALANCE) &&
+                lvl >= 50 && ((spellInfo->SpellFamilyFlags[0] & 0x400000) || (spellInfo->SpellFamilyFlags[1] & 0x1000000)))
                 pctbonus += 0.3f;
 
             damage = int32(fdamage * (1.0f + pctbonus));
@@ -1814,10 +1823,10 @@ public:
             //if (baseId == REJUVENATION_1)
             //    pctbonus += 0.27f;
             //Gift of Nature: 10% bonus healing for all spells
-            if (lvl >= 30)
+            if ((_spec == BOT_SPEC_DRUID_RESTORATION) && lvl >= 30)
                 pctbonus += 0.1f;
             //Empowered Touch: 40% bonus (from spellpower) for Healing Touch and 20% bonus (from spellpower) for Nourish
-            if (lvl >= 35)
+            if ((_spec == BOT_SPEC_DRUID_RESTORATION) && lvl >= 35)
             {
                 if (baseId == HEALING_TOUCH_1)
                     flat_mod += me->SpellBaseHealingBonusDone(SPELL_SCHOOL_MASK_MAGIC) * 0.4f * me->CalculateDefaultCoefficient(spellInfo, damagetype) * 1.88f * me->CalculateSpellpowerCoefficientLevelPenalty(spellInfo) * stack;
@@ -1825,7 +1834,8 @@ public:
                     flat_mod += me->SpellBaseHealingBonusDone(SPELL_SCHOOL_MASK_MAGIC) * 0.2f * me->CalculateDefaultCoefficient(spellInfo, damagetype) * 1.88f * me->CalculateSpellpowerCoefficientLevelPenalty(spellInfo) * stack;
             }
             //Empowered Rejuvenation: 20% bonus healing for healing over time effects
-            if (lvl >= 45 && ((spellInfo->SpellFamilyFlags[0] & 0xD0) || (spellInfo->SpellFamilyFlags[1] & 0x4000010)))
+            if ((_spec == BOT_SPEC_DRUID_RESTORATION) &&
+                lvl >= 45 && ((spellInfo->SpellFamilyFlags[0] & 0xD0) || (spellInfo->SpellFamilyFlags[1] & 0x4000010)))
                 flat_mod += me->SpellBaseHealingBonusDone(SPELL_SCHOOL_MASK_MAGIC) * 0.2f * me->CalculateDefaultCoefficient(spellInfo, damagetype) * 1.88f * me->CalculateSpellpowerCoefficientLevelPenalty(spellInfo) * stack;
 
             heal = heal * (1.0f + pctbonus) + flat_mod;
@@ -1849,7 +1859,8 @@ public:
 
             //percent mods
             //Tree of Life Passive (5420) (activates when learned):
-            if (lvl >= 50 && ((spellInfo->SpellFamilyFlags[0] & 0x50) || (spellInfo->SpellFamilyFlags[1] & 0x4000010)))
+            if ((_spec == BOT_SPEC_DRUID_RESTORATION) &&
+                lvl >= 50 && ((spellInfo->SpellFamilyFlags[0] & 0x50) || (spellInfo->SpellFamilyFlags[1] & 0x4000010)))
                 pctbonus += 0.5f;
             //Glyph of the Wild:
             if (lvl >= 15 && baseId == MARK_OF_THE_WILD_1)
@@ -1870,11 +1881,11 @@ public:
             if (lvl >= 15 && ((spellInfo->SpellFamilyFlags[0] & 0x77) || (spellInfo->SpellFamilyFlags[1] & 0x2800000)))
                 pctbonus += 0.09f;
             //Berserk part 2:
-            if (lvl >= 60 && _form == DRUID_CAT_FORM &&
+            if ((_spec == BOT_SPEC_DRUID_FERAL) && lvl >= 60 && _form == DRUID_CAT_FORM &&
                 //((spellInfo->SpellFamilyFlags[0] & 0x839000) ||
                 //(spellInfo->SpellFamilyFlags[1] & 0x30000480) ||
                 //(spellInfo->SpellFamilyFlags[2] & 0x40420)) &&
-                 me->GetAuraEffect(SPELL_AURA_MECHANIC_IMMUNITY, SPELLFAMILY_DRUID, 0x0, 0x0, 0x40))
+                me->GetAuraEffect(SPELL_AURA_MECHANIC_IMMUNITY, SPELLFAMILY_DRUID, 0x0, 0x0, 0x40))
                 pctbonus += 0.5f;
 
             //flat mods
@@ -1897,7 +1908,7 @@ public:
                     flatbonus += 5;
             }
             //Improved Mangle part 2:
-            if (lvl >= 50 && (spellInfo->SpellFamilyFlags[1] & 0x400))
+            if ((_spec == BOT_SPEC_DRUID_FERAL) && lvl >= 50 && (spellInfo->SpellFamilyFlags[1] & 0x400))
                 flatbonus += 6;
 
             //cost can be < 0
@@ -1957,7 +1968,7 @@ public:
 
             //pct mods
             //Improved Tranquility: -60% cooldown for Tanquility
-            if (lvl >= 30 && baseId == TRANQUILITY_1)
+            if ((_spec == BOT_SPEC_DRUID_RESTORATION) && lvl >= 30 && baseId == TRANQUILITY_1)
                 pctbonus += 0.6f;
 
             //flat mods
@@ -1981,6 +1992,10 @@ public:
             //Glyph of Dash: -20% cooldown for Dash
             if (lvl >= 16 && baseId == DASH_1)
                 pctbonus += 0.2f;
+            //Berserk part 1:
+            if (lvl >= 60 && _form == DRUID_BEAR_FORM && (spellInfo->SpellFamilyFlags[1] & 0x40) &&
+                me->GetAuraEffect(SPELL_AURA_MECHANIC_IMMUNITY, SPELLFAMILY_DRUID, 0x0, 0x0, 0x40))
+                pctbonus += 1.0f;
 
             //flat mods
             //Genesis Rebirth Bonus (26106): -5 min cooldown for Rebirth
@@ -1989,12 +2004,8 @@ public:
             //Improved Mangle part 1: -1.5 sec cooldown for Mangle (Bear)
             if (lvl >= 50 && baseId == MANGLE_BEAR_1)
                 timebonus += 1500;
-            //Berserk part 1:
-            if (lvl >= 60 && _form == DRUID_BEAR_FORM && (spellInfo->SpellFamilyFlags[1] & 0x40) &&
-                me->GetAuraEffect(SPELL_AURA_MECHANIC_IMMUNITY, SPELLFAMILY_DRUID, 0x0, 0x0, 0x40))
-                timebonus += 6000;
             //Brutal Impact: -30 sec cooldown for Bash
-            if (lvl >= 30 && baseId == BASH_1)
+            if ((_spec == BOT_SPEC_DRUID_FERAL) && lvl >= 30 && baseId == BASH_1)
                 timebonus += 30000;
             //Glyph of Typhoon: -3 sec cooldown for Typhoon
             if (lvl >= 70 && baseId == TYPHOON_1)
@@ -2034,7 +2045,7 @@ public:
             uint32 spellId = spellInfo->Id;
             //uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
             //SpellSchool school = GetFirstSchoolInMask(spellInfo->GetSchoolMask());
-            //uint8 lvl = me->GetLevel();
+            uint8 lvl = me->GetLevel();
             float flatbonus = 0.0f;
             float pctbonus = 0.0f;
 
@@ -2053,7 +2064,7 @@ public:
         void ApplyClassSpellRangeMods(SpellInfo const* spellInfo, float& maxrange) const override
         {
             //uint32 spellId = spellInfo->Id;
-            //uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
+            uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
             //SpellSchool school = GetFirstSchoolInMask(spellInfo->GetSchoolMask());
             uint8 lvl = me->GetLevel();
             float flatbonus = 0.0f;
@@ -2083,8 +2094,8 @@ public:
             if (spellInfo->SpellFamilyFlags[1] & 0x4000000)
                 bonusTargets += 1;
             //Berserk: + 2 Mangle (Bear) targets
-            if (spellInfo->SpellFamilyFlags[1] & 0x40 &&
-                !me->GetAuraEffect(SPELL_AURA_MECHANIC_IMMUNITY, SPELLFAMILY_DRUID, 0x0, 0x0, 0x40))
+            if ((spellInfo->SpellFamilyFlags[1] & 0x40) &&
+                me->GetAuraEffect(SPELL_AURA_MECHANIC_IMMUNITY, SPELLFAMILY_DRUID, 0x0, 0x0, 0x40))
                 bonusTargets += 2;
 
             targets = targets + bonusTargets;
@@ -2196,7 +2207,7 @@ public:
 
             //Bash desperate use (ranged): retreat
             //Only if hit
-            if (baseId == BASH_1 && HasRole(BOT_ROLE_RANGED))
+            if (baseId == BASH_1 && HasRole(BOT_ROLE_RANGED) && !HasBotCommandState(BOT_COMMAND_MASK_UNMOVING))
             {
                 //if (GC_Timer <= lastdiff && GetSpell(TRAVEL_FORM_1))
                 //    doCast(me, GetSpell(TRAVEL_FORM_1));
@@ -2206,7 +2217,7 @@ public:
             //Infected Wound: handle proc
             if (baseId == SHRED_1 || baseId == MAUL_1 || baseId == MANGLE_BEAR_1 || baseId == MANGLE_CAT_1)
             {
-                if (lvl >= 45)
+                if ((_spec == BOT_SPEC_DRUID_FERAL) && lvl >= 45)
                 {
                     CastSpellExtraArgs args(true);
                     args.SetOriginalCaster(me->GetGUID());
@@ -2379,7 +2390,7 @@ public:
             }
             */
             //Improved Barkskin: 10% additional damage reduction
-            if (baseId == BARKSKIN_1)
+            if ((_spec == BOT_SPEC_DRUID_RESTORATION) && baseId == BARKSKIN_1)
             {
                 AuraEffect* bar = me->GetAuraEffect(spellId, EFFECT_1, me->GetGUID());
                 if (bar)
@@ -2409,7 +2420,7 @@ public:
             //Leader of the Pack helper
             if (baseId == CAT_FORM_1 || baseId == BEAR_FORM_1)
             {
-                if (lvl >= 40 && !HasRole(BOT_ROLE_HEAL))
+                if ((_spec == BOT_SPEC_DRUID_FERAL) && lvl >= 40)
                     me->CastSpell(me, LEADER_OF_THE_PACK_BUFF, true);
             }
 
@@ -2477,7 +2488,8 @@ public:
                 //botPet = myPet;
 
                 myPet->Attack(target, true);
-                myPet->GetMotionMaster()->MoveChase(target);
+                if (!HasBotCommandState(BOT_COMMAND_STAY))
+                    myPet->GetMotionMaster()->MoveChase(target);
             }
         }
 
@@ -2606,6 +2618,9 @@ public:
         void InitSpells() override
         {
             uint8 lvl = me->GetLevel();
+            bool isBala = _spec == BOT_SPEC_DRUID_BALANCE;
+            bool isFera = _spec == BOT_SPEC_DRUID_FERAL;
+            bool isRest = _spec == BOT_SPEC_DRUID_RESTORATION;
 
             InitSpellMap(MARK_OF_THE_WILD_1);
             InitSpellMap(THORNS_1);
@@ -2614,17 +2629,13 @@ public:
             InitSpellMap(REJUVENATION_1);
             InitSpellMap(LIFEBLOOM_1);
             InitSpellMap(NOURISH_1);
-     /*tal*/lvl >= 60 ? InitSpellMap(WILD_GROWTH_1) : RemoveSpell(WILD_GROWTH_1);
-     /*tal*/lvl >= 40 ? InitSpellMap(SWIFTMEND_1) : RemoveSpell(SWIFTMEND_1);
             InitSpellMap(TRANQUILITY_1);
             InitSpellMap(REVIVE_1);
             InitSpellMap(REBIRTH_1);
             InitSpellMap(BEAR_FORM_1);
             InitSpellMap(SWIPE_BEAR_1);
-     /*tal*/lvl >= 50 ? InitSpellMap(MANGLE_BEAR_1) : RemoveSpell(MANGLE_BEAR_1);
             InitSpellMap(BASH_1);
             InitSpellMap(MAUL_1);
-     /*tal*/lvl >= 30 ? InitSpellMap(FERAL_CHARGE_BEAR_1) : RemoveSpell(FERAL_CHARGE_BEAR_1);
             InitSpellMap(CHALLENGING_ROAR_1);
             InitSpellMap(ENRAGE_1);
             InitSpellMap(FRENZIED_REGENERATION_1);
@@ -2632,12 +2643,10 @@ public:
             InitSpellMap(LACERATE_1);
             InitSpellMap(SURVIVAL_INSTINCTS_1);
             InitSpellMap(FAERIE_FIRE_FERAL_1);
-     /*tal*/lvl >= 60 ? InitSpellMap(BERSERK_1) : RemoveSpell(BERSERK_1);
             InitSpellMap(CAT_FORM_1);
             InitSpellMap(CLAW_1);
             InitSpellMap(RAKE_1);
             InitSpellMap(SHRED_1);
-     /*tal*/lvl >= 50 ? InitSpellMap(MANGLE_CAT_1) : RemoveSpell(MANGLE_CAT_1);
             InitSpellMap(POUNCE_1);
             InitSpellMap(RAVAGE_1);
             InitSpellMap(RIP_1);
@@ -2645,21 +2654,15 @@ public:
             InitSpellMap(MAIM_1);
             InitSpellMap(SWIPE_CAT_1);
             InitSpellMap(SAVAGE_ROAR_1);
-     /*tal*/lvl >= 30 ? InitSpellMap(FERAL_CHARGE_CAT_1) : RemoveSpell(FERAL_CHARGE_CAT_1);;
             InitSpellMap(TIGERS_FURY_1);
             InitSpellMap(COWER_1);
             InitSpellMap(DASH_1);
   /*custom*/lvl >= 22 ? InitSpellMap(PROWL_1) : RemoveSpell(PROWL_1); //base lvl 20
-     /*tal*/lvl >= 40 ? InitSpellMap(MOONKIN_FORM_1) : RemoveSpell(MOONKIN_FORM_1);
             InitSpellMap(MOONFIRE_1);
             InitSpellMap(STARFIRE_1);
             InitSpellMap(WRATH_1);
             InitSpellMap(HURRICANE_1);
             InitSpellMap(FAERIE_FIRE_NORMAL_1);
-     /*tal*/lvl >= 30 ? InitSpellMap(INSECT_SWARM_1) : RemoveSpell(INSECT_SWARM_1);
-     /*tal*/lvl >= 50 ? InitSpellMap(TYPHOON_1) : RemoveSpell(TYPHOON_1);
-     /*tal*/lvl >= 60 ? InitSpellMap(STARFALL_1) : RemoveSpell(STARFALL_1);
-     /*tal*/lvl >= 50 ? InitSpellMap(TREE_OF_LIFE_FORM_1) : RemoveSpell(TREE_OF_LIFE_FORM_1);
             InitSpellMap(TRAVEL_FORM_1);
             InitSpellMap(AQUATIC_FORM_1);
             InitSpellMap(CURE_POISON_1);
@@ -2670,46 +2673,62 @@ public:
             InitSpellMap(BARKSKIN_1);
             InitSpellMap(NATURES_GRASP_1);
             InitSpellMap(INNERVATE_1);
-     /*tal*/lvl >= 30 ? InitSpellMap(NATURES_SWIFTNESS_1) : RemoveSpell(NATURES_SWIFTNESS_1);
 
-     /*tal*/lvl >= 50 ? InitSpellMap(FORCE_OF_NATURE_1) : RemoveSpell(FORCE_OF_NATURE_1); //not casted
+     /*tal*/lvl >= 30 && isBala ? InitSpellMap(INSECT_SWARM_1) : RemoveSpell(INSECT_SWARM_1);
+     /*tal*/lvl >= 40 && isBala ? InitSpellMap(MOONKIN_FORM_1) : RemoveSpell(MOONKIN_FORM_1);
+     /*tal*/lvl >= 50 && isBala ? InitSpellMap(TYPHOON_1) : RemoveSpell(TYPHOON_1);
+     /*tal*/lvl >= 50 && isBala ? InitSpellMap(FORCE_OF_NATURE_1) : RemoveSpell(FORCE_OF_NATURE_1); //not casted
+     /*tal*/lvl >= 60 && isBala ? InitSpellMap(STARFALL_1) : RemoveSpell(STARFALL_1);
 
- ///*SPECIAL*/InitSpellMap(ECLIPSE_SOLAR_BUFF, true);
- ///*SPECIAL*/InitSpellMap(ECLIPSE_LUNAR_BUFF, true);
+     /*tal*/lvl >= 30 && isFera ? InitSpellMap(FERAL_CHARGE_BEAR_1) : RemoveSpell(FERAL_CHARGE_BEAR_1);
+     /*tal*/lvl >= 30 && isFera ? InitSpellMap(FERAL_CHARGE_CAT_1) : RemoveSpell(FERAL_CHARGE_CAT_1);;
+     /*tal*/lvl >= 50 && isFera ? InitSpellMap(MANGLE_BEAR_1) : RemoveSpell(MANGLE_BEAR_1);
+     /*tal*/lvl >= 50 && isFera ? InitSpellMap(MANGLE_CAT_1) : RemoveSpell(MANGLE_CAT_1);
+     /*tal*/lvl >= 60 && isFera ? InitSpellMap(BERSERK_1) : RemoveSpell(BERSERK_1);
+
+     /*tal*/lvl >= 30 && isRest ? InitSpellMap(NATURES_SWIFTNESS_1) : RemoveSpell(NATURES_SWIFTNESS_1);
+     /*tal*/lvl >= 40 && isRest ? InitSpellMap(SWIFTMEND_1) : RemoveSpell(SWIFTMEND_1);
+     /*tal*/lvl >= 50 && isRest ? InitSpellMap(TREE_OF_LIFE_FORM_1) : RemoveSpell(TREE_OF_LIFE_FORM_1);
+     /*tal*/lvl >= 60 && isRest ? InitSpellMap(WILD_GROWTH_1) : RemoveSpell(WILD_GROWTH_1);
         }
 
         void ApplyClassPassives() const override
         {
             uint8 level = master->GetLevel();
+            bool isBala = _spec == BOT_SPEC_DRUID_BALANCE;
+            bool isFera = _spec == BOT_SPEC_DRUID_FERAL;
+            bool isRest = _spec == BOT_SPEC_DRUID_RESTORATION;
 
-            RefreshAura(NATURAL_PERFECTION3, level >= 45 ? 1 : 0);
-            RefreshAura(NATURAL_PERFECTION2, level >= 43 && level < 45 ? 1 : 0);
-            RefreshAura(NATURAL_PERFECTION1, level >= 41 && level < 43 ? 1 : 0);
-            RefreshAura(LIVING_SEED3, level >= 50 ? 1 : 0);
-            RefreshAura(LIVING_SEED2, level >= 48 && level < 50 ? 1 : 0);
-            RefreshAura(LIVING_SEED1, level >= 46 && level < 48 ? 1 : 0);
-            RefreshAura(REVITALIZE3, level >= 55 ? 1 : 0);
-            RefreshAura(REVITALIZE2, level >= 53 && level < 55 ? 1 : 0);
-            RefreshAura(REVITALIZE1, level >= 51 && level < 53 ? 1 : 0);
-            RefreshAura(NATURALIST, level >= 15 ? 1 : 0);
+            RefreshAura(NATURESGRACE, level >= 20 ? 1 : 0);
+            RefreshAura(DREAMSTATE, isBala && level >= 35 ? 1 : 0);
+            RefreshAura(BALANCE_OF_POWER, isBala && level >= 35 ? 1 : 0);
+            RefreshAura(IMPROVED_MOONKIN_FORM, isBala && level >= 40 ? 1 : 0);
+            RefreshAura(ECLIPSE, isBala && level >= 50 ? 1 : 0);
+            RefreshAura(EARTH_AND_MOON, isBala && level >= 55 ? 1 : 0);
+
+            RefreshAura(PRIMAL_PRECISION, isFera && level >= 25 ? 1 : 0);
+            RefreshAura(SURVIVAL_OF_THE_FITTEST, isFera && level >= 35 ? 1 : 0);
+            RefreshAura(IMPROVED_LEADER_OF_THE_PACK, isFera && level >= 40 ? 1 : 0);
+            RefreshAura(PRIMAL_TENACITY, isFera && level >= 40 ? 1 : 0);
+            RefreshAura(KING_OF_THE_JUNGLE, isFera && level >= 50 ? 1 : 0);
+            RefreshAura(PRIMAL_GORE, isFera && level >= 55 ? 1 : 0);
+
             RefreshAura(IMPROVED_MARK_OF_THE_WILD, level >= 10 ? 1 : 0);
             RefreshAura(FUROR, level >= 10 ? 1 : 0);
+            RefreshAura(NATURALIST, level >= 15 ? 1 : 0);
             RefreshAura(INTENSITY, level >= 20 ? 1 : 0);
-            RefreshAura(LIVING_SPIRIT, level >= 40 ? 1 : 0);
-            RefreshAura(GIFT_OF_THE_EARTHMOTHER, level >= 55 ? 1 : 0);
             RefreshAura(OMEN_OF_CLARITY, level >= 20 ? 1 : 0);
-            RefreshAura(NATURESGRACE, level >= 20 ? 1 : 0);
-            RefreshAura(ECLIPSE, level >= 50 ? 1 : 0);
-            RefreshAura(EARTH_AND_MOON, level >= 55 ? 1 : 0);
-            RefreshAura(SURVIVAL_OF_THE_FITTEST, level >= 55 ? 1 : 0);
-            RefreshAura(DREAMSTATE, level >= 30 ? 1 : 0);
-            RefreshAura(BALANCE_OF_POWER, level >= 35 ? 1 : 0);
-            RefreshAura(IMPROVED_MOONKIN_FORM, level >= 40 ? 1 : 0);
-            RefreshAura(PRIMAL_PRECISION, level >= 25 ? 1 : 0);
-            RefreshAura(IMPROVED_LEADER_OF_THE_PACK, level >= 40 ? 1 : 0);
-            RefreshAura(PRIMAL_TENACITY, level >= 40 ? 1 : 0);
-            RefreshAura(KING_OF_THE_JUNGLE, level >= 50 ? 1 : 0);
-            RefreshAura(PRIMAL_GORE, level >= 55 ? 1 : 0);
+            RefreshAura(NATURAL_PERFECTION3, isRest && level >= 45 ? 1 : 0);
+            RefreshAura(NATURAL_PERFECTION2, isRest && level >= 43 && level < 45 ? 1 : 0);
+            RefreshAura(NATURAL_PERFECTION1, isRest && level >= 41 && level < 43 ? 1 : 0);
+            RefreshAura(LIVING_SEED3, isRest && level >= 50 ? 1 : 0);
+            RefreshAura(LIVING_SEED2, isRest && level >= 48 && level < 50 ? 1 : 0);
+            RefreshAura(LIVING_SEED1, isRest && level >= 46 && level < 48 ? 1 : 0);
+            RefreshAura(REVITALIZE3, isRest && level >= 55 ? 1 : 0);
+            RefreshAura(REVITALIZE2, isRest && level >= 53 && level < 55 ? 1 : 0);
+            RefreshAura(REVITALIZE1, isRest && level >= 51 && level < 53 ? 1 : 0);
+            RefreshAura(GIFT_OF_THE_EARTHMOTHER, isRest && level >= 55 ? 1 : 0);
+
             RefreshAura(GLYPH_NOURISH, level >= 80 ? 1 : 0);
             RefreshAura(GLYPH_SWIFTMEND, level >= 45 ? 1 : 0);
             RefreshAura(GLYPH_INNERVATE, level >= 40 ? 1 : 0);

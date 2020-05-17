@@ -17,6 +17,11 @@ NpcBotExtrasMap _botsExtras;
 
 bool allBotsLoaded = false;
 
+bool BotDataMgr::AllBotsLoaded()
+{
+    return allBotsLoaded;
+}
+
 void BotDataMgr::LoadNpcBots()
 {
     uint32 botoldMSTime = getMSTime();
@@ -61,11 +66,11 @@ void BotDataMgr::LoadNpcBots()
         {
             field = result->Fetch();
             index = 0;
-            uint32 entry = field[  index].GetUInt32();
+            uint32 entry =      field[  index].GetUInt32();
 
             NpcBotExtras* extras = new NpcBotExtras();
-            extras->bclass = field[++index].GetUInt8();
-            extras->race   = field[++index].GetUInt8();
+            extras->bclass =    field[++index].GetUInt8();
+            extras->race =      field[++index].GetUInt8();
 
             _botsExtras[entry] = extras;
 
@@ -76,9 +81,9 @@ void BotDataMgr::LoadNpcBots()
     else
         TC_LOG_INFO("server.loading", ">> Bots race data is not loaded. Table `creature_template_npcbot_extras` is empty!");
 
-    //                                                     1      2      3       4        5          6          7            8            9             10         11          12        13
-    result = CharacterDatabase.Query("SELECT entry, owner, roles, faction, equipMhEx, equipOhEx, equipRhEx, equipHead, equipShoulders, equipChest, equipWaist, equipLegs, equipFeet,"
-    //       14          15         16         17          18             19             20            21            22
+    //                                              1      2      3     4        5          6          7          8          9               10          11          12         13
+    result = CharacterDatabase.Query("SELECT entry, owner, roles, spec, faction, equipMhEx, equipOhEx, equipRhEx, equipHead, equipShoulders, equipChest, equipWaist, equipLegs, equipFeet,"
+    //   14          15          16         17         18            19            20             21             22
         "equipWrist, equipHands, equipBack, equipBody, equipFinger1, equipFinger2, equipTrinket1, equipTrinket2, equipNeck FROM characters_npcbot");
 
     if (!result)
@@ -100,18 +105,19 @@ void BotDataMgr::LoadNpcBots()
     {
         field = result->Fetch();
         index = 0;
-        uint32 entry = field[  index].GetUInt32();
-        entryList.push_back(entry);
+        uint32 entry =          field[  index].GetUInt32();
 
         //load data
         botData = new NpcBotData(0, 0);
-        botData->owner =         field[++index].GetUInt32();
-        botData->roles =         field[++index].GetUInt16();
-        botData->faction =       field[++index].GetUInt32();
+        botData->owner =        field[++index].GetUInt32();
+        botData->roles =        field[++index].GetUInt16();
+        botData->spec =         field[++index].GetUInt8();
+        botData->faction =      field[++index].GetUInt32();
 
         for (uint8 i = BOT_SLOT_MAINHAND; i != BOT_INVENTORY_SIZE; ++i)
             botData->equips[i] = field[++index].GetUInt32();
 
+        entryList.push_back(entry);
         _botsData[entry] = botData;
         ++datacounter;
 
@@ -128,7 +134,7 @@ void BotDataMgr::LoadNpcBots()
             TC_LOG_ERROR("server.loading", "Cannot find creature_template entry for npcbot (id: %u)!", entry);
             continue;
         }
-        //                                      1    2       3           4           5            6
+        //                                     1     2    3           4            5           6
         infores = WorldDatabase.PQuery("SELECT guid, map, position_x, position_y"/*, position_z, orientation*/" FROM creature WHERE id = %u", entry);
         if (!infores)
         {
@@ -137,14 +143,12 @@ void BotDataMgr::LoadNpcBots()
         }
 
         field = infores->Fetch();
-        //uint32 tableGuid = field[0].GetUInt32();
+        uint32 tableGuid = field[0].GetUInt32();
         uint32 mapId = uint32(field[1].GetUInt16());
         float pos_x = field[2].GetFloat();
         float pos_y = field[3].GetFloat();
         //float pos_z = field[4].GetFloat();
         //float ori = field[5].GetFloat();
-
-        //TC_LOG_ERROR("entiites.unit", "Loading bot: map %u guid %u entry %u", mapId, tableGuid, entry);
 
         CellCoord c = Trinity::ComputeCellCoord(pos_x, pos_y);
         GridCoord g = Trinity::ComputeGridCoord(pos_x, pos_y);
@@ -223,6 +227,14 @@ void BotDataMgr::UpdateNpcBotData(uint32 entry, NpcBotDataUpdateType updateType,
             bstmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_NPCBOT_ROLES);
             //"UPDATE character_npcbot SET roles = ? WHERE entry = ?", CONNECTION_ASYNC
             bstmt->setUInt16(0, itr->second->roles);
+            bstmt->setUInt32(1, entry);
+            CharacterDatabase.Execute(bstmt);
+            break;
+        case NPCBOT_UPDATE_SPEC:
+            itr->second->spec = *(uint8*)(data);
+            bstmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_NPCBOT_SPEC);
+            //"UPDATE characters_npcbot SET spec = ? WHERE entry = ?", CONNECTION_ASYNCH
+            bstmt->setUInt8(0, itr->second->spec);
             bstmt->setUInt32(1, entry);
             CharacterDatabase.Execute(bstmt);
             break;
@@ -328,10 +340,8 @@ void BotDataMgr::UpdateNpcBotData(uint32 entry, NpcBotDataUpdateType updateType,
             break;
         }
         default:
-        {
             TC_LOG_ERROR("sql.sql", "BotDataMgr:UpdateNpcBotData: unhandled updateType %u", uint32(updateType));
             break;
-        }
     }
 }
 void BotDataMgr::UpdateNpcBotDataAll(uint32 playerGuid, NpcBotDataUpdateType updateType, void* data)
@@ -350,6 +360,7 @@ void BotDataMgr::UpdateNpcBotDataAll(uint32 playerGuid, NpcBotDataUpdateType upd
         //case NPCBOT_UPDATE_FACTION:
         //case NPCBOT_UPDATE_EQUIPS:
         default:
+            TC_LOG_ERROR("sql.sql", "BotDataMgr:UpdateNpcBotDataAll: unhandled updateType %u", uint32(updateType));
             break;
     }
 }

@@ -19,7 +19,7 @@ class bot_pet_ai : public CreatureAI
         void JustDied(Unit*) override;
         //virtual void KilledUnit(Unit* u);
         //virtual void JustEnteredCombat(Unit* u) override;
-        void MoveInLineOfSight(Unit* /*u*/) override {}
+        void MoveInLineOfSight(Unit* u) override {}
         void DamageDealt(Unit* victim, uint32& damage, DamageEffectType damageType) override;
         void DamageTaken(Unit* /*attacker*/, uint32& /*damage*/) override { }
         //void ReceiveEmote(Player* player, uint32 emote);
@@ -28,20 +28,15 @@ class bot_pet_ai : public CreatureAI
 
         Creature* GetPetsOwner() const { return petOwner; }
 
-        void Follow(bool force = false, Position* newpos = nullptr)
-        {
-            if (force ||
-                (me->IsAlive() && (!me->IsInCombat() || !opponent) && m_botCommandState != COMMAND_STAY))
-                SetBotCommandState(COMMAND_FOLLOW, force, newpos);
-        }
-
         //EventProcessor* GetEvents() { return &_petEvents; }
         uint32 GetLastDiff() const { return lastdiff; }
         void CommonTimers(uint32 diff);
         void KillEvents(bool force);
-        void SetBotCommandState(CommandStates st, bool force = false, Position* newpos = nullptr);
+        void SetBotCommandState(uint8 st, bool force = false, Position* newpos = nullptr);
+        void RemoveBotCommandState(uint8 st);
+        bool HasBotCommandState(uint8 st) const { return (m_botCommandState & st); }
+        uint8 GetBotCommandState() const { return m_botCommandState; }
         bool IsInBotParty(Unit const* unit) const;
-        CommandStates GetBotCommandState() const { return m_botCommandState; }
         bool IsTank(Unit const* unit) const;
         bool IAmFree() const;
 
@@ -77,6 +72,7 @@ class bot_pet_ai : public CreatureAI
         void OnOwnerDamagedBy(Unit* attacker);
 
         bool IsPetMelee() const;
+        uint8 Spec() const;
 
         static uint32 InitSpell(Unit const* caster, uint32 spell);
         void InitSpellMap(uint32 basespell, bool forceadd = false, bool forwardRank = true);
@@ -92,6 +88,7 @@ class bot_pet_ai : public CreatureAI
 
         void AdjustTankingPosition() const;
         void OnStartAttack(Unit const* /*u*/);
+        bool StartAttack(Unit const* u, bool force = false);
 
         inline bool IsChanneling(Unit const* u = nullptr) const { if (!u) u = me; return u->GetCurrentSpell(CURRENT_CHANNELED_SPELL); }
         inline bool IsCasting(Unit const* u = nullptr) const { if (!u) u = me; return (u->HasUnitState(UNIT_STATE_CASTING) || IsChanneling(u) || u->IsNonMeleeSpellCast(false, false, true, false, false)); }
@@ -140,7 +137,7 @@ class bot_pet_ai : public CreatureAI
         static inline float _getAttackDistance(float distance) { return distance*0.72f; }
 
         Position pos, attackpos;
-        CommandStates m_botCommandState;
+        uint8 m_botCommandState;
 
         //timers
         uint32 lastdiff, checkAurasTimer, waitTimer, regenTimer, _updateTimerMedium, _updateTimerEx1;
