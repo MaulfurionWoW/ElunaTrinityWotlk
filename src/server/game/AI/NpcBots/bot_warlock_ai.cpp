@@ -1213,7 +1213,7 @@ public:
             const_cast<warlock_botAI*>(this)->instaCast = (casttime <= 500); //triggered GCD is too long
         }
 
-        void ApplyClassSpellCooldownMods(SpellInfo const* spellInfo, uint32& cooldown) const override
+        void ApplyClassSpellCooldownMods(SpellInfo const* /*spellInfo*/, uint32& cooldown) const override
         {
             //cooldown is in milliseconds
             //uint32 baseId = spellInfo->GetFirstRankSpell()->Id;

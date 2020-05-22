@@ -212,7 +212,7 @@ public:
                 SummonBotPet();
         }
 
-        void SpellHitTarget(Unit* target, SpellInfo const* spell) override
+        void SpellHitTarget(Unit* /*target*/, SpellInfo const* /*spell*/) override
         {
         }
 

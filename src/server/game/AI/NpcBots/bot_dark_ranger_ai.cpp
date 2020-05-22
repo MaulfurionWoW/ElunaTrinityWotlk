@@ -262,7 +262,7 @@ public:
             damage = int32(damage * pctbonus + flat_mod);
         }
 
-        void ApplyClassDamageMultiplierSpell(int32& damage, SpellNonMeleeDamage& damageinfo, SpellInfo const* spellInfo, WeaponAttackType /*attackType*/, bool /*crit*/) const override
+        void ApplyClassDamageMultiplierSpell(int32& damage, SpellNonMeleeDamage& /*damageinfo*/, SpellInfo const* /*spellInfo*/, WeaponAttackType /*attackType*/, bool /*crit*/) const override
         {
             //uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
             //uint8 lvl = me->GetLevel();
@@ -329,7 +329,7 @@ public:
             //}
         }
 
-        void SpellHitTarget(Unit* target, SpellInfo const* spell) override
+        void SpellHitTarget(Unit* target, SpellInfo const* /*spell*/) override
         {
             if (target == me)
                 return;

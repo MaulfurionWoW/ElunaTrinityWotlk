@@ -895,7 +895,7 @@ public:
             }
         }
 
-        void ApplyClassDamageMultiplierMelee(uint32& damage, CalcDamageInfo& damageinfo) const override
+        void ApplyClassDamageMultiplierMelee(uint32& /*damage*/, CalcDamageInfo& damageinfo) const override
         {
             uint8 lvl = me->GetLevel();
             float fdamage = float(damageinfo.Damages[0].Damage);
@@ -1144,7 +1144,7 @@ public:
             damage = int32(fdamage * (1.0f + pctbonus));
         }
 
-        void ApplyClassDamageMultiplierHeal(Unit const* /*victim*/, float& heal, SpellInfo const* spellInfo, DamageEffectType damagetype, uint32 /*stack*/) const override
+        void ApplyClassDamageMultiplierHeal(Unit const* /*victim*/, float& heal, SpellInfo const* spellInfo, DamageEffectType /*damagetype*/, uint32 /*stack*/) const override
         {
             uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
             uint8 lvl = me->GetLevel();
