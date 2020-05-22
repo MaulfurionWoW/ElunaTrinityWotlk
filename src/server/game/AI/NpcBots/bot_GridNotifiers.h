@@ -789,7 +789,7 @@ class NearbyHostileUnitInConeCheck
 {
     public:
         explicit NearbyHostileUnitInConeCheck(Unit const* unit, float maxdist, bot_ai const* m_ai) :
-        me(unit), max_range(maxdist), cone(float(M_PI_2), ai(m_ai))
+        me(unit), max_range(maxdist), cone(float(M_PI_2)), ai(m_ai)
         {
             free = ai->IAmFree();
         }
