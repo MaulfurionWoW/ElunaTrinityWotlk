@@ -55,7 +55,7 @@ public:
             GetInPosition(force, u);
         }
 
-        void DoPetActions(uint32 diff)
+        void DoPetActions(uint32 /*diff*/)
         {
             //if (threatGenTimer < diff)
             //{
@@ -134,7 +134,7 @@ public:
             bot_pet_ai::DamageDealt(victim, damage, damageType);
         }
 
-        void DamageTaken(Unit* u, uint32& damage) override
+        void DamageTaken(Unit* u, uint32& /*damage*/) override
         {
             if (!u)
                 return;

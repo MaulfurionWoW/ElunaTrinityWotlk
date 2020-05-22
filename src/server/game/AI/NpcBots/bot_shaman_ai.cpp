@@ -919,7 +919,7 @@ public:
 
             ShieldCheckTimer = 2000;
 
-            Aura const* shield = nullptr;
+            //Aura const* shield = nullptr;
             uint32 SHIELD =
                 HasRole(BOT_ROLE_TANK)   ? GetSpell(EARTH_SHIELD_1) :
                 HasRole(BOT_ROLE_HEAL)   ? GetSpell(WATER_SHIELD_1) :
@@ -1101,7 +1101,7 @@ public:
             Hexy = FindAffectedTarget(GetSpell(HEX_1), me->GetGUID());
         }
 
-        void CheckHex(uint32 diff)
+        void CheckHex(uint32 /*diff*/)
         {
             //if (Hexy || !IsSpellReady(HEX_1, diff))
             //    return;
@@ -1227,7 +1227,7 @@ public:
             }
         }
 
-        bool BuffTarget(Unit* target, uint32 diff) override
+        bool BuffTarget(Unit* target, uint32 /*diff*/) override
         {
             if (GetSpell(EARTH_SHIELD_1) && Earthy == false && IsTank(target) && (target == me || !IsTank()) &&
                 (target->IsInCombat() || !target->isMoving()) && Rand() < 35)
@@ -1680,7 +1680,7 @@ public:
         void ApplyClassSpellRangeMods(SpellInfo const* spellInfo, float& maxrange) const override
         {
             //uint32 spellId = spellInfo->Id;
-            uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
+            //uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
             //SpellSchool school = GetFirstSchoolInMask(spellInfo->GetSchoolMask());
             uint8 lvl = me->GetLevel();
             float flatbonus = 0.0f;
@@ -1723,7 +1723,7 @@ public:
 
         void OnClassSpellGo(SpellInfo const* spellInfo) override
         {
-            uint32 spellId = spellInfo->Id;
+            //uint32 spellId = spellInfo->Id;
             uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
 
             //reincarnation: notify master

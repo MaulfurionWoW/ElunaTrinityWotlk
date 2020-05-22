@@ -251,7 +251,7 @@ public:
                 uint8 LHPcount = 0;
                 for (GroupReference const* itr = gr->GetFirstMember(); itr != nullptr; itr = itr->next())
                 {
-                    uint8 lowestPCT = 100;
+                    //uint8 lowestPCT = 100;
                     Player* tPlayer = itr->GetSource();
                     if (!tPlayer || me->GetMap() != tPlayer->FindMap() || tPlayer->isPossessed() || tPlayer->IsCharmed())
                         continue;

@@ -775,7 +775,7 @@ public:
             if (GetHealthPCT(me) < 30 + 20*me->getAttackers().size() ||
                 (!IAmFree() && GetHealthPCT(me) < 70 && master->GetNpcBotsCount() > 1))
             {
-                Unit* victim = me->GetVictim();
+                //Unit* victim = me->GetVictim();
                 if (doCast(me, GetSpell(VANISH_1)))
                     return;
             }
@@ -1189,9 +1189,9 @@ public:
         void ApplyClassSpellGlobalCooldownMods(SpellInfo const* spellInfo, float& cooldown) const override
         {
             //cooldown is in milliseconds
-            uint32 spellId = spellInfo->Id;
+            //uint32 spellId = spellInfo->Id;
             //SpellSchool school = GetFirstSchoolInMask(spellInfo->GetSchoolMask());
-            uint8 lvl = me->GetLevel();
+            //uint8 lvl = me->GetLevel();
             float timebonus = 0.0f;
             float pctbonus = 0.0f;
 
@@ -1202,12 +1202,12 @@ public:
             cooldown = (cooldown * (1.0f - pctbonus)) - timebonus;
         }
 
-        void ApplyClassSpellRadiusMods(SpellInfo const* spellInfo, float& radius) const override
+        void ApplyClassSpellRadiusMods(SpellInfo const* /*spellInfo*/, float& radius) const override
         {
             //uint32 spellId = spellInfo->Id;
             //uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
             //SpellSchool school = GetFirstSchoolInMask(spellInfo->GetSchoolMask());
-            uint8 lvl = me->GetLevel();
+            //uint8 lvl = me->GetLevel();
             float flatbonus = 0.0f;
             float pctbonus = 0.0f;
 
@@ -1422,7 +1422,7 @@ public:
             //some abilities like relentless strikes require combo points thus tries to proc itself
             else if (spell->NeedsComboPoints() && comboPoints)
             {
-                uint32 tempCP = comboPoints;
+                //uint32 tempCP = comboPoints;
                 comboPoints = 0;
 
                 //TC_LOG_ERROR("entities.player", "rogue_bot CP SPEND1: %u to 0", tempCP);
@@ -1633,7 +1633,7 @@ public:
             bot_ai::DamageDealt(victim, damage, damageType);
         }
 
-        void DamageTaken(Unit* u, uint32& damage) override
+        void DamageTaken(Unit* u, uint32& /*damage*/) override
         {
             if (!u)
                 return;

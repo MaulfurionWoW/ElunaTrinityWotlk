@@ -49,7 +49,7 @@ public:
             GetInPosition(force, u);
         }
 
-        void DoPetActions(uint32 diff)
+        void DoPetActions(uint32 /*diff*/)
         {
         }
 
@@ -79,7 +79,7 @@ public:
             DoPetAttack(diff);
         }
 
-        void DoPetAttack(uint32 diff)
+        void DoPetAttack(uint32 /*diff*/)
         {
             StartAttack(opponent, IsPetMelee());
         }

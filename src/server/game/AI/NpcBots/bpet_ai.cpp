@@ -1349,8 +1349,8 @@ void bot_pet_ai::CalculateAttackPos(Unit const* target, Position& pos) const
         followdist >= 40 ? followdist :
         5 + urand(followdist/3, followdist/3 + 5)/*18-23 at 40, 15-20 at 30*/,
         angle = target->GetAbsoluteAngle(me);
-    bool boss = target->GetTypeId() == TYPEID_UNIT &&
-        (target->ToCreature()->isWorldBoss() || target->ToCreature()->IsDungeonBoss() || target->ToCreature()->GetCreatureTemplate()->rank == CREATURE_ELITE_WORLDBOSS);
+    //bool boss = target->GetTypeId() == TYPEID_UNIT &&
+    //    (target->ToCreature()->isWorldBoss() || target->ToCreature()->IsDungeonBoss() || target->ToCreature()->GetCreatureTemplate()->rank == CREATURE_ELITE_WORLDBOSS);
     //most ranged classes have some sort of 20yd spell
     if (rangeMode != BOT_ATTACK_RANGE_EXACT)
         dist = std::min<float>(dist, petOwner->GetBotAI()->HasRole(BOT_ROLE_DPS) ? GetSpellAttackRange(rangeMode == BOT_ATTACK_RANGE_LONG) - 4.f : 30.f);
@@ -1809,7 +1809,7 @@ void bot_pet_ai::AdjustTankingPosition() const
     float const moveDist = -1.f * std::max<float>(opponent->GetCombatReach() * 0.6f, 3.f);
     float moveX;
     float moveY;
-    bool move = false;
+    //bool move = false;
     for (uint8 i = 0; i != 3; ++i)
     {
         if (i)
@@ -2255,7 +2255,7 @@ void bot_pet_ai::CommonTimers(uint32 diff)
     if (_updateTimerEx1 > diff)     _updateTimerEx1 -= diff;
 }
 
-void bot_pet_ai::KillEvents(bool force)
+void bot_pet_ai::KillEvents(bool /*force*/)
 {
     //_petEvents.KillAllEvents(force);
 }

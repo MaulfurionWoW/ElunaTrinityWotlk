@@ -135,7 +135,7 @@ public:
             Attack(diff);
         }
 
-        void Attack(uint32 diff)
+        void Attack(uint32 /*diff*/)
         {
             StartAttack(opponent, IsMelee());
 
@@ -230,7 +230,7 @@ public:
             bot_ai::DamageDealt(victim, damage, damageType);
         }
 
-        void DamageTaken(Unit* u, uint32& damage) override
+        void DamageTaken(Unit* u, uint32& /*damage*/) override
         {
             if (!u)
                 return;
@@ -253,7 +253,7 @@ public:
             DefaultInit();
         }
 
-        void ReduceCD(uint32 diff) override
+        void ReduceCD(uint32 /*diff*/) override
         {
         }
 

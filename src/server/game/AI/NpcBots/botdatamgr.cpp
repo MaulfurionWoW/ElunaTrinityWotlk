@@ -143,7 +143,7 @@ void BotDataMgr::LoadNpcBots()
         }
 
         field = infores->Fetch();
-        uint32 tableGuid = field[0].GetUInt32();
+        //uint32 tableGuid = field[0].GetUInt32();
         uint32 mapId = uint32(field[1].GetUInt16());
         float pos_x = field[2].GetFloat();
         float pos_y = field[3].GetFloat();

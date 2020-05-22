@@ -29,7 +29,7 @@ class bot_ai : public CreatureAI
         void DamageDealt(Unit* victim, uint32& damage, DamageEffectType damageType) override;
         void DamageTaken(Unit* /*attacker*/, uint32& /*damage*/) override { }
         void ReceiveEmote(Player* player, uint32 emote) override;
-        void EnterEvadeMode(EvadeReason why = EVADE_REASON_OTHER) override { }
+        void EnterEvadeMode(EvadeReason /*why = EVADE_REASON_OTHER*/) override { }
 
         virtual void OnBotSummon(Creature* /*summon*/) {}
         virtual void OnBotDespawn(Creature* /*summon*/) {}
@@ -56,7 +56,7 @@ class bot_ai : public CreatureAI
         bool SetBotOwner(Player* newowner);
         uint8 GetBotClass() const { return _botclass; }
         uint32 GetLastDiff() const { return lastdiff; }
-        virtual void UpdateDeadAI(uint32 diff) {}
+        virtual void UpdateDeadAI(uint32 /*diff*/) {}
         void ReturnHome() { _atHome = false; }
         void CommonTimers(uint32 diff);
         void ResetBotAI(uint8 resetType);
