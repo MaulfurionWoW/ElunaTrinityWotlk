@@ -2147,7 +2147,7 @@ public:
                 me->RemoveAurasDueToSpell(NATURES_SWIFTNESS_1);
         }
 
-        void SpellHitTarget(Unit* target, SpellInfo const* spell) override
+        void SpellHitTarget(WorldObject* target, SpellInfo const* spell) override
         {
             uint32 spellId = spell->Id;
             uint32 baseId = spell->GetFirstRankSpell()->Id;
@@ -2195,7 +2195,7 @@ public:
 
                 //Maim helper
                 if (baseId == MAIM_1)
-                    MoveBehind(target);
+                    MoveBehind(target->ToUnit());
             }
 
             //Hibernate helper
@@ -2211,7 +2211,7 @@ public:
             {
                 //if (GC_Timer <= lastdiff && GetSpell(TRAVEL_FORM_1))
                 //    doCast(me, GetSpell(TRAVEL_FORM_1));
-                GetInPosition(true, target);
+                GetInPosition(true, target->ToUnit());
             }
 
             //Infected Wound: handle proc
@@ -2228,7 +2228,7 @@ public:
             //Brutal Impact: +1 sec duration for Bash and Pounce stun
             if (baseId == BASH_1 || baseId == POUNCE_1)
             {
-                if (Aura* stu = target->GetAura(spellId))
+                if (Aura* stu = target->ToUnit()->GetAura(spellId))
                 {
                     //1 extra second on creatures
                     uint32 dur = stu->GetDuration() + target->GetTypeId() == TYPEID_PLAYER ? 1000 : 2000;
@@ -2242,7 +2242,7 @@ public:
             {
                 if (lvl >= 20)
                 {
-                    if (Aura* aur = target->GetAura(GetSpell(MOONFIRE_1), me->GetGUID()))
+                    if (Aura* aur = target->ToUnit()->GetAura(GetSpell(MOONFIRE_1), me->GetGUID()))
                     {
                         //extra 9 sec base + 3 sec Nature's Splendor
                         if (aur->GetMaxDuration() < spell->GetMaxDuration() + 12000)
@@ -2261,7 +2261,7 @@ public:
             {
                 if (lvl >= 20)
                 {
-                    if (Aura* aur = target->GetAura(spellId, me->GetGUID()))
+                    if (Aura* aur = target->ToUnit()->GetAura(spellId, me->GetGUID()))
                     {
                         uint32 dur = aur->GetDuration();
 
@@ -2293,7 +2293,7 @@ public:
             if (baseId == THORNS_1)
             {
                 //30 min duration for Thorns
-                if (Aura* thorn = target->GetAura(spellId, me->GetGUID()))
+                if (Aura* thorn = target->ToUnit()->GetAura(spellId, me->GetGUID()))
                 {
                     uint32 dur = 30 * MINUTE * IN_MILLISECONDS;
                     thorn->SetDuration(dur);
@@ -2303,7 +2303,7 @@ public:
             if (baseId == MARK_OF_THE_WILD_1)
             {
                 //1 hour duration for Mark of the Wild
-                if (Aura* mark = target->GetAura(spellId, me->GetGUID()))
+                if (Aura* mark = target->ToUnit()->GetAura(spellId, me->GetGUID()))
                 {
                     uint32 dur = 1 * HOUR * IN_MILLISECONDS;
                     mark->SetDuration(dur);
@@ -2317,7 +2317,7 @@ public:
             }
         }
 
-        void SpellHit(Unit* caster, SpellInfo const* spell) override
+        void SpellHit(WorldObject* caster, SpellInfo const* spell) override
         {
             uint32 spellId = spell->Id;
             uint32 baseId = spell->GetFirstRankSpell()->Id;
@@ -2424,7 +2424,7 @@ public:
                     me->CastSpell(me, LEADER_OF_THE_PACK_BUFF, true);
             }
 
-            OnSpellHit(caster, spell);
+            OnSpellHit(caster->ToUnit(), spell);
         }
 
         void DamageDealt(Unit* victim, uint32& damage, DamageEffectType damageType) override

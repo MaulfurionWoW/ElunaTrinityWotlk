@@ -1882,7 +1882,7 @@ public:
             }
         }
 
-        void SpellHit(Unit* caster, SpellInfo const* spell) override
+        void SpellHit(WorldObject* caster, SpellInfo const* spell) override
         {
             uint32 spellId = spell->Id;
 
@@ -1895,10 +1895,10 @@ public:
                 MaelstromTimer = 30000; //30 sec duration then reset
             }
 
-            OnSpellHit(caster, spell);
+            OnSpellHit(caster->ToUnit(), spell);
         }
 
-        void SpellHitTarget(Unit* target, SpellInfo const* spell) override
+        void SpellHitTarget(WorldObject* target, SpellInfo const* spell) override
         {
             uint32 spellId = spell->Id;
             uint32 baseId = spell->GetFirstRankSpell()->Id;
@@ -1915,7 +1915,7 @@ public:
             //Earthen Power part 2
             if ((_spec == BOT_SPEC_SHAMAN_ENHANCEMENT) && me->GetLevel() >= 50 && baseId == EARTH_SHOCK_1)
             {
-                if (AuraEffect* eff = target->GetAuraEffect(spellId, 0, me->GetGUID()))
+                if (AuraEffect* eff = target->ToUnit()->GetAuraEffect(spellId, 0, me->GetGUID()))
                     eff->ChangeAmount(eff->GetAmount() * 2);
             }
 
@@ -1970,7 +1970,7 @@ public:
             //Shields improvement, replaces Static Shock (part 2) and Improved Earth Shield (part 1)
             if (baseId == LIGHTNING_SHIELD_1 || baseId == EARTH_SHIELD_1 || baseId == WATER_SHIELD_1)
             {
-                if (Aura* shield = target->GetAura(spellId, me->GetGUID()))
+                if (Aura* shield = target->ToUnit()->GetAura(spellId, me->GetGUID()))
                 {
                     shield->SetCharges(shield->GetCharges() + 6);
                 }

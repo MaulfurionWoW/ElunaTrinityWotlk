@@ -82,12 +82,12 @@ public:
         {
         }
 
-        void SpellHit(Unit* caster, SpellInfo const* spell) override
+        void SpellHit(WorldObject* caster, SpellInfo const* spell) override
         {
-            OnSpellHit(caster, spell);
+            OnSpellHit(caster->ToUnit(), spell);
         }
 
-        void SpellHitTarget(Unit* /*target*/, SpellInfo const* /*spell*/) override
+        void SpellHitTarget(WorldObject* /*target*/, SpellInfo const* /*spell*/) override
         {
         }
 

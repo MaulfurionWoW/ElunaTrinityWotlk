@@ -1373,7 +1373,7 @@ public:
                 baseId == SOUL_FIRE_1 || baseId == HAUNT_1 || baseId == SEARING_PAIN_1); //damaging spells
         }
 
-        void SpellHit(Unit* caster, SpellInfo const* spell) override
+        void SpellHit(WorldObject* caster, SpellInfo const* spell) override
         {
             uint32 spellId = spell->Id;
             uint32 baseId = spell->GetFirstRankSpell()->Id;
@@ -1455,10 +1455,10 @@ public:
                     mind->SetMaxDuration(dur);
                 }
             }
-            OnSpellHit(caster, spell);
+            OnSpellHit(caster->ToUnit(), spell);
         }
 
-        void SpellHitTarget(Unit* target, SpellInfo const* spell) override
+        void SpellHitTarget(WorldObject* target, SpellInfo const* spell) override
         {
             uint32 spellId = spell->Id;
             uint32 baseId = spell->GetFirstRankSpell()->Id;
@@ -1479,7 +1479,7 @@ public:
             //Improved Imp part 3
             if (lvl >= 10 && baseId == BLOOD_PACT_1 && botPet)
             {
-                AuraEffect* pact = target->GetAuraEffect(spellId, 0, botPet->GetGUID());
+                AuraEffect* pact = target->ToUnit()->GetAuraEffect(spellId, 0, botPet->GetGUID());
                 if (pact)
                     pact->ChangeAmount(pact->GetAmount() * 1.3f);
             }
@@ -1487,7 +1487,7 @@ public:
             //Improved Felhunter part 3
             if ((_spec == BOT_SPEC_WARLOCK_AFFLICTION) && lvl >= 35 && baseId == FEL_INTELLIGENCE_1 && botPet)
             {
-                Aura const* feli = target->GetAura(spellId, botPet->GetGUID());
+                Aura const* feli = target->ToUnit()->GetAura(spellId, botPet->GetGUID());
                 if (feli)
                 {
                     for (uint8 i = EFFECT_0; i != EFFECT_2; ++i)
@@ -1501,7 +1501,7 @@ public:
             //Glyph of Unending Breath: swim speed
             if (/*lvl >= 15 && */baseId == UNENDING_BREATH_1)
             {
-                AuraEffect* brea = target->GetAuraEffect(spellId, 1, me->GetGUID());
+                AuraEffect* brea = target->ToUnit()->GetAuraEffect(spellId, 1, me->GetGUID());
                 if (brea)
                     brea->ChangeAmount(brea->GetAmount() + 20);
             }
@@ -1514,7 +1514,7 @@ public:
             }
             if (baseId == IMMOLATE_1 || baseId == CORRUPTION_1)
             {
-                if (Aura* per = target->GetAura(spellId, me->GetGUID()))
+                if (Aura* per = target->ToUnit()->GetAura(spellId, me->GetGUID()))
                 {
                     //Improved Corruption and Immolate (37380): +3 sec duration for Immolate and Corruption
                     uint32 dur = per->GetDuration() + 3000;
@@ -1528,7 +1528,7 @@ public:
             //Glyph of Death Coil: + 0.5 sec duration for Death Coil (2 sec on creatures)
             if (baseId == DEATH_COIL_1)
             {
-                if (Aura* dc = target->GetAura(spellId, me->GetGUID()))
+                if (Aura* dc = target->ToUnit()->GetAura(spellId, me->GetGUID()))
                 {
                     uint32 dur = dc->GetDuration() + (target->GetTypeId() == TYPEID_PLAYER ? 500 : 2000);
                     dc->SetDuration(dur);
@@ -1538,7 +1538,7 @@ public:
             //Improved Curse of Weakness: +20% increased effect
             if (baseId == CURSE_OF_WEAKNESS_1)
             {
-                if (AuraEffect* weak = target->GetAuraEffect(spellId, 0, me->GetGUID()))
+                if (AuraEffect* weak = target->ToUnit()->GetAuraEffect(spellId, 0, me->GetGUID()))
                 {
                     weak->ChangeAmount(weak->GetAmount() * 12 / 10);
                 }
@@ -1546,7 +1546,7 @@ public:
             //Glyph of Haunt: +3% increased effect
             if (lvl >= 60 && baseId == HAUNT_1)
             {
-                if (AuraEffect* haun = target->GetAuraEffect(spellId, 2, me->GetGUID()))
+                if (AuraEffect* haun = target->ToUnit()->GetAuraEffect(spellId, 2, me->GetGUID()))
                 {
                     haun->ChangeAmount(haun->GetAmount() + 3);
                 }

@@ -1638,7 +1638,7 @@ public:
             }
         }
 
-        void SpellHitTarget(Unit* target, SpellInfo const* spell) override
+        void SpellHitTarget(WorldObject* target, SpellInfo const* spell) override
         {
             if (target == me)
                 return;
@@ -1649,7 +1649,7 @@ public:
             if (baseId == HUNTERS_MARK_1)
             {
                 //Hunter's Mark helper
-                if (AuraEffect* mark = target->GetAuraEffect(spell->Id, 1, me->GetGUID()))
+                if (AuraEffect* mark = target->ToUnit()->GetAuraEffect(spell->Id, 1, me->GetGUID()))
                 {
                     //Glyph of Hunter's Mark: +20% effect
                     //Improved Hunter's Mark: +30% effect
@@ -1662,7 +1662,7 @@ public:
             //Improved Stings part 1: +30% damage
             if ((_spec == BOT_SPEC_HUNTER_MARKSMANSHIP) && lvl >= 25 && (baseId == SERPENT_STING_1 || baseId == WYVERN_STING_DOT_AURA_1))
             {
-                if (AuraEffect* stin = target->GetAuraEffect(spell->Id, 0, me->GetGUID()))
+                if (AuraEffect* stin = target->ToUnit()->GetAuraEffect(spell->Id, 0, me->GetGUID()))
                 {
                     stin->ChangeAmount(stin->GetAmount() * 13 / 10);
                 }
@@ -1671,7 +1671,7 @@ public:
             //Trap Mastery part 1
             if (lvl >= 15 && (baseId == FROST_TRAP_AURA || baseId == FREEZING_TRAP_AURA_1))
             {
-                if (Aura* freez = target->GetAura(spell->Id, me->GetGUID()))
+                if (Aura* freez = target->ToUnit()->GetAura(spell->Id, me->GetGUID()))
                 {
                     int32 dur = freez->GetDuration() * 13 / 10;
                     freez->SetDuration(dur);
@@ -1680,7 +1680,7 @@ public:
             }
             if (lvl >= 16 && baseId == IMMOLATION_TRAP_AURA_1)
             {
-                if (AuraEffect* immo = target->GetAuraEffect(spell->Id, 0, me->GetGUID()))
+                if (AuraEffect* immo = target->ToUnit()->GetAuraEffect(spell->Id, 0, me->GetGUID()))
                 {
                     //Glyph of Immolation Trap: -6 sec duration, +100% effect
                     immo->ChangeAmount(immo->GetAmount() * 2);
@@ -1691,7 +1691,7 @@ public:
             }
             if (lvl >= 15 && baseId == SERPENT_STING_1)
             {
-                if (Aura* sting = target->GetAura(spell->Id, me->GetGUID()))
+                if (Aura* sting = target->ToUnit()->GetAura(spell->Id, me->GetGUID()))
                 {
                     //Glyph of Serpent Sting: +6 sec duration
                     //Improved Serpent Sting (24467): +3 sec duration
@@ -1718,7 +1718,7 @@ public:
             if (lvl >= 10 && baseId == CONCUSSIVE_SHOT_1)
             {
                 //Improved Concussion Shot rank 2: 2 sec increased daze duration
-                if (Aura* concus = target->GetAura(spell->Id, me->GetGUID()))
+                if (Aura* concus = target->ToUnit()->GetAura(spell->Id, me->GetGUID()))
                 {
                     int32 dur = concus->GetDuration() + 2000;
                     concus->SetDuration(dur);
@@ -1741,7 +1741,7 @@ public:
             }
         }
 
-        void SpellHit(Unit* caster, SpellInfo const* spell) override
+        void SpellHit(WorldObject* caster, SpellInfo const* spell) override
         {
             uint32 baseId = spell->GetFirstRankSpell()->Id;
             uint8 lvl = me->GetLevel();
@@ -1849,7 +1849,7 @@ public:
                 }
             }
 
-            OnSpellHit(caster, spell);
+            OnSpellHit(caster->ToUnit(), spell);
         }
 
         void OnBotDamageDealt(Unit* victim, uint32 damage, CleanDamage const* cleanDamage, DamageEffectType damagetype, SpellInfo const* /*spellInfo*/) override

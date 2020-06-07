@@ -670,7 +670,7 @@ public:
             return 80.0f + bot_ai::GetBotArmorPenetrationCoef();
         }
 
-        void SpellHit(Unit* caster, SpellInfo const* spell) override
+        void SpellHit(WorldObject* caster, SpellInfo const* spell) override
         {
             uint32 spellId = spell->Id;
 
@@ -714,10 +714,10 @@ public:
                 MirrorImageStart();
             }
 
-            OnSpellHit(caster, spell);
+            OnSpellHit(caster->ToUnit(), spell);
         }
 
-        void SpellHitTarget(Unit* /*target*/, SpellInfo const* /*spell*/) override { }
+        void SpellHitTarget(WorldObject* /*target*/, SpellInfo const* /*spell*/) override { }
 
         void DamageDealt(Unit* victim, uint32& damage, DamageEffectType damageType) override
         {

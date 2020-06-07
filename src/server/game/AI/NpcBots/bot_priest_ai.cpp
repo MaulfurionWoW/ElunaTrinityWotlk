@@ -1604,7 +1604,7 @@ public:
                     me->RemoveAurasDueToSpell(SERENDIPITY_BUFF);
         }
 
-        void SpellHitTarget(Unit* target, SpellInfo const* spell) override
+        void SpellHitTarget(WorldObject* target, SpellInfo const* spell) override
         {
             uint32 spellId = spell->Id;
             uint32 baseId = spell->GetFirstRankSpell()->Id;
@@ -1613,7 +1613,7 @@ public:
             //Glyph of Hymn of Hope: +2 sec duration
             if (lvl >= 60 && (baseId == HYMN_OF_HOPE_1 || baseId == HYMN_OF_HOPE_BUFF))
             {
-                if (Aura* hymn = target->GetAura(spellId))
+                if (Aura* hymn = target->ToUnit()->GetAura(spellId))
                 {
                     hymn->SetDuration(hymn->GetDuration() + 2000);
                     hymn->SetDuration(hymn->GetMaxDuration() + 2000);
@@ -1622,7 +1622,7 @@ public:
             //Priest T9 Shadow 2P Bonus (67193)
             if (lvl >= 80 && baseId == VAMPIRIC_TOUCH_1)
             {
-                if (Aura* touc = target->GetAura(spellId))
+                if (Aura* touc = target->ToUnit()->GetAura(spellId))
                 {
                     uint32 dur = touc->GetMaxDuration() + 6000;
                     touc->SetDuration(dur);
@@ -1636,12 +1636,12 @@ public:
 
             if (lvl >= 15 && baseId == PW_FORTITUDE_1)
             {
-                if (AuraEffect* eff = target->GetAuraEffect(spellId, 0, me->GetGUID()))
+                if (AuraEffect* eff = target->ToUnit()->GetAuraEffect(spellId, 0, me->GetGUID()))
                     eff->ChangeAmount(int32(eff->GetAmount() * 1.3f));
             }
             if (lvl >= 20 && baseId == PW_SHIELD_1)
             {
-                if (AuraEffect* eff = target->GetAuraEffect(spellId, 0, me->GetGUID()))
+                if (AuraEffect* eff = target->ToUnit()->GetAuraEffect(spellId, 0, me->GetGUID()))
                 {
                     float amount = float(eff->GetAmount());
                     //Borrowed Time: +40% of spellpower
@@ -1654,7 +1654,7 @@ public:
             //Weakened Soul Reduction (id: 33333): -2 sec to Weakened Soul duration
             if (lvl >= 51 && baseId == WEAKENED_SOUL_DEBUFF)
             {
-                if (Aura* soul = target->GetAura(spellId))
+                if (Aura* soul = target->ToUnit()->GetAura(spellId))
                 {
                     uint32 dur = soul->GetMaxDuration() - 2000;
                     soul->SetDuration(dur);
@@ -1663,12 +1663,12 @@ public:
             }
             //Pain and Suffering (part 1): 100% to refresh Shadow Word: Pain on target hit by Mind Flay
             if ((_spec == BOT_SPEC_PRIEST_SHADOW) && lvl >= 50 && baseId == MIND_FLAY_1 && GetSpell(SW_PAIN_1))
-                if (Aura* pain = target->GetAura(GetSpell(SW_PAIN_1), me->GetGUID()))
+                if (Aura* pain = target->ToUnit()->GetAura(GetSpell(SW_PAIN_1), me->GetGUID()))
                     pain->RefreshDuration();
             if (baseId == FEAR_WARD_1)
             {
                 //2 minutes bonus duration for Fear Ward
-                if (Aura* ward = target->GetAura(spellId, me->GetGUID()))
+                if (Aura* ward = target->ToUnit()->GetAura(spellId, me->GetGUID()))
                 {
                     uint32 dur = ward->GetDuration() + 120000;
                     ward->SetDuration(dur);
@@ -1680,7 +1680,7 @@ public:
                 baseId == SHADOW_PROTECTION_1 || baseId == DIVINE_SPIRIT_1)
             {
                 //1 hour duration for all buffs
-                if (Aura* buff = target->GetAura(spellId, me->GetGUID()))
+                if (Aura* buff = target->ToUnit()->GetAura(spellId, me->GetGUID()))
                 {
                     uint32 dur = HOUR * IN_MILLISECONDS;
                     buff->SetDuration(dur);
@@ -1699,7 +1699,7 @@ public:
             //}
         }
 
-        void SpellHit(Unit* caster, SpellInfo const* spell) override
+        void SpellHit(WorldObject* caster, SpellInfo const* spell) override
         {
             uint32 spellId = spell->Id;
             uint32 baseId = spell->GetFirstRankSpell()->Id;
@@ -1723,7 +1723,7 @@ public:
                     vamp->ChangeAmount(vamp->GetAmount() + 10); //67% is essentially this
             }
 
-            OnSpellHit(caster, spell);
+            OnSpellHit(caster->ToUnit(), spell);
         }
 
         void DamageDealt(Unit* victim, uint32& damage, DamageEffectType damageType) override

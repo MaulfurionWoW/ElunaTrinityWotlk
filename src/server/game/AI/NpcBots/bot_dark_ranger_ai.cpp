@@ -329,7 +329,7 @@ public:
             //}
         }
 
-        void SpellHitTarget(Unit* target, SpellInfo const* /*spell*/) override
+        void SpellHitTarget(WorldObject* target, SpellInfo const* /*spell*/) override
         {
             if (target == me)
                 return;
@@ -352,9 +352,9 @@ public:
             //}
         }
 
-        void SpellHit(Unit* caster, SpellInfo const* spell) override
+        void SpellHit(WorldObject* caster, SpellInfo const* spell) override
         {
-            OnSpellHit(caster, spell);
+            OnSpellHit(caster->ToUnit(), spell);
         }
 
         void OnBotDamageDealt(Unit* victim, uint32 damage, CleanDamage const* /*cleanDamage*/, DamageEffectType /*damagetype*/, SpellInfo const* spellInfo) override
