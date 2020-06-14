@@ -2,6 +2,9 @@
 #include "Item.h"
 #include "Map.h"
 #include "MapManager.h"
+
+#include <boost/thread/shared_mutex.hpp>
+#include <boost/thread/locks.hpp>
 /*
 Npc Bot Data Manager by Trickerer (onlysuffering@gmail.com)
 NpcBots DB Data management
@@ -11,9 +14,13 @@ NpcBots DB Data management
 typedef std::unordered_map<uint32 /*entry*/, NpcBotData*> NpcBotDataMap;
 typedef std::unordered_map<uint32 /*entry*/, NpcBotAppearanceData*> NpcBotAppearanceDataMap;
 typedef std::unordered_map<uint32 /*entry*/, NpcBotExtras*> NpcBotExtrasMap;
+typedef std::set<Creature const*> NpcBotRegistry;
 NpcBotDataMap _botsData;
 NpcBotAppearanceDataMap _botsAppearanceData;
 NpcBotExtrasMap _botsExtras;
+NpcBotRegistry _existingBots;
+
+static boost::shared_mutex _lock;
 
 bool allBotsLoaded = false;
 
@@ -143,7 +150,7 @@ void BotDataMgr::LoadNpcBots()
         }
 
         field = infores->Fetch();
-        //uint32 tableGuid = field[0].GetUInt32();
+        uint32 tableGuid = field[0].GetUInt32();
         uint32 mapId = uint32(field[1].GetUInt16());
         float pos_x = field[2].GetFloat();
         float pos_y = field[3].GetFloat();
@@ -375,4 +382,44 @@ NpcBotExtras const* BotDataMgr::SelectNpcBotExtras(uint32 entry)
 {
     NpcBotExtrasMap::const_iterator itr = _botsExtras.find(entry);
     return itr != _botsExtras.end() ? itr->second : nullptr;
+}
+
+void BotDataMgr::RegisterBot(Creature const* bot)
+{
+    if (_existingBots.find(bot) != _existingBots.end())
+    {
+        TC_LOG_ERROR("entities.unit", "BotDataMgr::RegisterBot: bot %u (%s) already registered!",
+            bot->GetEntry(), bot->GetName().c_str());
+        return;
+    }
+
+    boost::unique_lock<boost::shared_mutex> lock(_lock);
+
+    _existingBots.insert(bot);
+    //TC_LOG_ERROR("entities.unit", "BotDataMgr::RegisterBot: registered bot %u (%s)", bot->GetEntry(), bot->GetName().c_str());
+}
+void BotDataMgr::UnregisterBot(Creature const* bot)
+{
+    if (_existingBots.find(bot) == _existingBots.end())
+    {
+        TC_LOG_ERROR("entities.unit", "BotDataMgr::UnregisterBot: bot %u (%s) not found!",
+            bot->GetEntry(), bot->GetName().c_str());
+        return;
+    }
+
+    boost::unique_lock<boost::shared_mutex> lock(_lock);
+
+    _existingBots.erase(bot);
+    //TC_LOG_ERROR("entities.unit", "BotDataMgr::UnregisterBot: unregistered bot %u (%s)", bot->GetEntry(), bot->GetName().c_str());
+}
+Creature const* BotDataMgr::FindBotInWorld(uint32 entry)
+{
+    boost::shared_lock<boost::shared_mutex> lock(_lock);
+
+    for (NpcBotRegistry::const_iterator ci = _existingBots.begin(); ci != _existingBots.end(); ++ci)
+    {
+        if ((*ci)->GetEntry() == entry)
+            return *ci;
+    }
+    return nullptr;
 }

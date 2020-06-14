@@ -676,7 +676,7 @@ void bot_ai::_calculatePos(Position& pos) const
     {
         uint8 tanks = master->GetBotMgr()->GetNpcBotsCountByRole(BOT_ROLE_TANK);
         uint8 slot = master->GetBotMgr()->GetNpcBotSlotByRole(BOT_ROLE_TANK, me);
-        angle = M_PI / 6.0f; //max bias (left of right) //total arc is angle * 2
+        angle = float(M_PI) / 6.0f; //max bias (left of right) //total arc is angle * 2
         angle = (angle / tanks) * (slot - (slot % 2)); //bias
         if (slot % 2) angle *= -1.f; //bias interchange
         mydist = 3.5f;
@@ -685,20 +685,20 @@ void bot_ai::_calculatePos(Position& pos) const
     {
         uint8 rangeds = master->GetBotMgr()->GetNpcBotsCountByRole(BOT_ROLE_RANGED);
         uint8 slot = master->GetBotMgr()->GetNpcBotSlotByRole(BOT_ROLE_RANGED, me);
-        angle = M_PI / 3.5f; //max bias (left of right) //total arc is angle * 2
+        angle = float(M_PI) / 3.5f; //max bias (left of right) //total arc is angle * 2
         angle = (angle / rangeds) * (slot - (slot % 2)); //bias
         if (slot % 2) angle *= -1.f; //bias interchange
-        angle += M_PI; //behind
+        angle += float(M_PI); //behind
         mydist = 1.0f;
     }
     else if (HasRole(BOT_ROLE_DPS))
     {
         uint8 dpss = master->GetBotMgr()->GetNpcBotsCountByRole(BOT_ROLE_DPS);
         uint8 slot = master->GetBotMgr()->GetNpcBotSlotByRole(BOT_ROLE_DPS, me);
-        angle = M_PI / 7.5f; //max bias (left of right) //total arc is angle * 2
+        angle = float(M_PI) / 7.5f; //max bias (left of right) //total arc is angle * 2
         angle = (angle / dpss) * (slot); //bias
         if (slot % 2) angle *= -1.f; //bias interchange
-        angle += ((slot % 4) < 2) ? (M_PI/2.f) : -(M_PI/2.f); //sides
+        angle += ((slot % 4) < 2) ? (float(M_PI_2)) : -(float(M_PI_2)); //sides
         mydist = 2.0f;
     }
     else
@@ -3309,12 +3309,12 @@ void bot_ai::CalculateAttackPos(Unit const* target, Position& pos) const
     //most ranged classes have some sort of 20yd spell
     if (rangeMode != BOT_ATTACK_RANGE_EXACT)
         dist = std::min<float>(dist, GetSpellAttackRange(rangeMode == BOT_ATTACK_RANGE_LONG) - 4.f);
-    if (target->HasInArc(M_PI/2, me) && (target->m_movementInfo.GetMovementFlags() & MOVEMENTFLAG_FORWARD))
+    if (target->HasInArc(float(M_PI_2), me) && (target->m_movementInfo.GetMovementFlags() & MOVEMENTFLAG_FORWARD))
         dist = std::min<float>(dist + 10, 30);
 
     float clockwise = (me->GetEntry() % 2) ? 1.f : -1.f;
-    float angleDelta1 = ((IsTank(master) && !IsTank(me)) ? frand(M_PI*0.40f, M_PI*0.60f) : frand(0.0f, M_PI*0.15f)) * clockwise;
-    float angleDelta2 = frand(0.0f, M_PI*0.08f) * clockwise;
+    float angleDelta1 = ((IsTank(master) && !IsTank(me)) ? frand(float(M_PI) *0.40f, float(M_PI) *0.60f) : frand(0.0f, float(M_PI) *0.15f)) * clockwise;
+    float angleDelta2 = frand(0.0f, float(M_PI) *0.08f) * clockwise;
     if (boss && IsTank())
         angle += M_PI*(IsMelee() ? 0.5f : 0.33f);
 
@@ -3430,7 +3430,7 @@ void bot_ai::MoveBehind(Unit const* target) const
         target->GetVictim() != me || CCed(target) || target->GetTypeId() == TYPEID_PLAYER :
         target->GetVictim() != me && !CCed(target))      &&
         target->IsWithinCombatRange(me, ATTACK_DISTANCE) &&
-        target->HasInArc(M_PI, me))
+        target->HasInArc(float(M_PI), me))
     {
         float x(0),y(0),z(0);
         target->GetNearPoint(me, x, y, z, me->GetCombatReach(), target->GetAbsoluteAngle(me) + M_PI);
@@ -3977,7 +3977,7 @@ Unit* bot_ai::FindAOETarget(float dist) const
     {
         if ((*itr)->isMoving() && (*itr)->GetVictim() &&
             ((*itr)->GetDistance2d((*itr)->GetVictim()->GetPositionX(), (*itr)->GetVictim()->GetPositionY()) > 7.5f ||
-            !(*itr)->HasInArc(M_PI*0.75f, (*itr)->GetVictim())))
+            !(*itr)->HasInArc(float(M_PI) *0.75f, (*itr)->GetVictim())))
             continue;
 
         if (!unit && (*itr)->GetVictim() && (*itr)->GetDistance((*itr)->GetVictim()) < dist * 0.334f)
@@ -4003,7 +4003,7 @@ Unit* bot_ai::FindAOETarget(float dist) const
                 {
                     if (++count > 2)
                     {
-                        if (me->GetDistance(*it) < me->GetDistance(unit) && unit->HasInArc(M_PI/2, me))
+                        if (me->GetDistance(*it) < me->GetDistance(unit) && unit->HasInArc(float(M_PI_2), me))
                             unit = *it;
                         break;
                     }
@@ -4573,7 +4573,7 @@ void bot_ai::AdjustTankingPosition() const
     uint32 bCount = 0;
     for (Unit::AttackerSet::const_iterator itr = myattackers.begin(); itr != myattackers.end(); ++itr)
     {
-        if (/*!CCed(*itr) && */(*itr)->GetDistance(me) < 5 && !me->HasInArc(M_PI, *itr))
+        if (/*!CCed(*itr) && */(*itr)->GetDistance(me) < 5 && !me->HasInArc(float(M_PI), *itr))
             ++bCount;
             //if (++bCount)
             //    break;
@@ -4588,7 +4588,7 @@ void bot_ai::AdjustTankingPosition() const
     float x = me->GetPositionX();
     float y = me->GetPositionY();
     float z = me->GetPositionZ();
-    float ori = CCed(opponent, true) ? me->GetOrientation() + 0.75f * M_PI : me->GetOrientation();
+    float ori = CCed(opponent, true) ? me->GetOrientation() + 0.75f * float(M_PI) : me->GetOrientation();
     float const moveDist = -1.f * std::max<float>(opponent->GetCombatReach() * 0.6f, 3.f);
     float moveX;
     float moveY;
@@ -11004,7 +11004,7 @@ bool bot_ai::GlobalUpdate(uint32 diff)
             {
                 WorldObject* wo = Trinity::Containers::SelectRandomContainerElement(woList);
                 //TC_LOG_ERROR("spells", "bot_ai:UpdateEx: processing %s", wo->GetName().c_str());
-                if (me->GetDistance(wo) <= INTERACTION_DISTANCE * 0.5f && me->HasInArc(M_PI * 0.75f, wo))
+                if (me->GetDistance(wo) <= INTERACTION_DISTANCE * 0.5f && me->HasInArc(float(M_PI) * 0.75f, wo))
                 {
                     //cosmetic
                     CastSpellExtraArgs args(TRIGGERED_FULL_MASK);
@@ -11290,7 +11290,7 @@ void bot_ai::Evade()
     {
         if (!_evadeMode)
             ++_evadeCount;
-        else if (Rand() < 4 && fabs(me->GetPositionZ() - pos.GetPositionZ()) > 30.f && !me->HasInArc(M_PI*0.5f, &pos))
+        else if (Rand() < 4 && fabs(me->GetPositionZ() - pos.GetPositionZ()) > 30.f && !me->HasInArc(float(M_PI_2), &pos))
             ++_evadeCount;
         else if (me->isMoving() && Rand() > 10)
             return;
