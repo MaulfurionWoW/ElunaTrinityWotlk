@@ -1,4 +1,4 @@
-## Trinity 3.3.5 + Eluna Lua Engine + Trinity Bots - Build Status
+# Trinity 3.3.5 + Eluna Lua Engine + Trinity Bots - Build Status
 Travis-CI | AppVeyor
 :------------: | :------------:
 [![Travis Build Status](https://travis-ci.org/RedSkull-666/ElunaTrinityWotlk.svg?branch=master)](https://travis-ci.org/RedSkull-666/ElunaTrinityWotlk) | [![AppVeyor Build status](https://ci.appveyor.com/api/projects/status/github/RedSkull-666/elunatrinitywotlk?branch=master&svg=true)](https://ci.appveyor.com/project/RedSkull-666/elunatrinitywotlk)
