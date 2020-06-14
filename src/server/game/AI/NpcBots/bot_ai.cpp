@@ -20,7 +20,7 @@
 #include "ScriptedGossip.h"
 #include "SpellAuraEffects.h"
 /*
-NpcBot System by Trickerer (https://bitbucket.org/trickerer/trinity-bots; onlysuffering@gmail.com)
+NpcBot System by Trickerer (https://github.com/trickerer/Trinity-Bots; onlysuffering@gmail.com)
 Version 4.7.27a
 Original idea: https://bitbucket.org/lordpsyan/trinitycore-patches/src/3b8b9072280e/Individual/11185-BOTS-NPCBots.patch
 TODO:
@@ -210,6 +210,8 @@ bot_ai::bot_ai(Creature* creature) : CreatureAI(creature)
     _ownerGuid = 0;
 
     ResetBotAI(BOTAI_RESET_INIT);
+
+    BotDataMgr::RegisterBot(me);
 }
 bot_ai::~bot_ai()
 {
@@ -225,6 +227,8 @@ bot_ai::~bot_ai()
             delete _equips[i];
 
     delete _classinfo;
+
+    BotDataMgr::UnregisterBot(me);
 }
 
 uint16 bot_ai::Rand() const
@@ -672,7 +676,7 @@ void bot_ai::_calculatePos(Position& pos) const
     {
         uint8 tanks = master->GetBotMgr()->GetNpcBotsCountByRole(BOT_ROLE_TANK);
         uint8 slot = master->GetBotMgr()->GetNpcBotSlotByRole(BOT_ROLE_TANK, me);
-        angle = float(M_PI) / 6.0f; //max bias (left of right) //total arc is angle * 2
+        angle = M_PI / 6.0f; //max bias (left of right) //total arc is angle * 2
         angle = (angle / tanks) * (slot - (slot % 2)); //bias
         if (slot % 2) angle *= -1.f; //bias interchange
         mydist = 3.5f;
@@ -681,25 +685,25 @@ void bot_ai::_calculatePos(Position& pos) const
     {
         uint8 rangeds = master->GetBotMgr()->GetNpcBotsCountByRole(BOT_ROLE_RANGED);
         uint8 slot = master->GetBotMgr()->GetNpcBotSlotByRole(BOT_ROLE_RANGED, me);
-        angle = float(M_PI) / 3.5f; //max bias (left of right) //total arc is angle * 2
+        angle = M_PI / 3.5f; //max bias (left of right) //total arc is angle * 2
         angle = (angle / rangeds) * (slot - (slot % 2)); //bias
         if (slot % 2) angle *= -1.f; //bias interchange
-        angle += float(M_PI); //behind
+        angle += M_PI; //behind
         mydist = 1.0f;
     }
     else if (HasRole(BOT_ROLE_DPS))
     {
         uint8 dpss = master->GetBotMgr()->GetNpcBotsCountByRole(BOT_ROLE_DPS);
         uint8 slot = master->GetBotMgr()->GetNpcBotSlotByRole(BOT_ROLE_DPS, me);
-        angle = float(M_PI) / 7.5f; //max bias (left of right) //total arc is angle * 2
+        angle = M_PI / 7.5f; //max bias (left of right) //total arc is angle * 2
         angle = (angle / dpss) * (slot); //bias
         if (slot % 2) angle *= -1.f; //bias interchange
-        angle += ((slot % 4) < 2) ? (float(M_PI_2)) : -(float(M_PI_2)); //sides
+        angle += ((slot % 4) < 2) ? (M_PI/2.f) : -(M_PI/2.f); //sides
         mydist = 2.0f;
     }
     else
     {
-        angle = (me->GetEntry() % 2) ? (float(M_PI_2)) : -(float(M_PI_2));
+        angle = (me->GetEntry() % 2) ? (M_PI/2.f) : -(M_PI/2.f);
         mydist = 0.5f;
     }
 
@@ -3305,14 +3309,14 @@ void bot_ai::CalculateAttackPos(Unit const* target, Position& pos) const
     //most ranged classes have some sort of 20yd spell
     if (rangeMode != BOT_ATTACK_RANGE_EXACT)
         dist = std::min<float>(dist, GetSpellAttackRange(rangeMode == BOT_ATTACK_RANGE_LONG) - 4.f);
-    if (target->HasInArc(float(M_PI_2), me) && (target->m_movementInfo.GetMovementFlags() & MOVEMENTFLAG_FORWARD))
+    if (target->HasInArc(M_PI/2, me) && (target->m_movementInfo.GetMovementFlags() & MOVEMENTFLAG_FORWARD))
         dist = std::min<float>(dist + 10, 30);
 
     float clockwise = (me->GetEntry() % 2) ? 1.f : -1.f;
-    float angleDelta1 = ((IsTank(master) && !IsTank(me)) ? frand(float(M_PI)*0.40f, float(M_PI)*0.60f) : frand(0.0f, float(M_PI)*0.15f)) * clockwise;
-    float angleDelta2 = frand(0.0f, float(M_PI)*0.08f) * clockwise;
+    float angleDelta1 = ((IsTank(master) && !IsTank(me)) ? frand(M_PI*0.40f, M_PI*0.60f) : frand(0.0f, M_PI*0.15f)) * clockwise;
+    float angleDelta2 = frand(0.0f, M_PI*0.08f) * clockwise;
     if (boss && IsTank())
-        angle += float(M_PI)*(IsMelee() ? 0.5f : 0.33f);
+        angle += M_PI*(IsMelee() ? 0.5f : 0.33f);
 
     for (uint8 i = 0; i < 5; ++i)
     {
@@ -3426,7 +3430,7 @@ void bot_ai::MoveBehind(Unit const* target) const
         target->GetVictim() != me || CCed(target) || target->GetTypeId() == TYPEID_PLAYER :
         target->GetVictim() != me && !CCed(target))      &&
         target->IsWithinCombatRange(me, ATTACK_DISTANCE) &&
-        target->HasInArc(float(M_PI), me))
+        target->HasInArc(M_PI, me))
     {
         float x(0),y(0),z(0);
         target->GetNearPoint(me, x, y, z, me->GetCombatReach(), target->GetAbsoluteAngle(me) + M_PI);
@@ -3973,7 +3977,7 @@ Unit* bot_ai::FindAOETarget(float dist) const
     {
         if ((*itr)->isMoving() && (*itr)->GetVictim() &&
             ((*itr)->GetDistance2d((*itr)->GetVictim()->GetPositionX(), (*itr)->GetVictim()->GetPositionY()) > 7.5f ||
-            !(*itr)->HasInArc(float(M_PI)*0.75f, (*itr)->GetVictim())))
+            !(*itr)->HasInArc(M_PI*0.75f, (*itr)->GetVictim())))
             continue;
 
         if (!unit && (*itr)->GetVictim() && (*itr)->GetDistance((*itr)->GetVictim()) < dist * 0.334f)
@@ -3999,7 +4003,7 @@ Unit* bot_ai::FindAOETarget(float dist) const
                 {
                     if (++count > 2)
                     {
-                        if (me->GetDistance(*it) < me->GetDistance(unit) && unit->HasInArc(float(M_PI_2), me))
+                        if (me->GetDistance(*it) < me->GetDistance(unit) && unit->HasInArc(M_PI/2, me))
                             unit = *it;
                         break;
                     }
@@ -4569,7 +4573,7 @@ void bot_ai::AdjustTankingPosition() const
     uint32 bCount = 0;
     for (Unit::AttackerSet::const_iterator itr = myattackers.begin(); itr != myattackers.end(); ++itr)
     {
-        if (/*!CCed(*itr) && */(*itr)->GetDistance(me) < 5 && !me->HasInArc(float(M_PI), *itr))
+        if (/*!CCed(*itr) && */(*itr)->GetDistance(me) < 5 && !me->HasInArc(M_PI, *itr))
             ++bCount;
             //if (++bCount)
             //    break;
@@ -4977,7 +4981,7 @@ bool bot_ai::OnGossipHello(Player* player, uint32 /*option*/)
     {
         if (IAmFree())
         {
-            uint32 cost = BotMgr::GetNpcBotCost(player->GetLevel(), me);
+            uint32 cost = BotMgr::GetNpcBotCost(player->GetLevel(), _botclass);
 
             int8 reason = 0;
             if (me->HasAura(BERSERK))
@@ -6904,7 +6908,7 @@ bool bot_ai::OnGossipSelect(Player* player, Creature* creature/* == me*/, uint32
                     case 3: //not enough money
                     {
                         std::string str = "You don't have enough money (";
-                        str += BotMgr::GetNpcBotCostStr(player->GetLevel(), me);
+                        str += BotMgr::GetNpcBotCostStr(player->GetLevel(), _botclass);
                         str += ")!";
                         ch.SendSysMessage(str.c_str());
                         player->SendBuyError(BUY_ERR_NOT_ENOUGHT_MONEY, 0, 0, 0);
@@ -9195,7 +9199,7 @@ inline float bot_ai::_getTotalBotStat(uint8 stat) const
                     if (lvl >= 60 && _spec == BOT_SPEC_DK_BLOOD)
                         fval *= 1.02f;
                     //Frost Presence passive / Improved Frost Presence
-                    if ((lvl >= 61 || GetBotStance() == DEATH_KNIGHT_FROST_PRESENCE) && _spec == BOT_SPEC_DK_FROST)
+                    if (lvl >= 61 || GetBotStance() == DEATH_KNIGHT_FROST_PRESENCE && _spec == BOT_SPEC_DK_FROST)
                         fval *= 1.08f;
                     break;
                 case BOT_CLASS_DRUID:
@@ -10136,7 +10140,7 @@ void bot_ai::_AddItemTemplateLink(Player const* forPlayer, ItemTemplate const* i
 void bot_ai::_AddItemLink(Player const* forPlayer, Item const* item, std::ostringstream &str, bool addIcon) const
 {
     ItemTemplate const* proto = item->GetTemplate();
-    //ItemRandomSuffixEntry const* item_rand = sItemRandomSuffixStore.LookupEntry(abs(item->GetItemRandomPropertyId()));
+    ItemRandomSuffixEntry const* item_rand = sItemRandomSuffixStore.LookupEntry(abs(item->GetItemRandomPropertyId()));
     uint32 g1 = 0, g2 = 0, g3 = 0;
     //uint32 bpoints = 0;
     std::string name = proto->Name1;
@@ -11000,7 +11004,7 @@ bool bot_ai::GlobalUpdate(uint32 diff)
             {
                 WorldObject* wo = Trinity::Containers::SelectRandomContainerElement(woList);
                 //TC_LOG_ERROR("spells", "bot_ai:UpdateEx: processing %s", wo->GetName().c_str());
-                if (me->GetDistance(wo) <= INTERACTION_DISTANCE * 0.5f && me->HasInArc(float(M_PI) * 0.75f, wo))
+                if (me->GetDistance(wo) <= INTERACTION_DISTANCE * 0.5f && me->HasInArc(M_PI * 0.75f, wo))
                 {
                     //cosmetic
                     CastSpellExtraArgs args(TRIGGERED_FULL_MASK);
@@ -11286,7 +11290,7 @@ void bot_ai::Evade()
     {
         if (!_evadeMode)
             ++_evadeCount;
-        else if (Rand() < 4 && fabs(me->GetPositionZ() - pos.GetPositionZ()) > 30.f && !me->HasInArc(float(M_PI_2), &pos))
+        else if (Rand() < 4 && fabs(me->GetPositionZ() - pos.GetPositionZ()) > 30.f && !me->HasInArc(M_PI*0.5f, &pos))
             ++_evadeCount;
         else if (me->isMoving() && Rand() > 10)
             return;
@@ -11883,13 +11887,13 @@ bool bot_ai::GossipHello(Player* player)
 {
     return OnGossipHello(player, 0);
 }
-bool bot_ai::GossipSelect(Player* player, uint32 /*menuId*/, uint32 gossipListId)
+bool bot_ai::GossipSelect(Player* player, uint32 menuId, uint32 gossipListId)
 {
     uint32 sender = player->PlayerTalkClass->GetGossipOptionSender(gossipListId);
     uint32 action = player->PlayerTalkClass->GetGossipOptionAction(gossipListId);
     return OnGossipSelect(player, me, sender, action);
 }
-bool bot_ai::GossipSelectCode(Player* player, uint32 /*menuId*/, uint32 gossipListId, char const* code)
+bool bot_ai::GossipSelectCode(Player* player, uint32 menuId, uint32 gossipListId, char const* code)
 {
     uint32 sender = player->PlayerTalkClass->GetGossipOptionSender(gossipListId);
     uint32 action = player->PlayerTalkClass->GetGossipOptionAction(gossipListId);
