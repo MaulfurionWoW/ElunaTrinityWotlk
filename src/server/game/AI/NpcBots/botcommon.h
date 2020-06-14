@@ -9,6 +9,7 @@ Original patch from: LordPsyan https://bitbucket.org/lordpsyan/trinitycore-patch
 enum BotCommonValues
 {
 //MISC
+    BOT_GIVER_ENTRY                     = 70000,
     BOT_ENTRY_BEGIN                     = 70001,
     BOT_ENTRY_END                       = 71000,
     BOT_PET_ENTRY_BEGIN                 = 70501,
@@ -82,7 +83,14 @@ enum BotCommonValues
     GOSSIP_CLASSDESC_DREADLORD          = 70104,
     GOSSIP_CLASSDESC_SPELLBREAKER       = 70105,
     GOSSIP_CLASSDESC_DARKRANGER         = 70106,
+    GOSSIP_BOTGIVER_GREET               = 70201,
+    GOSSIP_BOTGIVER_HIRE                = 70202,
+    GOSSIP_BOTGIVER_HIRE_CLASS          = 70203,
+    GOSSIP_BOTGIVER_HIRE_EMPTY          = 70204,
     GOSSIP_SENDER_BEGIN                 = 6000,
+    GOSSIP_SENDER_BOTGIVER_HIRE,
+    GOSSIP_SENDER_BOTGIVER_HIRE_CLASS,
+    GOSSIP_SENDER_BOTGIVER_HIRE_ENTRY,
     GOSSIP_SENDER_CLASS,
     GOSSIP_SENDER_CLASS_ACTION,
     GOSSIP_SENDER_CLASS_ACTION2,
