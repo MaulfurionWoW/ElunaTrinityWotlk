@@ -99,8 +99,8 @@ class BotMgr
         bool HasBotClass(uint8 botclass) const;
         bool HasBotPetType(uint32 petType) const;
 
-        static uint32 GetNpcBotCost(uint8 level, Creature const* creature);
-        static std::string GetNpcBotCostStr(uint8 level, Creature const* creature);
+        static uint32 GetNpcBotCost(uint8 level, uint8 botclass);
+        static std::string GetNpcBotCostStr(uint8 level, uint8 botclass);
 
         void OnTeleportFar(uint32 mapId, float x, float y, float z, float ori = 0.f);
         void OnOwnerSetGameMaster(bool on);

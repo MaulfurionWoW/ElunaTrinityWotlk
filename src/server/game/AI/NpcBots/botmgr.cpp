@@ -88,6 +88,7 @@ void AddSC_shaman_bot_pets();
 void AddSC_mage_bot_pets();
 void AddSC_druid_bot_pets();
 void AddSC_script_bot_commands();
+void AddSC_script_bot_giver();
 
 void AddNpcBotScripts()
 {
@@ -118,6 +119,7 @@ void AddNpcBotScripts()
     AddSC_mage_bot_pets();
     AddSC_druid_bot_pets();
     AddSC_script_bot_commands();
+    AddSC_script_bot_giver();
 }
 
 BotMgr::BotMgr(Player* const master) : _owner(master), _dpstracker(new DPSTracker())
@@ -830,12 +832,12 @@ BotAddResult BotMgr::AddBot(Creature* bot, bool takeMoney)
     //}
     if (!temporary && takeMoney)
     {
-        uint32 cost = GetNpcBotCost(_owner->GetLevel(), bot);
+        uint32 cost = GetNpcBotCost(_owner->GetLevel(), bot->GetBotClass());
         if (!_owner->HasEnoughMoney(cost))
         {
             ChatHandler ch(_owner->GetSession());
             std::string str = "You don't have enough money (";
-            str += GetNpcBotCostStr(_owner->GetLevel(), bot);
+            str += GetNpcBotCostStr(_owner->GetLevel(), bot->GetBotClass());
             str += ")!";
             ch.SendSysMessage(str.c_str());
             //ch.SetSentErrorMessage(true);
@@ -965,7 +967,7 @@ bool BotMgr::RemoveAllBotsFromGroup()
     return true;
 }
 
-uint32 BotMgr::GetNpcBotCost(uint8 level, Creature const* creature)
+uint32 BotMgr::GetNpcBotCost(uint8 level, uint8 botclass)
 {
     //assuming default 1000000
     //level 1: 1000
@@ -983,10 +985,7 @@ uint32 BotMgr::GetNpcBotCost(uint8 level, Creature const* creature)
         level < 40 ? _npcBotsCost / 5 :    //20 gold
         (_npcBotsCost * level) / DEFAULT_MAX_LEVEL; //50 - 100 gold
 
-    if (!creature->GetBotAI())
-        return cost;
-
-    switch (creature->GetBotClass())
+    switch (botclass)
     {
         case BOT_CLASS_BM:
         case BOT_CLASS_ARCHMAGE:
@@ -1005,11 +1004,11 @@ uint32 BotMgr::GetNpcBotCost(uint8 level, Creature const* creature)
     return cost;
 }
 
-std::string BotMgr::GetNpcBotCostStr(uint8 level, Creature const* creature)
+std::string BotMgr::GetNpcBotCostStr(uint8 level, uint8 botclass)
 {
     std::ostringstream money;
 
-    if (uint32 cost = GetNpcBotCost(level, creature))
+    if (uint32 cost = GetNpcBotCost(level, botclass))
     {
         uint32 gold = uint32(cost / GOLD);
         cost -= (gold * GOLD);

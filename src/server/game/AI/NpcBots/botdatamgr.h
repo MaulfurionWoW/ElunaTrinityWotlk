@@ -3,6 +3,8 @@
 
 #include "botcommon.h"
 
+class Creature;
+
 enum NpcBotDataUpdateType
 {
     NPCBOT_UPDATE_OWNER                 = 1,
@@ -74,7 +76,12 @@ class BotDataMgr
 
         static bool AllBotsLoaded();
 
+        static void RegisterBot(Creature const* bot);
+        static void UnregisterBot(Creature const* bot);
+        static Creature const* FindBotInWorld(uint32 entry);
+
     private:
+
         BotDataMgr() {}
         BotDataMgr(BotDataMgr const&);
 };
