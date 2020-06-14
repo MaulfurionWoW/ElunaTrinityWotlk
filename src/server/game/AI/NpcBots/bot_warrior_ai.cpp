@@ -1668,8 +1668,12 @@ public:
             }
         }
 
-        void SpellHitTarget(WorldObject* target, SpellInfo const* spell) override
+        void SpellHitTarget(WorldObject* wtarget, SpellInfo const* spell) override
         {
+            Unit* target = wtarget->ToUnit();
+            if (!target)
+                return;
+
             uint32 spellId = spell->Id;
             uint32 baseId = spell->GetFirstRankSpell()->Id;
             uint8 lvl = me->GetLevel();
@@ -1689,7 +1693,7 @@ public:
 
             if (baseId == THUNDER_CLAP_1 && lvl >= 10)
             {
-                if (AuraEffect* clap = target->ToUnit()->GetAuraEffect(spellId, EFFECT_1, me->GetGUID()))
+                if (AuraEffect* clap = target->GetAuraEffect(spellId, EFFECT_1, me->GetGUID()))
                 {
                     int32 amount = clap->GetAmount();
                     //Improved Thunder Clap (part 3): 10% extra slow
@@ -1703,12 +1707,12 @@ public:
             }
             if (baseId == DEMORALIZING_SHOUT_1 && lvl >= 15)
             {
-                if (AuraEffect* demo = target->ToUnit()->GetAuraEffect(spellId, 0, me->GetGUID()))
+                if (AuraEffect* demo = target->GetAuraEffect(spellId, 0, me->GetGUID()))
                     demo->ChangeAmount(demo->GetAmount() + demo->GetAmount() * 2 / 5);
             }
             if (baseId == BATTLE_SHOUT_1 || baseId == COMMANDING_SHOUT_1 || baseId == DEMORALIZING_SHOUT_1)
             {
-                if (Aura* shout = target->ToUnit()->GetAura(spellId, me->GetGUID()))
+                if (Aura* shout = target->GetAura(spellId, me->GetGUID()))
                 {
                     //Booming Voice part 2
                     //Buffs duration 10 min for bots
@@ -1747,7 +1751,7 @@ public:
             if (baseId == DISARM_1 && (_spec == BOT_SPEC_WARRIOR_PROTECTION) && lvl >= 25)
             {
                 //Improved Disarm part 2
-                if (AuraEffect* disa = target->ToUnit()->GetAuraEffect(spellId, 1, me->GetGUID()))
+                if (AuraEffect* disa = target->GetAuraEffect(spellId, 1, me->GetGUID()))
                     disa->ChangeAmount(disa->GetAmount() + 10);
             }
             if (baseId == OVERPOWER_1)
@@ -1755,7 +1759,7 @@ public:
                 me->ClearReactive(REACTIVE_OVERPOWER);
                 //Unrelenting Assault (part 3): reduce spells efficiency on players
                 if (lvl >= 45 && (_spec == BOT_SPEC_WARRIOR_ARMS) &&
-                    target->GetTypeId() == TYPEID_PLAYER && target->ToUnit()->IsNonMeleeSpellCast(false, false, true))
+                    target->GetTypeId() == TYPEID_PLAYER && target->IsNonMeleeSpellCast(false, false, true))
                 {
                     CastSpellExtraArgs args(true);
                     args.SetOriginalCaster(me->GetGUID());
@@ -1765,7 +1769,7 @@ public:
             if (baseId == REND_1 && lvl >= 15)
             {
                 //Glyph of Rending + 6 sec duration
-                if (Aura* rend = target->ToUnit()->GetAura(spellId, me->GetGUID()))
+                if (Aura* rend = target->GetAura(spellId, me->GetGUID()))
                 {
                     uint32 dur = rend->GetDuration() + 6000;
                     rend->SetDuration(dur);
@@ -1775,15 +1779,15 @@ public:
             if (baseId == INTERVENE_1)
             {
                 //Glyph of Intervene + 1 bonus charge
-                if (Aura* vene = target->ToUnit()->GetAura(spellId, me->GetGUID()))
+                if (Aura* vene = target->GetAura(spellId, me->GetGUID()))
                     vene->SetCharges(vene->GetCharges() + 1);
             }
             if (baseId == PIERCING_HOWL_1)
             {
                 //Piercing Howl: 4 sec duraion increase (exclude players controlled)
-                if (!target->ToUnit()->IsControlledByPlayer())
+                if (!target->IsControlledByPlayer())
                 {
-                    if (Aura* howl = target->ToUnit()->GetAura(spellId, me->GetGUID()))
+                    if (Aura* howl = target->GetAura(spellId, me->GetGUID()))
                     {
                         uint32 dur = howl->GetDuration() + 4000;
                         howl->SetDuration(dur);
@@ -1812,8 +1816,12 @@ public:
             }
         }
 
-        void SpellHit(WorldObject* caster, SpellInfo const* spell) override
+        void SpellHit(WorldObject* wcaster, SpellInfo const* spell) override
         {
+            Unit* caster = wcaster->ToUnit();
+            if (!caster)
+                return;
+
             uint32 spellId = spell->Id;
             uint32 baseId = spell->GetFirstRankSpell()->Id;
             uint8 lvl = me->GetLevel();
@@ -1894,7 +1902,7 @@ public:
                 }
             }
 
-            OnSpellHit(caster->ToUnit(), spell);
+            OnSpellHit(caster, spell);
         }
 
         void DamageDealt(Unit* victim, uint32& damage, DamageEffectType damageType) override

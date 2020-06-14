@@ -196,17 +196,25 @@ public:
                 me->CastSpell(me, MH_ATTACK_VISUAL, true);
         }
 
-        void SpellHitTarget(WorldObject* target, SpellInfo const* spell) override
+        void SpellHitTarget(WorldObject* wtarget, SpellInfo const* spell) override
         {
+            Unit* target = wtarget->ToUnit();
+            if (!target)
+                return;
+
             uint32 baseId = spell->GetFirstRankSpell()->Id;
 
             if (baseId == SPELLSTEAL_1)
-                ProcessSpellsteal(target->ToUnit());
+                ProcessSpellsteal(target);
         }
 
-        void SpellHit(WorldObject* caster, SpellInfo const* spell) override
+        void SpellHit(WorldObject* wcaster, SpellInfo const* spell) override
         {
-            OnSpellHit(caster->ToUnit(), spell);
+            Unit* caster = wcaster->ToUnit();
+            if (!caster)
+                return;
+
+            OnSpellHit(caster, spell);
         }
 
         void DamageDealt(Unit* victim, uint32& damage, DamageEffectType damageType) override

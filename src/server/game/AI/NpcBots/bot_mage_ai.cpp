@@ -1178,8 +1178,12 @@ public:
             //TODO: Presence of mind
         }
 
-        void SpellHitTarget(WorldObject* target, SpellInfo const* spell) override
+        void SpellHitTarget(WorldObject* wtarget, SpellInfo const* spell) override
         {
+            Unit* target = wtarget->ToUnit();
+            if (!target)
+                return;
+
             if (aftercastTargetGuid != ObjectGuid::Empty)
             {
                 //only players for now
@@ -1252,7 +1256,7 @@ public:
 
             if (baseId == ARCANEINTELLECT_1)
             {
-                if (Aura* arc = target->ToUnit()->GetAura(spellId, me->GetGUID()))
+                if (Aura* arc = target->GetAura(spellId, me->GetGUID()))
                 {
                     uint32 dur = HOUR * IN_MILLISECONDS;
                     arc->SetDuration(dur);
@@ -1272,7 +1276,7 @@ public:
                 ((spell->SpellFamilyFlags[0] & 0x100220) || (spell->SpellFamilyFlags[1] & 0x1000)))
             {
                 //frostbolt, cone of cold, blizzard chill, frostfire bolt
-                Aura* chill = target->ToUnit()->GetAura(spellId, me->GetGUID());
+                Aura* chill = target->GetAura(spellId, me->GetGUID());
                 if (chill)
                 {
                     //Permafrost: chill effects duration + 3 sec
@@ -1315,15 +1319,19 @@ public:
             if (sGameEventMgr->IsActiveEvent(GAME_EVENT_WINTER_VEIL))
             {
                 if (SPELL_SCHOOL_MASK_FROST & spell->GetSchoolMask())
-                    me->AddAura(44755, target->ToUnit()); //snowflakes
+                    me->AddAura(44755, target); //snowflakes
 
                 //if (baseId == FROSTBOLT_1 && urand(1,100) <= 10)
                 //    me->CastSpell(target, 25686, true); //10% super snowball
             }
         }
 
-        void SpellHit(WorldObject* caster, SpellInfo const* spell) override
+        void SpellHit(WorldObject* wcaster, SpellInfo const* spell) override
         {
+            Unit* caster = wcaster->ToUnit();
+            if (!caster)
+                return;
+
             //uint32 spellId = spell->Id;
 
             //Ward helper
@@ -1334,7 +1342,7 @@ public:
                 (spell->HasEffect(SPELL_EFFECT_SCHOOL_DAMAGE) || spell->HasAura(SPELL_AURA_PERIODIC_DAMAGE)))
                 canFireWard = true;
 
-            OnSpellHit(caster->ToUnit(), spell);
+            OnSpellHit(caster, spell);
         }
 
         void DamageDealt(Unit* victim, uint32& damage, DamageEffectType damageType) override

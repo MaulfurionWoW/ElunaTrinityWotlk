@@ -329,8 +329,12 @@ public:
             //}
         }
 
-        void SpellHitTarget(WorldObject* target, SpellInfo const* /*spell*/) override
+        void SpellHitTarget(WorldObject* wtarget, SpellInfo const* /*spell*/) override
         {
+            Unit* target = wtarget->ToUnit();
+            if (!target)
+                return;
+
             if (target == me)
                 return;
 
@@ -352,9 +356,13 @@ public:
             //}
         }
 
-        void SpellHit(WorldObject* caster, SpellInfo const* spell) override
+        void SpellHit(WorldObject* wcaster, SpellInfo const* spell) override
         {
-            OnSpellHit(caster->ToUnit(), spell);
+            Unit* caster = wcaster->ToUnit();
+            if (!caster)
+                return;
+
+            OnSpellHit(caster, spell);
         }
 
         void OnBotDamageDealt(Unit* victim, uint32 damage, CleanDamage const* /*cleanDamage*/, DamageEffectType /*damagetype*/, SpellInfo const* spellInfo) override

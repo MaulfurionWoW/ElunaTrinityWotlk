@@ -407,8 +407,12 @@ public:
                 me->SetPower(POWER_MANA, 0);
         }
 
-        void SpellHitTarget(WorldObject* target, SpellInfo const* spell) override
+        void SpellHitTarget(WorldObject* wtarget, SpellInfo const* spell) override
         {
+            Unit* target = wtarget->ToUnit();
+            if (!target)
+                return;
+
             uint32 spellId = spell->Id;
             if (blastVisualTimer < GetLastDiff() && spellId == SPLASH_ATTACK_1)
             {
@@ -416,28 +420,32 @@ public:
                 me->CastSpell(*target, SHADOWFURY_VISUAL, true);
             }
             //Devour Magic: damage to summons
-            if (spellId == DEVOUR_MAGIC_1 && target->ToUnit()->IsSummon() && target->GetUInt32Value(UNIT_CREATED_BY_SPELL) &&
-                !target->ToUnit()->IsTotem() && me->GetReactionTo(target) <= REP_NEUTRAL)
+            if (spellId == DEVOUR_MAGIC_1 && target->IsSummon() && target->GetUInt32Value(UNIT_CREATED_BY_SPELL) &&
+                !target->IsTotem() && me->GetReactionTo(target) <= REP_NEUTRAL)
             {
                 SpellInfo const* devInfo = sSpellMgr->GetSpellInfo(spellId);
-                uint32 damage = std::min<uint32>(target->ToUnit()->GetMaxHealth() / 2, me->GetMaxHealth() / 5 + me->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_MAGIC));
-                Unit::DealDamage(me, target->ToUnit(), damage, nullptr, SPELL_DIRECT_DAMAGE, devInfo->GetSchoolMask(), devInfo);
-                OnBotDispelDealt(target->ToUnit(), 1);
+                uint32 damage = std::min<uint32>(target->GetMaxHealth() / 2, me->GetMaxHealth() / 5 + me->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_MAGIC));
+                Unit::DealDamage(me, target, damage, nullptr, SPELL_DIRECT_DAMAGE, devInfo->GetSchoolMask(), devInfo);
+                OnBotDispelDealt(target, 1);
             }
 
             if (spellId == DRAIN_MANA_1)
             {
                 me->CastSpell(target, SPELL_DEVOUR_MAGIC_BEAM, true);
-                target->ToUnit()->SendPlaySpellVisual(419); //drain impact visual
+                target->SendPlaySpellVisual(419); //drain impact visual
             }
             if (spellId == REPLENISH_MANA_1)
                 if (target != me)
-                    target->ToUnit()->SendPlaySpellVisual(524/*436*/); //mana gain visual//heal bigger crimson ish
+                    target->SendPlaySpellVisual(524/*436*/); //mana gain visual//heal bigger crimson ish
         }
 
-        void SpellHit(WorldObject* caster, SpellInfo const* spell) override
+        void SpellHit(WorldObject* wcaster, SpellInfo const* spell) override
         {
-            OnSpellHit(caster->ToUnit(), spell);
+            Unit* caster = wcaster->ToUnit();
+            if (!caster)
+                return;
+
+            OnSpellHit(caster, spell);
         }
 
         void OnBotDispelDealt(Unit* dispelled, uint8 num) override

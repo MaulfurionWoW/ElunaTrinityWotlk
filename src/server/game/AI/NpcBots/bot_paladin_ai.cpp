@@ -2045,8 +2045,12 @@ public:
             }
         }
 
-        void SpellHitTarget(WorldObject* target, SpellInfo const* spell) override
+        void SpellHitTarget(WorldObject* wtarget, SpellInfo const* spell) override
         {
+            Unit* target = wtarget->ToUnit();
+            if (!target)
+                return;
+
             uint32 spellId = spell->Id;
             uint32 baseId = spell->GetFirstRankSpell()->Id;
             uint8 lvl = me->GetLevel();
@@ -2054,7 +2058,7 @@ public:
             //Glyph of Beacon of Light: 30 sec increased duration
             if (baseId == BEACON_OF_LIGHT_1)
             {
-                Aura* beac = target->ToUnit()->GetAura(spellId, me->GetGUID());
+                Aura* beac = target->GetAura(spellId, me->GetGUID());
                 if (beac)
                 {
                     uint32 dur = beac->GetDuration() + 30000;
@@ -2070,7 +2074,7 @@ public:
             //Judgements of the Just melee attack speed reduction part 2
             if ((_spec == BOT_SPEC_PALADIN_PROTECTION) && spellId == JUDGEMENTS_OF_THE_JUST_AURA)
             {
-                AuraEffect* slow = target->ToUnit()->GetAuraEffect(JUDGEMENTS_OF_THE_JUST_AURA, 1, me->GetGUID());
+                AuraEffect* slow = target->GetAuraEffect(JUDGEMENTS_OF_THE_JUST_AURA, 1, me->GetGUID());
                 if (slow)
                     slow->ChangeAmount(slow->GetAmount() - 20);
             }
@@ -2080,7 +2084,7 @@ public:
                 if (lvl >= 55)
                 {
                     //Judgements of the Just: 1 sec increased duration
-                    Aura* stun = target->ToUnit()->GetAura(spellId, me->GetGUID());
+                    Aura* stun = target->GetAura(spellId, me->GetGUID());
                     if (stun)
                     {
                         uint32 dur = stun->GetDuration() + 1000;
@@ -2094,7 +2098,7 @@ public:
                 if (lvl >= 30)
                 {
                     //Glyph of Consecration: 2 sec increased duration
-                    Aura* cons = target->ToUnit()->GetAura(spellId, me->GetGUID());
+                    Aura* cons = target->GetAura(spellId, me->GetGUID());
                     if (cons)
                     {
                         uint32 dur = cons->GetDuration() + 2000;
@@ -2108,7 +2112,7 @@ public:
                 if (lvl >= 30)
                 {
                     //Sanctified Retribution: 50% increased effect
-                    AuraEffect* eff = target->ToUnit()->GetAuraEffect(spellId, EFFECT_0, me->GetGUID());
+                    AuraEffect* eff = target->GetAuraEffect(spellId, EFFECT_0, me->GetGUID());
                     if (eff)
                         eff->ChangeAmount(eff->GetAmount() * 3 / 2);
                 }
@@ -2118,7 +2122,7 @@ public:
                 if (lvl >= 25)
                 {
                     //Improved Devotion Aura: 50% increased effect
-                    AuraEffect* eff = target->ToUnit()->GetAuraEffect(spellId, EFFECT_0, me->GetGUID());
+                    AuraEffect* eff = target->GetAuraEffect(spellId, EFFECT_0, me->GetGUID());
                     if (eff)
                         eff->ChangeAmount(eff->GetAmount() * 3 / 2);
                 }
@@ -2128,7 +2132,7 @@ public:
                 if (lvl >= 25)
                 {
                     //Improved Concentration Aura: 15% increased effect (flat)
-                    AuraEffect* eff = target->ToUnit()->GetAuraEffect(spellId, EFFECT_0, me->GetGUID());
+                    AuraEffect* eff = target->GetAuraEffect(spellId, EFFECT_0, me->GetGUID());
                     if (eff)
                         eff->ChangeAmount(eff->GetAmount() + 15); //base = 35, bonus = 15
                 }
@@ -2138,7 +2142,7 @@ public:
                 if ((_spec == BOT_SPEC_PALADIN_HOLY) && lvl >= 78 && !HasRole(BOT_ROLE_TANK | BOT_ROLE_DPS))
                 {
                     //Paldin T9 Holy 4P Bonus: 100% increased healing from Infusion of Light (pure healers only)
-                    AuraEffect* eff = target->ToUnit()->GetAuraEffect(spellId, EFFECT_0, me->GetGUID());
+                    AuraEffect* eff = target->GetAuraEffect(spellId, EFFECT_0, me->GetGUID());
                     if (eff)
                         eff->ChangeAmount(eff->GetAmount() * 2);
                 }
@@ -2148,7 +2152,7 @@ public:
                 if (lvl >= 25)
                 {
                     //Improved Blessing of Wisdom: 20% increased effect
-                    AuraEffect* eff = target->ToUnit()->GetAuraEffect(spellId, EFFECT_0, me->GetGUID());
+                    AuraEffect* eff = target->GetAuraEffect(spellId, EFFECT_0, me->GetGUID());
                     if (eff)
                         eff->ChangeAmount(eff->GetAmount() * 6 / 5);
                 }
@@ -2158,7 +2162,7 @@ public:
                 if (lvl >= 15)
                 {
                     //Improved Blessing of Might: 25% increased effect
-                    if (Aura* migh = target->ToUnit()->GetAura(spellId, me->GetGUID()))
+                    if (Aura* migh = target->GetAura(spellId, me->GetGUID()))
                         for (uint8 i = 0; i != EFFECT_2; ++i) // 2 effects
                             if (AuraEffect* eff = migh->GetEffect(i))
                                 eff->ChangeAmount((eff->GetAmount() * 125) / 100);
@@ -2167,17 +2171,17 @@ public:
             if (baseId == HAND_OF_FREEDOM_1)
             {
                 //Guardian's Favor part 2 (handled separately)
-                if (Aura* hof = target->ToUnit()->GetAura(spellId, me->GetGUID()))
+                if (Aura* hof = target->GetAura(spellId, me->GetGUID()))
                 {
                     uint32 dur = hof->GetDuration() + 4000;
                     hof->SetDuration(dur);
                     hof->SetMaxDuration(dur);
                 }
             }
-            if ((_spec == BOT_SPEC_PALADIN_HOLY) && baseId == HAND_OF_SALVATION_1 && !IsTank(target->ToUnit()))
+            if ((_spec == BOT_SPEC_PALADIN_HOLY) && baseId == HAND_OF_SALVATION_1 && !IsTank(target))
             {
                 //Blessed Hands (part 2)
-                if (AuraEffect* hos = target->ToUnit()->GetAuraEffect(spellId, 0, me->GetGUID()))
+                if (AuraEffect* hos = target->GetAuraEffect(spellId, 0, me->GetGUID()))
                 {
                     hos->ChangeAmount(hos->GetAmount() * 2);
                 }
@@ -2185,7 +2189,7 @@ public:
             if ((_spec == BOT_SPEC_PALADIN_HOLY) && baseId == HAND_OF_SACRIFICE_1)
             {
                 //Blessed Hands (part 3)
-                if (AuraEffect* hos = target->ToUnit()->GetAuraEffect(spellId, 0, me->GetGUID()))
+                if (AuraEffect* hos = target->GetAuraEffect(spellId, 0, me->GetGUID()))
                 {
                     hos->ChangeAmount(hos->GetAmount() + 10);
                 }
@@ -2194,7 +2198,7 @@ public:
                 baseId == BLESSING_OF_WISDOM_1 || baseId == BLESSING_OF_SANCTUARY_1)
             {
                 //Blessings duration 1h
-                if (Aura* bless = target->ToUnit()->GetAura(spellId, me->GetGUID()))
+                if (Aura* bless = target->GetAura(spellId, me->GetGUID()))
                 {
                     uint32 dur = HOUR * IN_MILLISECONDS;
                     bless->SetDuration(dur);
@@ -2204,7 +2208,7 @@ public:
             if (baseId == SACRED_SHIELD_AURA_TRIGGERED || baseId == SACRED_SHIELD_1)
             {
                 //Divine Guardian (part 2): 20% increased absorb, +100% duration
-                Aura* shi = target->ToUnit()->GetAura(spellId, me->GetGUID());
+                Aura* shi = target->GetAura(spellId, me->GetGUID());
                 if (shi)
                 {
                     uint32 dur = shi->GetDuration() * 2;
@@ -2219,8 +2223,12 @@ public:
             }
         }
 
-        void SpellHit(WorldObject* caster, SpellInfo const* spell) override
+        void SpellHit(WorldObject* wcaster, SpellInfo const* spell) override
         {
+            Unit* caster = wcaster->ToUnit();
+            if (!caster)
+                return;
+
             uint32 baseId = spell->GetFirstRankSpell()->Id;
 
             //Glyph of Seal of Vengeance
@@ -2256,7 +2264,7 @@ public:
             if (baseId == IMMUNITY_SHIELD_MARKER_SPELL)
                 shieldDelayTimer = 30000;
 
-            OnSpellHit(caster->ToUnit(), spell);
+            OnSpellHit(caster, spell);
         }
 
         void DamageTaken(Unit* u, uint32& /*damage*/) override

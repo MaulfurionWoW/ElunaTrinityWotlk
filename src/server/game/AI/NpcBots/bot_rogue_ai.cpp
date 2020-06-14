@@ -1336,8 +1336,12 @@ public:
             }
         }
 
-        void SpellHit(WorldObject* caster, SpellInfo const* spell) override
+        void SpellHit(WorldObject* wcaster, SpellInfo const* spell) override
         {
+            Unit* caster = wcaster->ToUnit();
+            if (!caster)
+                return;
+
             uint32 baseId = spell->GetFirstRankSpell()->Id;
 
             //Vanish: handle stealth add
@@ -1366,11 +1370,15 @@ public:
                 }
             }
 
-            OnSpellHit(caster->ToUnit(), spell);
+            OnSpellHit(caster, spell);
         }
 
-        void SpellHitTarget(WorldObject* target, SpellInfo const* spell) override
+        void SpellHitTarget(WorldObject* wtarget, SpellInfo const* spell) override
         {
+            Unit* target = wtarget->ToUnit();
+            if (!target)
+                return;
+
             uint32 spellId = spell->Id;
             uint32 baseId = spell->GetFirstRankSpell()->Id;
             uint8 lvl = me->GetLevel();
@@ -1470,7 +1478,7 @@ public:
             //Glyph of Garrote
             if (lvl >= 15 && baseId == GARROTE_1)
             {
-                if (Aura* garr = target->ToUnit()->GetAura(spellId, me->GetGUID()))
+                if (Aura* garr = target->GetAura(spellId, me->GetGUID()))
                 {
                     uint32 dur = garr->GetMaxDuration() - 3000;
                     garr->SetDuration(dur);
@@ -1484,7 +1492,7 @@ public:
             //Glyph of Deadly Throw
             if (lvl >= 64 && baseId == DEADLY_THROW_1)
             {
-                if (AuraEffect* thro = target->ToUnit()->GetAuraEffect(spellId, 1, me->GetGUID()))
+                if (AuraEffect* thro = target->GetAuraEffect(spellId, 1, me->GetGUID()))
                 {
                     thro->ChangeAmount(thro->GetAmount() - 20);
                 }
@@ -1566,7 +1574,7 @@ public:
             //Glyph of Rupture
             if (lvl >= 20 && baseId == RUPTURE_1)
             {
-                if (Aura* rupt = target->ToUnit()->GetAura(spellId, me->GetGUID()))
+                if (Aura* rupt = target->GetAura(spellId, me->GetGUID()))
                 {
                     uint32 dur = rupt->GetMaxDuration() + 4000;
                     rupt->SetDuration(dur);
@@ -1576,7 +1584,7 @@ public:
             //Glyph of Expose Armor
             if (lvl >= 15 && baseId == EXPOSE_ARMOR_1)
             {
-                if (Aura* expo = target->ToUnit()->GetAura(spellId, me->GetGUID()))
+                if (Aura* expo = target->GetAura(spellId, me->GetGUID()))
                 {
                     uint32 dur = expo->GetMaxDuration() + 12000;
                     expo->SetDuration(dur);
@@ -1586,7 +1594,7 @@ public:
             //Improved Gouge: Increased duration by 1.5 sec
             if (lvl >= 10 && baseId == GOUGE_1)
             {
-                if (Aura* goug = target->ToUnit()->GetAura(spellId, me->GetGUID()))
+                if (Aura* goug = target->GetAura(spellId, me->GetGUID()))
                 {
                     int32 duration = goug->GetMaxDuration() + 1500;
                     goug->SetDuration(duration);
@@ -1596,7 +1604,7 @@ public:
             //Glyph of Tricks of Trade
             if (lvl >= 75 && baseId == TRICKS_OF_THE_TRADE_BUFF)
             {
-                if (Aura* tric = target->ToUnit()->GetAura(spellId, me->GetGUID()))
+                if (Aura* tric = target->GetAura(spellId, me->GetGUID()))
                 {
                     int32 duration = tric->GetMaxDuration() + 4000;
                     tric->SetDuration(duration);
@@ -1620,7 +1628,7 @@ public:
             //Stun: move behind
             if (baseId == CHEAP_SHOT_1 || baseId == KIDNEY_SHOT_1 || baseId == GOUGE_1)
                 if (target == opponent)
-                    MoveBehind(target->ToUnit());
+                    MoveBehind(target);
 
             //Poison marker
             if (baseId == CRIPPLING_POISON_1 || baseId == DEADLY_POISON_PROC_1 ||
