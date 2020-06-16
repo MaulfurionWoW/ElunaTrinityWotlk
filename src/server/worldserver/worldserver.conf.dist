@@ -4173,6 +4173,42 @@ NpcBot.XpReduction = 0
 
 NpcBot.HealTargetIconsMask = 0
 
+#    NpcBot.TankTargetIconMask
+#        Description: Icon number bitmask which bot tanks use to search for primary target.
+#        Note:        While icon is active NPCBot tanks will ignore any other targets
+#                     and will not break from combat to follow you.
+#        Example:     To check Star and Cross we need 1 + 64 = 65.
+#        Default:     0 (Disable)
+#                     1 - Star
+#                     2 - Circle
+#                     4 - Diamond
+#                     8 - Triangle
+#                     16 - Moon
+#                     32 - Square
+#                     64 - Cross
+#                     128 - Skull
+
+NpcBot.TankTargetIconMask = 0
+
+#    NpcBot.DPSTargetIconMask
+#        Description: Icon number bitmask which bots use to search for primary attack target.
+#        Note:        While icon is active NPCBots will ignore any other targets
+#                     and will not break from combat to follow you.
+#        Note2:       NPCBot tanks will prioritize targets pointed by TankTargetIconMask.
+#        Note3:       If you set multiple targets only one target at a time will be used.
+#        Example:     To check Skull and Circle we need 128 + 2 = 130.
+#        Default:     0 (Disable)
+#                     1 - Star
+#                     2 - Circle
+#                     4 - Diamond
+#                     8 - Triangle
+#                     16 - Moon
+#                     32 - Square
+#                     64 - Cross
+#                     128 - Skull
+
+NpcBot.DPSTargetIconMask = 0
+
 #    NpcBot.Mult.Damage.Physical
 #    NpcBot.Mult.Damage.Spell
 #    NpcBot.Mult.Healing

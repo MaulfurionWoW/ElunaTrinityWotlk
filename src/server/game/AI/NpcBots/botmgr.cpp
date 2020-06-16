@@ -29,6 +29,8 @@ uint8 _maxNpcBots;
 uint8 _maxClassNpcBots;
 uint8 _xpReductionNpcBots;
 uint8 _healTargetIconFlags;
+uint8 _tankingTargetIconFlags;
+uint8 _dpsTargetIconFlags;
 uint32 _npcBotsCost;
 uint32 _npcBotUpdateDelayBase;
 bool _enableNpcBots;
@@ -167,6 +169,8 @@ void BotMgr::LoadConfig(bool reload)
     _basefollowdist         = sConfigMgr->GetIntDefault("NpcBot.BaseFollowDistance", 30);
     _xpReductionNpcBots     = sConfigMgr->GetIntDefault("NpcBot.XpReduction", 0);
     _healTargetIconFlags    = sConfigMgr->GetIntDefault("NpcBot.HealTargetIconsMask", 0);
+    _tankingTargetIconFlags = sConfigMgr->GetIntDefault("NpcBot.TankTargetIconMask", 0);
+	_dpsTargetIconFlags     = sConfigMgr->GetIntDefault("NpcBot.DPSTargetIconMask", 0);
     _mult_dmg_physical      = sConfigMgr->GetFloatDefault("NpcBot.Mult.Damage.Physical", 1.0f);
     _mult_dmg_spell         = sConfigMgr->GetFloatDefault("NpcBot.Mult.Damage.Spell", 1.0f);
     _mult_healing           = sConfigMgr->GetFloatDefault("NpcBot.Mult.Healing", 1.0f);
@@ -310,6 +314,14 @@ uint8 BotMgr::GetMaxClassBots()
 uint8 BotMgr::GetHealTargetIconFlags()
 {
     return _healTargetIconFlags;
+}
+uint8 BotMgr::GetTankTargetIconFlags()
+{
+    return _tankingTargetIconFlags;
+}
+uint8 BotMgr::GetDPSTargetIconFlags()
+{
+    return _dpsTargetIconFlags;
 }
 uint32 BotMgr::GetBaseUpdateDelay()
 {

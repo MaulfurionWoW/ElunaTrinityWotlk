@@ -1006,7 +1006,7 @@ void bot_ai::BuffAndHealGroup(uint32 diff)
         {
             if (BotMgr::GetHealTargetIconFlags() & GroupIconsFlags[i])
             {
-                if (ObjectGuid guid = pGroup->GetTargetIcons()[i])//check this one
+                if (ObjectGuid guid = pGroup->GetTargetIcons()[i])
                 {
                     if (Unit* unit = ObjectAccessor::GetUnit(*me, guid))
                     {
@@ -2879,8 +2879,9 @@ bool bot_ai::IsInBotParty(Unit const* unit) const
             return true;
         //pointed target case
         for (uint8 i = 0; i != TARGETICONCOUNT; ++i)
-            if (BotMgr::GetHealTargetIconFlags() & GroupIconsFlags[i])
-                if (ObjectGuid guid = gr->GetTargetIcons()[i])//check this one
+            if ((BotMgr::GetHealTargetIconFlags() & GroupIconsFlags[i]) &&
+                !((BotMgr::GetTankTargetIconFlags() | BotMgr::GetDPSTargetIconFlags()) & GroupIconsFlags[i]))		
+                if (ObjectGuid guid = gr->GetTargetIcons()[i])
                     if (guid == unit->GetGUID())
                         return true;
     }
@@ -3006,6 +3007,75 @@ Unit* bot_ai::_getTarget(bool byspell, bool ranged, bool &reset) const
     if (mytar && me->HasAuraType(SPELL_AURA_MOD_TAUNT))
         return mytar;
 
+    Group const* gr = !IAmFree() ? master->GetGroup() : NULL;
+
+    if (gr && IsTank())
+    {
+        Unit* tankTar = NULL;
+        for (int8 i = TARGETICONCOUNT - 1; i >= 0; --i)
+        {
+            if (BotMgr::GetTankTargetIconFlags() & GroupIconsFlags[i])
+            {
+                if (ObjectGuid guid = gr->GetTargetIcons()[i])
+                {
+                    if (mytar && mytar->GetGUID() == guid && mytar->GetVictim() == me)
+                    {
+                        //TC_LOG_ERROR("entities.unit", "_getTarget: %s continues %s", me->GetName().c_str(), mytar->GetName().c_str());
+                        return mytar;
+                    }
+
+                    if (Unit* unit = ObjectAccessor::GetUnit(*me, guid))
+                    {
+                        if (unit->IsVisible() && unit->isTargetableForAttack() && me->IsValidAttackTarget(unit) &&
+                            unit->IsInCombat() && (CanSeeEveryone() || (me->CanSeeOrDetect(unit) && unit->InSamePhase(me))))
+                        {
+                            //TC_LOG_ERROR("entities.unit", "_getTarget: %s found new tanking icon target %s", me->GetName().c_str(), unit->GetName().c_str());
+                            Unit* tempTar = tankTar ? tankTar : unit;
+                            tankTar = unit;
+                            Unit* tVic = unit->GetVictim();
+                            if (!tVic || (tVic != me && tVic->GetVictim() == unit && IsTank(tVic) && IsInBotParty(tVic)))
+                            {
+                                //TC_LOG_ERROR("entities.unit", "_getTarget: %s skipped %s (%s)", me->GetName().c_str(), unit->GetName().c_str(), tVic->GetName().c_str());
+                                tankTar = tempTar;
+                                continue;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (tankTar)
+        {
+            //TC_LOG_ERROR("entities.unit", "_getTarget: %s returning %s", me->GetName().c_str(), tankTar->GetName().c_str());
+            return tankTar;
+        }
+    }
+    if (gr)
+    {
+        for (int8 i = TARGETICONCOUNT - 1; i >= 0; --i)
+        {
+            if (BotMgr::GetDPSTargetIconFlags() & GroupIconsFlags[i])
+            {
+                if (ObjectGuid guid = gr->GetTargetIcons()[i])
+                {
+                    if (mytar && mytar->GetGUID() == guid)
+                        return mytar;
+
+                    if (Unit* unit = ObjectAccessor::GetUnit(*me, guid))
+                    {
+                        if (unit->IsVisible() && unit->isTargetableForAttack() && me->IsValidAttackTarget(unit) &&
+                            unit->IsInCombat() && (CanSeeEveryone() || (me->CanSeeOrDetect(unit) && unit->InSamePhase(me))))
+                        {
+                            //TC_LOG_ERROR("entities.unit", "_getTarget: found dps icon target %s", unit->GetName().c_str());
+                            return unit;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+
     Unit* u = master->GetVictim();
 //Disabled due to a bug:
 //when spell cast is finished target is immideately put in combat which makes bots attack immediately
@@ -3082,7 +3152,6 @@ Unit* bot_ai::_getTarget(bool byspell, bool ranged, bool &reset) const
     //check group
     if (!IAmFree())
     {
-        Group const* gr = master->GetGroup();
         if (!gr)
         {
             Creature const* bot;

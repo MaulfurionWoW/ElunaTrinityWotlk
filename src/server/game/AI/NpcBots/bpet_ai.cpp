@@ -1208,8 +1208,9 @@ bool bot_pet_ai::IsInBotParty(Unit const* unit) const
             return true;
         //pointed target case
         for (uint8 i = 0; i != TARGETICONCOUNT; ++i)
-            if (BotMgr::GetHealTargetIconFlags() & GroupIconsFlags[i])
-                if (ObjectGuid guid = gr->GetTargetIcons()[i])//check this one
+            if (BotMgr::GetHealTargetIconFlags() & GroupIconsFlags[i] &&
+                !((BotMgr::GetTankTargetIconFlags() | BotMgr::GetDPSTargetIconFlags()) & GroupIconsFlags[i]))
+                if (ObjectGuid guid = gr->GetTargetIcons()[i])
                     if (guid == unit->GetGUID())
                         return true;
     }
