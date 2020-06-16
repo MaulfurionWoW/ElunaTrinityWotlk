@@ -1,4 +1,4 @@
-﻿#include "bot_ai.h"
+#include "bot_ai.h"
 #include "botcommon.h"
 #include "botdatamgr.h"
 #include "botmgr.h"
@@ -27,7 +27,9 @@ public:
     {
         bot_giver_AI(Creature* creature) : CreatureAI(creature) { }
 
-        void UpdateAI(uint32 diff) { }
+        void UpdateAI(uint32 /*diff*/) override
+        {
+        }
 
         bool GossipHello(Player* player) override
         {
@@ -48,7 +50,7 @@ public:
             return true;
         }
 
-        bool GossipSelect(Player* player, uint32 menuId, uint32 gossipListId) override
+        bool GossipSelect(Player* player, uint32 /*menuId*/, uint32 gossipListId) override
         {
             if (!BotMgr::IsNpcBotModEnabled())
             {
