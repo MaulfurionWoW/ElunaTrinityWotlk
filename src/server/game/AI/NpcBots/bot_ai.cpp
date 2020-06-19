@@ -8295,7 +8295,7 @@ bool bot_ai::_canEquip(ItemTemplate const* item, uint8 slot, bool ignoreItemLeve
                     case BOT_CLASS_WARRIOR:
                     case BOT_CLASS_PALADIN:
                     case BOT_CLASS_DEATH_KNIGHT:
-                        if (me->GetLevel() >= 40)
+                        if (me->GetLevel() >= 40 || item->Quality == ITEM_QUALITY_HEIRLOOM)
                             break;
                     default:
                         return false;
@@ -8314,7 +8314,7 @@ bool bot_ai::_canEquip(ItemTemplate const* item, uint8 slot, bool ignoreItemLeve
                         break;
                     case BOT_CLASS_SHAMAN:
                     case BOT_CLASS_HUNTER:
-                        if (me->GetLevel() >= 40)
+                        if (me->GetLevel() >= 40 || item->Quality == ITEM_QUALITY_HEIRLOOM)
                             break;
                     default:
                         return false;
