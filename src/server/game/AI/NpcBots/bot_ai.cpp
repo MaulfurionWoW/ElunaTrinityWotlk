@@ -112,6 +112,41 @@ uint8 GroupIconsFlags[TARGETICONCOUNT] =
     /*CROSS       = */0x040,
     /*SKULL       = */0x080
 };
+#define BOT_SPECS_COUNT 31
+const char* BotTalentSpecStrings[BOT_SPECS_COUNT] =
+{
+    "Arms",
+    "Fury",
+    "Protection",
+    "Holy",
+    "Protection",
+    "Retribution",
+    "Beast Mastery",
+    "Marksmanship",
+    "Survival",
+    "Assassination",
+    "Combat",
+    "Subtlety",
+    "Discipline",
+    "Holy",
+    "Shadow",
+    "Blood",
+    "Frost",
+    "Unholy",
+    "Elemental",
+    "Enhancement",
+    "Restoration",
+    "Arcane",
+    "Fire",
+    "Frost",
+    "Affliction",
+    "Demonology",
+    "Destruction",
+    "Balance",
+    "Feral Combat",
+    "Restoration",
+    "Unknown"
+};
 
 void ApplyBotPercentModFloatVar(float &var, float val, bool apply)
 {
@@ -6736,14 +6771,48 @@ bool bot_ai::OnGossipSelect(Player* player, Creature* creature/* == me*/, uint32
             AddGossipItemFor(player, GOSSIP_ICON_CHAT, "BACK", GOSSIP_SENDER_ABILITIES, GOSSIP_ACTION_INFO_DEF + 2);
             break;
         }
-        case GOSSIP_SENDER_SPEC:
+        case GOSSIP_SENDER_SPEC_SET:
+        {
+            uint8 newSpec = action - GOSSIP_ACTION_INFO_DEF;
+
+            if (newSpec != _spec && newSpec >= BOT_SPEC_BEGIN && newSpec <= BOT_SPEC_END)
+            {
+                _newspec = newSpec;
+                me->CastSpell(me, ACTIVATE_SPEC, false);
+                std::ostringstream specMsg;
+                specMsg << "changing my spec to " << BotTalentSpecStrings[_newspec-1];
+                BotWhisper(specMsg.str().c_str());
+                break;
+            }
+        }
+case GOSSIP_SENDER_SPEC:
         {
             subMenu = true;
 
-            std::ostringstream specstr;
-            specstr << "Talent tree spec: " << uint32(_spec);
-            player->PlayerTalkClass->GetGossipMenu().AddMenuItem(-1, GOSSIP_ICON_CHAT, specstr.str(),
-                GOSSIP_SENDER_SPEC_SET, GOSSIP_ACTION_INFO_DEF + 1, "", 0, true);
+            uint8 specIndex;
+            switch (_botclass)
+            {
+                case BOT_CLASS_WARRIOR:         specIndex = BOT_SPEC_WARRIOR_ARMS;          break;
+                case BOT_CLASS_PALADIN:         specIndex = BOT_SPEC_PALADIN_HOLY;          break;
+                case BOT_CLASS_HUNTER:          specIndex = BOT_SPEC_HUNTER_BEASTMASTERY;   break;
+                case BOT_CLASS_ROGUE:           specIndex = BOT_SPEC_ROGUE_ASSASINATION;    break;
+                case BOT_CLASS_PRIEST:          specIndex = BOT_SPEC_PRIEST_DISCIPLINE;     break;
+                case BOT_CLASS_DEATH_KNIGHT:    specIndex = BOT_SPEC_DK_BLOOD;              break;
+                case BOT_CLASS_SHAMAN:          specIndex = BOT_SPEC_SHAMAN_ELEMENTAL;      break;
+                case BOT_CLASS_MAGE:            specIndex = BOT_SPEC_MAGE_ARCANE;           break;
+                case BOT_CLASS_WARLOCK:         specIndex = BOT_SPEC_WARLOCK_AFFLICTION;    break;
+                case BOT_CLASS_DRUID:           specIndex = BOT_SPEC_DRUID_BALANCE;         break;
+                default:
+                    TC_LOG_ERROR("entities.unit", "bot_ai:GOSSIP_SENDER_SPEC called for class %u with no specs!", uint32(_botclass));
+                    return true;
+            }
+
+            for (uint8 i = specIndex; i < specIndex + 3; ++i)
+            {
+                uint8 icon = (_spec == i) ? BOT_ICON_ON : BOT_ICON_OFF;
+                std::string specName = BotTalentSpecStrings[i-1];
+                AddGossipItemFor(player, icon, specName.c_str(), GOSSIP_SENDER_SPEC_SET, GOSSIP_ACTION_INFO_DEF + i);
+            }
 
             AddGossipItemFor(player, GOSSIP_ICON_CHAT, "BACK", 1, GOSSIP_ACTION_INFO_DEF + 2);
             break;
@@ -7513,24 +7582,6 @@ bool bot_ai::OnGossipSelectCode(Player* player, Creature* creature/* == me*/, ui
 
             player->PlayerTalkClass->SendCloseGossip();
             return OnGossipSelect(player, creature, GOSSIP_SENDER_FORMATION_ATTACK, action);
-        }
-        case GOSSIP_SENDER_SPEC_SET:
-        {
-            char* specNum = strtok((char*)code, "");
-            uint8 newSpec = (uint8)atoi(specNum);
-
-            if (newSpec != _spec && newSpec >= 1 && newSpec <= 3)
-            {
-                _newspec = newSpec;
-                me->CastSpell(me, ACTIVATE_SPEC);
-                std::ostringstream specMsg;
-                specMsg << "activating spec " << uint32(_newspec);
-                BotWhisper(specMsg.str().c_str());
-                break;
-            }
-
-            player->PlayerTalkClass->SendCloseGossip();
-            return OnGossipSelect(player, creature, GOSSIP_SENDER_SPEC, action);
         }
         default:
             break;
@@ -9858,36 +9909,52 @@ void bot_ai::InitSpec()
 {
     uint8 spec;
     if (_botclass >= BOT_CLASS_EX_START)
-        spec = 1;
+        spec = BOT_SPEC_DEFAULT;
     else if (IAmFree())
     {
-        std::list<uint8> specs;
+        std::vector<uint8> specs;
         switch (_botclass)
         {
             case BOT_CLASS_WARRIOR: //arms, fury
-            case BOT_CLASS_SHAMAN: //elem, enh
-            case BOT_CLASS_DRUID: //balance, feral
-                specs.push_back(1);
-                specs.push_back(2);
+                specs.push_back(BOT_SPEC_WARRIOR_ARMS);
+                specs.push_back(BOT_SPEC_WARRIOR_FURY);
                 break;
             case BOT_CLASS_PALADIN: //retri
-            case BOT_CLASS_PRIEST: //shadow
-                specs.push_back(3);
+                specs.push_back(BOT_SPEC_PALADIN_RETRIBUTION);
                 break;
             case BOT_CLASS_HUNTER: //any
+                specs.push_back(BOT_SPEC_HUNTER_BEASTMASTERY);
+                specs.push_back(BOT_SPEC_HUNTER_MARKSMANSHIP);
+                specs.push_back(BOT_SPEC_HUNTER_SURVIVAL);
+                break;
             case BOT_CLASS_ROGUE: //any
+                specs.push_back(BOT_SPEC_ROGUE_ASSASINATION);
+                specs.push_back(BOT_SPEC_ROGUE_COMBAT);
+                specs.push_back(BOT_SPEC_ROGUE_SUBTLETY);
+                break;
+            case BOT_CLASS_PRIEST: //shadow
+                specs.push_back(BOT_SPEC_PRIEST_SHADOW);
+                break;
             case BOT_CLASS_DEATH_KNIGHT: //any
-                specs.push_back(1);
-                specs.push_back(2);
-                specs.push_back(3);
+                specs.push_back(BOT_SPEC_DK_BLOOD);
+                specs.push_back(BOT_SPEC_DK_FROST);
+                specs.push_back(BOT_SPEC_DK_UNHOLY);
+                break;
+            case BOT_CLASS_SHAMAN: //elem, enh
+                specs.push_back(BOT_SPEC_SHAMAN_ELEMENTAL);
+                specs.push_back(BOT_SPEC_SHAMAN_ENHANCEMENT);
                 break;
             case BOT_CLASS_MAGE: //fire, frost
-                specs.push_back(2);
-                specs.push_back(3);
+                specs.push_back(BOT_SPEC_MAGE_FIRE);
+                specs.push_back(BOT_SPEC_MAGE_FROST);
                 break;
             case BOT_CLASS_WARLOCK: //affli, destr
-                specs.push_back(1);
-                specs.push_back(3);
+                specs.push_back(BOT_SPEC_WARLOCK_AFFLICTION);
+                specs.push_back(BOT_SPEC_WARLOCK_DESTRUCTION);
+                break;
+            case BOT_CLASS_DRUID: //balance, feral
+                specs.push_back(BOT_SPEC_DRUID_BALANCE);
+                specs.push_back(BOT_SPEC_DRUID_FERAL);
                 break;
             default:
                 break;
@@ -9899,9 +9966,9 @@ void bot_ai::InitSpec()
         {
             uint32 rand = urand(1,100);
             if (specs.size() == 2)
-                spec = rand <= 50 ? 1 : 2;
+                spec = rand <= 50 ? specs[0] : specs[1];
             else
-                spec = rand <= 33 ? 1 : rand <= 67 ? 2 : 3;
+                spec = rand <= 33 ? specs[0] : rand <= 67 ? specs[1] : specs[2];
         }
         else
             ASSERT(false && "bot_ai::InitSpec(): FIXME more than 3 specs to choose from!");
@@ -9916,12 +9983,12 @@ void bot_ai::InitSpec()
 
     //TC_LOG_ERROR("entities.unit", "bot_ai::InitSpec(): bot %u class %u spec: %u", me->GetEntry(), uint32(_botclass), uint32(spec));
 
-    if (spec < 1 || spec > 3)
+    if (spec < BOT_SPEC_BEGIN || spec > BOT_SPEC_END)
     {
         TC_LOG_ERROR("entities.unit", "bot_ai::InitSpec(): spec (%u) is out of range for bot %u! Falling to default (1)...",
             uint32(spec), me->GetEntry());
 
-        spec = 1;
+        spec = BOT_SPEC_DEFAULT;
     }
 
     SetSpec(spec, false);
@@ -9929,7 +9996,7 @@ void bot_ai::InitSpec()
 
 void bot_ai::SetSpec(uint8 spec, bool activate)
 {
-    ASSERT(spec >= 1 && spec <= 3);
+    ASSERT(spec >= BOT_SPEC_BEGIN && spec <= BOT_SPEC_END);
 
     _spec = spec;
 

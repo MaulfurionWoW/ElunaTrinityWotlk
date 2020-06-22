@@ -507,9 +507,9 @@ public:
             return false;
 
         uint8 spec = (uint8)atoi(specStr);
-        if (spec < 1 || spec > 3)
+        if (spec < BOT_SPEC_BEGIN || spec > BOT_SPEC_END)
         {
-            handler->SendSysMessage("Spec is out of range (1 to 3)!");
+            handler->SendSysMessage("Spec is out of range (1 to 30)!");
             handler->SetSentErrorMessage(true);
             return false;
         }
