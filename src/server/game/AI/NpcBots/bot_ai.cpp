@@ -8842,13 +8842,13 @@ void bot_ai::ApplyItemEnchantment(Item* item, EnchantmentSlot eslot, uint8 slot)
         return;
 
     uint32 enchant_display_type;
-    //uint32 enchant_amount;
+    uint32 enchant_amount;
     uint32 enchant_spell_id;
 
     for (uint8 s = 0; s != MAX_ITEM_ENCHANTMENT_EFFECTS; ++s)
     {
         enchant_display_type = pEnchant->type[s];
-        //enchant_amount = pEnchant->amount[s];
+        enchant_amount = pEnchant->amount[s];
         enchant_spell_id = pEnchant->spellid[s];
 
         switch (enchant_display_type)
@@ -8864,7 +8864,7 @@ void bot_ai::ApplyItemEnchantment(Item* item, EnchantmentSlot eslot, uint8 slot)
                     // Random Property Exist - try found basepoints for spell (basepoints depends from item suffix factor)
                     if (item->GetItemRandomPropertyId())
                     {
-                        //ItemRandomSuffixEntry const* item_rand = sItemRandomSuffixStore.LookupEntry(abs(item->GetItemRandomPropertyId()));
+                        ItemRandomSuffixEntry const* item_rand = sItemRandomSuffixStore.LookupEntry(abs(item->GetItemRandomPropertyId()));
                         if (item_rand)
                         {
                             // Search enchant_amount
