@@ -832,8 +832,8 @@ class NearbyHostileUnitInConeCheck
     private:
         Unit const* me;
         float max_range;
-        float cone;
         bot_ai const* ai;
+        float cone;
         bool free;
         NearbyHostileUnitInConeCheck(NearbyHostileUnitInConeCheck const&);
 };
@@ -926,9 +926,9 @@ class FarTauntUnitCheck
     private:
         Unit const* me;
         float max_range;
+        bool targetAlly;
         bot_ai const* ai;
         bool free;
-        bool targetAlly;
         FarTauntUnitCheck(FarTauntUnitCheck const&);
 };
 

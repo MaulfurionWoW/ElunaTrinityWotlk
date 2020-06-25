@@ -509,7 +509,7 @@ public:
         uint8 spec = (uint8)atoi(specStr);
         if (spec < BOT_SPEC_BEGIN || spec > BOT_SPEC_END)
         {
-            handler->SendSysMessage("Spec is out of range (1 to 30)!");
+            handler->SendSysMessage("Spec is out of range (1 to 3)!");
             handler->SetSentErrorMessage(true);
             return false;
         }
@@ -802,7 +802,29 @@ public:
         if (bot_ai::IsHealingClass(m_class))
             roleMask |= BOT_ROLE_HEAL;
 
-        BotDataMgr::AddNpcBotData(id, roleMask, creature->GetCreatureTemplate()->faction);
+        uint8 spec = urand(1,3);
+        switch (m_class)
+        {
+            case BOT_CLASS_WARRIOR:
+            case BOT_CLASS_PALADIN:
+            case BOT_CLASS_HUNTER:
+            case BOT_CLASS_ROGUE:
+            case BOT_CLASS_PRIEST:
+            case BOT_CLASS_DEATH_KNIGHT:
+            case BOT_CLASS_SHAMAN:
+            case BOT_CLASS_MAGE:
+            case BOT_CLASS_WARLOCK:
+                spec += (m_class-1) * 3;
+                break;
+            case BOT_CLASS_DRUID:
+                spec += (m_class-2) * 3;
+                break;
+            default:
+                spec = uint8(BOT_SPEC_DEFAULT);
+                break;
+        }
+
+        BotDataMgr::AddNpcBotData(id, roleMask, spec, creature->GetCreatureTemplate()->faction);
 
         creature->SaveToDB(map->GetId(), (1 << map->GetSpawnMode()), chr->GetPhaseMaskForSpawn());
 

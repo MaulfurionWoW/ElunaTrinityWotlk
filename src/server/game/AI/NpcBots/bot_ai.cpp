@@ -3399,7 +3399,7 @@ float bot_ai::InitAttackRange(float origRange, bool ranged) const
 void bot_ai::CalculateAttackPos(Unit const* target, Position& pos) const
 {
     uint8 followdist = IAmFree() ? BotMgr::GetBotFollowDistDefault() : master->GetBotMgr()->GetBotFollowDist();
-    uint8 rangeMode = IAmFree() ? BOT_ATTACK_RANGE_LONG : master->GetBotMgr()->GetBotAttackRangeMode();
+    uint8 rangeMode = IAmFree() ? uint8(BOT_ATTACK_RANGE_LONG) : master->GetBotMgr()->GetBotAttackRangeMode();
     uint8 exactRange = rangeMode != BOT_ATTACK_RANGE_EXACT || IAmFree() ? 255 : master->GetBotMgr()->GetBotExactAttackRange();
     float x(0),y(0),z(0),
         dist = (rangeMode == BOT_ATTACK_RANGE_EXACT) ? exactRange :
@@ -8348,6 +8348,7 @@ bool bot_ai::_canEquip(ItemTemplate const* item, uint8 slot, bool ignoreItemLeve
                     case BOT_CLASS_DEATH_KNIGHT:
                         if (me->GetLevel() >= 40 || item->Quality == ITEM_QUALITY_HEIRLOOM)
                             break;
+                        return false;
                     default:
                         return false;
                 }
@@ -8367,6 +8368,7 @@ bool bot_ai::_canEquip(ItemTemplate const* item, uint8 slot, bool ignoreItemLeve
                     case BOT_CLASS_HUNTER:
                         if (me->GetLevel() >= 40 || item->Quality == ITEM_QUALITY_HEIRLOOM)
                             break;
+                        return false;
                     default:
                         return false;
                 }
@@ -8840,13 +8842,13 @@ void bot_ai::ApplyItemEnchantment(Item* item, EnchantmentSlot eslot, uint8 slot)
         return;
 
     uint32 enchant_display_type;
-    uint32 enchant_amount;
+    //uint32 enchant_amount;
     uint32 enchant_spell_id;
 
     for (uint8 s = 0; s != MAX_ITEM_ENCHANTMENT_EFFECTS; ++s)
     {
         enchant_display_type = pEnchant->type[s];
-        enchant_amount = pEnchant->amount[s];
+        //enchant_amount = pEnchant->amount[s];
         enchant_spell_id = pEnchant->spellid[s];
 
         switch (enchant_display_type)
@@ -8862,7 +8864,7 @@ void bot_ai::ApplyItemEnchantment(Item* item, EnchantmentSlot eslot, uint8 slot)
                     // Random Property Exist - try found basepoints for spell (basepoints depends from item suffix factor)
                     if (item->GetItemRandomPropertyId())
                     {
-                        ItemRandomSuffixEntry const* item_rand = sItemRandomSuffixStore.LookupEntry(abs(item->GetItemRandomPropertyId()));
+                        //ItemRandomSuffixEntry const* item_rand = sItemRandomSuffixStore.LookupEntry(abs(item->GetItemRandomPropertyId()));
                         if (item_rand)
                         {
                             // Search enchant_amount

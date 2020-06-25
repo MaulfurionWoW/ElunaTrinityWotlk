@@ -22,12 +22,12 @@ struct NpcBotData
 public:
     uint32 owner;
     uint16 roles;
-    uint8 spec;
     uint32 faction;
+    uint8 spec;
     uint32 equips[BOT_INVENTORY_SIZE];
 
 private:
-    explicit NpcBotData(uint16 iroles, uint32 ifaction) : owner(0), roles(iroles), spec(1), faction(ifaction)
+    explicit NpcBotData(uint16 iroles, uint32 ifaction, uint8 ispec = 1) : owner(0), roles(iroles), faction(ifaction), spec(ispec)
     {
         for (uint8 i = 0; i != BOT_INVENTORY_SIZE; ++i)
             equips[i] = 0;
@@ -66,7 +66,7 @@ class BotDataMgr
     public:
         static void LoadNpcBots();
 
-        static void AddNpcBotData(uint32 entry, uint16 roles, uint32 faction);
+        static void AddNpcBotData(uint32 entry, uint16 roles, uint8 spec, uint32 faction);
         static NpcBotData const* SelectNpcBotData(uint32 entry);
         static void UpdateNpcBotData(uint32 entry, NpcBotDataUpdateType updateType, void* data = nullptr);
         static void UpdateNpcBotDataAll(uint32 playerGuid, NpcBotDataUpdateType updateType, void* data = nullptr);

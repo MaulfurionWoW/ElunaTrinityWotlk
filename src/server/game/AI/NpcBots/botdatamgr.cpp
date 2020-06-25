@@ -185,23 +185,23 @@ void BotDataMgr::LoadNpcBots()
     allBotsLoaded = true;
 }
 
-void BotDataMgr::AddNpcBotData(uint32 entry, uint16 roles, uint32 faction)
+void BotDataMgr::AddNpcBotData(uint32 entry, uint16 roles, uint8 spec, uint32 faction)
 {
     //botData must be allocated explicitly
     NpcBotDataMap::iterator itr = _botsData.find(entry);
     if (itr == _botsData.end())
     {
-        NpcBotData* botData = new NpcBotData(roles, faction);
+        NpcBotData* botData = new NpcBotData(roles, faction, spec);
         _botsData[entry] = botData;
 
         CharacterDatabasePreparedStatement* bstmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_NPCBOT);
-        //"INSERT INTO characters_npcbot (entry, roles) VALUES (?, ?)", CONNECTION_ASYNCH
+        //"INSERT INTO characters_npcbot (entry, roles, spec, faction) VALUES (?, ?, ?, ?)", CONNECTION_ASYNC);
         bstmt->setUInt32(0, entry);
         bstmt->setUInt16(1, roles);
+        bstmt->setUInt8(2, spec);
+        bstmt->setUInt32(3, faction);
         CharacterDatabase.Execute(bstmt);
 
-        //move this
-        BotDataMgr::UpdateNpcBotData(entry, NPCBOT_UPDATE_FACTION, &(botData->faction));
         return;
     }
 

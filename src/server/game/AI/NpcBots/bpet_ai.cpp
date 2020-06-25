@@ -1343,15 +1343,13 @@ bool bot_pet_ai::CheckAttackTarget()
 void bot_pet_ai::CalculateAttackPos(Unit const* target, Position& pos) const
 {
     uint8 followdist = IAmFree() ? BotMgr::GetBotFollowDistDefault() : petOwner->GetBotOwner()->GetBotMgr()->GetBotFollowDist();
-    uint8 rangeMode = IAmFree() ? BOT_ATTACK_RANGE_LONG : petOwner->GetBotOwner()->GetBotMgr()->GetBotAttackRangeMode();
+    uint8 rangeMode = IAmFree() ? uint8(BOT_ATTACK_RANGE_LONG) : petOwner->GetBotOwner()->GetBotMgr()->GetBotAttackRangeMode();
     uint8 exactRange = rangeMode != BOT_ATTACK_RANGE_EXACT || IAmFree() ? 255 : petOwner->GetBotOwner()->GetBotMgr()->GetBotExactAttackRange();
     float x(0),y(0),z(0),
         dist = (rangeMode == BOT_ATTACK_RANGE_EXACT) ? exactRange :
         followdist >= 40 ? followdist :
         5 + urand(followdist/3, followdist/3 + 5)/*18-23 at 40, 15-20 at 30*/,
         angle = target->GetAbsoluteAngle(me);
-    //bool boss = target->GetTypeId() == TYPEID_UNIT &&
-    //    (target->ToCreature()->isWorldBoss() || target->ToCreature()->IsDungeonBoss() || target->ToCreature()->GetCreatureTemplate()->rank == CREATURE_ELITE_WORLDBOSS);
     //most ranged classes have some sort of 20yd spell
     if (rangeMode != BOT_ATTACK_RANGE_EXACT)
         dist = std::min<float>(dist, petOwner->GetBotAI()->HasRole(BOT_ROLE_DPS) ? GetSpellAttackRange(rangeMode == BOT_ATTACK_RANGE_LONG) - 4.f : 30.f);
@@ -1810,7 +1808,6 @@ void bot_pet_ai::AdjustTankingPosition() const
     float const moveDist = -1.f * std::max<float>(opponent->GetCombatReach() * 0.6f, 3.f);
     float moveX;
     float moveY;
-    //bool move = false;
     for (uint8 i = 0; i != 3; ++i)
     {
         if (i)
