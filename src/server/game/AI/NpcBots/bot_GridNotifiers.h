@@ -65,8 +65,6 @@ class NearestHostileUnitCheck
         {
             if (u == me)
                 return false;
-            if (!_botPvP && !free && u->IsControlledByPlayer())
-                return false;
             if (!me->IsWithinDistInMap(u, m_range))
                 return false;
             if (me->HasUnitState(UNIT_STATE_ROOT) && (ai->HasRole(BOT_ROLE_RANGED) == me->IsWithinDistInMap(u, 8.f)))
@@ -90,8 +88,6 @@ class NearestHostileUnitCheck
             if (free)
             {
                 if (u->IsControlledByPlayer() && !u->IsInCombat())
-                    return false;
-                if (!me->IsValidAttackTarget(u) || !u->isTargetableForAttack())
                     return false;
             }
             else

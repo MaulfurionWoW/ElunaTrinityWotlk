@@ -209,10 +209,10 @@ public:
             if (!bot_ai::StartAttack(u, force))
                 return;
             GetInPosition(force, u);
+            targetPoisoned = false;
         }
 
         void JustEnteredCombat(Unit* u) override { bot_ai::JustEnteredCombat(u); }
-        void AttackStart(Unit*) override { targetPoisoned = false; }
         void KilledUnit(Unit* u) override { bot_ai::KilledUnit(u); }
         void EnterEvadeMode(EvadeReason why = EVADE_REASON_OTHER) override { bot_ai::EnterEvadeMode(why); }
         void MoveInLineOfSight(Unit* u) override { bot_ai::MoveInLineOfSight(u); }

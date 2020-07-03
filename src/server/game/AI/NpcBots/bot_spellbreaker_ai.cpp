@@ -427,7 +427,7 @@ public:
                 if (Unit* u = me->GetVictim())
                 {
                     if (!u->GetVictim() && me->IsWithinDistInMap(u, 50) && !me->IsFriendlyTo(u) &&
-                        me->IsValidAttackTarget(u) && u->GetCreatureType() != CREATURE_TYPE_CRITTER &&
+                        me->IsValidAttackTarget(u) && u->GetCreatureType() != CREATURE_TYPE_CRITTER && !u->IsTotem() &&
                         me->CanSeeOrDetect(u))
                         targets.push_back(u);
                 }

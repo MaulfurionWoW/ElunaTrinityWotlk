@@ -160,6 +160,7 @@ void bot_pet_ai::SetBotCommandState(uint8 st, bool force, Position* newpos)
     else if (st & BOT_COMMAND_FULLSTOP)
     {
         RemoveBotCommandState(BOT_COMMAND_FOLLOW | BOT_COMMAND_STAY | BOT_COMMAND_ATTACK);
+        me->AttackStop();
         me->InterruptNonMeleeSpells(true);
         if (me->isMoving())
             me->BotStopMovement();
@@ -1958,6 +1959,10 @@ void bot_pet_ai::JustDied(Unit*)
     KillEvents(false);
 }
 
+void bot_pet_ai::AttackStart(Unit* /*u*/)
+{
+}
+
 void bot_pet_ai::DamageDealt(Unit* victim, uint32& damage, DamageEffectType /*damageType*/)
 {
     if (victim == me)
@@ -1983,6 +1988,7 @@ void bot_pet_ai::IsSummonedBy(WorldObject* summoner)
     //ASSERT(!petOwner);
     //ASSERT(summoner->GetTypeId() == TYPEID_UNIT);
     petOwner = summoner->ToCreature();
+    m_botCommandState = petOwner->GetBotAI()->GetBotCommandState();
     myType = me->GetEntry();
     //myType = petOwner->GetBotAI()->GetAIMiscValue(BOTAI_MISC_PET_TYPE);
     //ASSERT(myType);

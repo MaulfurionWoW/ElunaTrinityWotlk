@@ -837,7 +837,7 @@ public:
             }
             //Swipe (Bear)
             if (IsSpellReady(SWIPE_BEAR_1, diff) && rage >= acost(SWIPE_BEAR_1) + 200*isRegenActive &&
-                me->getAttackers().size() > 2 && Rand() < 70)
+                IsTank() && Rand() < 70)
             {
                 std::list<Unit*> targets;
                 GetNearbyTargetsInConeList(targets, 5);

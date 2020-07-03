@@ -18,6 +18,7 @@ class bot_pet_ai : public CreatureAI
 
         void JustDied(Unit*) override;
         //virtual void KilledUnit(Unit* u);
+        void AttackStart(Unit* u);
         //virtual void JustEnteredCombat(Unit* u) override;
         void MoveInLineOfSight(Unit* /*u*/) override {}
         void DamageDealt(Unit* victim, uint32& damage, DamageEffectType damageType) override;

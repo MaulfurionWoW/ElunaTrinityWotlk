@@ -186,7 +186,6 @@ bot_ai::bot_ai(Creature* creature) : CreatureAI(creature)
         me->SetFlag(UNIT_FIELD_FLAGS_2, me->GetCreatureTemplate()->unit_flags2);
     }
 
-    m_botCommandState = BOT_COMMAND_FOLLOW;
     checkMasterTimer = urand(5000, 15000);
     feast_health = false;
     feast_mana = false;
@@ -378,6 +377,8 @@ bool bot_ai::SetBotOwner(Player* newowner)
 void bot_ai::ResetBotAI(uint8 resetType)
 {
     //ASSERT(me->IsInWorld());
+
+    m_botCommandState = BOT_COMMAND_FOLLOW;
 
     master = reinterpret_cast<Player*>(me);
     if (resetType & BOTAI_RESET_MASK_ABANDON_MASTER)
@@ -833,6 +834,7 @@ void bot_ai::SetBotCommandState(uint8 st, bool force, Position* newpos)
     else if (st & BOT_COMMAND_FULLSTOP)
     {
         RemoveBotCommandState(BOT_COMMAND_FOLLOW | BOT_COMMAND_STAY | BOT_COMMAND_ATTACK);
+        me->AttackStop();
         me->InterruptNonMeleeSpells(true);
         if (me->isMoving())
             me->BotStopMovement();
@@ -2985,11 +2987,13 @@ bool bot_ai::CanBotAttack(Unit const* target, int8 byspell) const
 {
     if (!target)
         return false;
+    if (HasBotCommandState(BOT_COMMAND_FULLSTOP))
+        return false;
     if (!BotMgr::IsPvPEnabled() && !IAmFree() && target->IsControlledByPlayer())
         return false;
     if (me->GetFaction() == 35 && IAmFree() && target->GetTypeId() == TYPEID_UNIT && target->GetVictim() != me)
         return false;
-    if (target->GetFaction() == 35 && me->GetFaction() != 14)
+    if ((target->GetFaction() == 35 || target->GetFaction() == me->GetFaction()) && me->GetFaction() != 14)
         return false;
     uint8 followdist = IAmFree() ? BotMgr::GetBotFollowDistDefault() : master->GetBotMgr()->GetBotFollowDist();
     float foldist = _getAttackDistance(float(followdist));
@@ -3361,11 +3365,11 @@ bool bot_ai::CheckAttackTarget()
     }
 
     //boss engage phase // CanHaveThreatList checks for typeid == UNIT
-    if (!IsTank() && opponent != me->GetVictim() && opponent->CanHaveThreatList() &&
+    if (!IsTank() && opponent != me->GetVictim() && opponent->GetVictim() && opponent->CanHaveThreatList() &&
         opponent->ToCreature()->GetCreatureTemplate()->rank == CREATURE_ELITE_WORLDBOSS && me->GetMap()->IsRaid())
     {
-        Unit* supposedTank = opponent->GetVictim();
-        if (supposedTank && uint32(opponent->ToCreature()->GetThreatManager().GetThreat(supposedTank)) < supposedTank->GetMaxHealth())
+        uint32 threat = uint32(opponent->ToCreature()->GetThreatManager().GetThreat(opponent->GetVictim()));
+        if (threat < std::min<uint32>(50000, opponent->GetVictim()->GetMaxHealth() / 2))
             return false;
     }
 
@@ -4760,10 +4764,12 @@ void bot_ai::OnSpellHit(Unit* caster, SpellInfo const* spell)
         }
     }
 
-    if (spell->HasAura(SPELL_AURA_MOD_TAUNT) || spell->HasEffect(SPELL_EFFECT_ATTACK_ME))
-        if (caster && me->Attack(caster, !HasRole(BOT_ROLE_RANGED)))
-        {}//me->GetMotionMaster()->MoveChase(caster);
-
+    if (!HasBotCommandState(BOT_COMMAND_FULLSTOP))
+    {
+        if (spell->HasAura(SPELL_AURA_MOD_TAUNT) || spell->HasEffect(SPELL_EFFECT_ATTACK_ME))
+            if (caster && me->Attack(caster, !HasRole(BOT_ROLE_RANGED)))
+            {}//me->GetMotionMaster()->MoveChase(caster);
+    }
     if (spell->GetSpellSpecific() == SPELL_SPECIFIC_DRINK)
     {
         feast_mana = true;
@@ -7758,7 +7764,7 @@ void bot_ai::CheckRacials(uint32 diff)
 //This means that anyone who attacks party will be attacked by whole bot party (see GetTarget())
 void bot_ai::OnOwnerDamagedBy(Unit* attacker)
 {
-    if (HasBotCommandState(BOT_COMMAND_MASK_UNMOVING))
+    if (HasBotCommandState(BOT_COMMAND_FULLSTOP))
         return;
     if (me->GetVictim() && (!IAmFree() || me->GetDistance(me->GetVictim()) < me->GetDistance(attacker)))
         return;
@@ -10654,6 +10660,10 @@ void bot_ai::KilledUnit(Unit* u)
 }
 
 void bot_ai::MoveInLineOfSight(Unit* /*u*/)
+{
+}
+
+void bot_ai::AttackStart(Unit* /*u*/)
 {
 }
 
