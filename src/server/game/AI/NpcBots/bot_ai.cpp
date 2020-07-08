@@ -6114,6 +6114,7 @@ bool bot_ai::OnGossipSelect(Player* player, Creature* creature/* == me*/, uint32
             BotWhisper(msg.str().c_str(), player);
 
             //break; //no break here - return to menu
+            [[fallthrough]];
         }
         case GOSSIP_SENDER_EQUIPMENT_SHOW: //equips change s2: send list of equippable items
         {
@@ -6371,6 +6372,7 @@ bool bot_ai::OnGossipSelect(Player* player, Creature* creature/* == me*/, uint32
 
             if (found && _equip(sender - GOSSIP_SENDER_EQUIP_AUTOEQUIP_EQUIP, item)){}
 
+            [[fallthrough]];
             //break; //no break: update list
         }
         case GOSSIP_SENDER_EQUIP_AUTOEQUIP:
@@ -6624,6 +6626,7 @@ bool bot_ai::OnGossipSelect(Player* player, Creature* creature/* == me*/, uint32
         {
             ToggleRole(action - GOSSIP_ACTION_INFO_DEF, false);
 
+            [[fallthrough]];
             //break;
         }
         case GOSSIP_SENDER_ROLES_MAIN: //ROLES 1: list
@@ -6652,6 +6655,7 @@ bool bot_ai::OnGossipSelect(Player* player, Creature* creature/* == me*/, uint32
         {
             ToggleRole(action - GOSSIP_ACTION_INFO_DEF, false);
 
+            [[fallthrough]];
             //break;
         }
         case GOSSIP_SENDER_ROLES_GATHERING:
@@ -6680,6 +6684,7 @@ bool bot_ai::OnGossipSelect(Player* player, Creature* creature/* == me*/, uint32
 
             //break;
             action = GOSSIP_ACTION_INFO_DEF;
+            [[fallthrough]];
         }
         case GOSSIP_SENDER_ABILITIES:
         {
@@ -6736,6 +6741,7 @@ bool bot_ai::OnGossipSelect(Player* player, Creature* creature/* == me*/, uint32
                     break;
                 }
             }
+            [[fallthrough]];
         }
         case GOSSIP_SENDER_ABILITIES_USAGE_LIST:
         {
@@ -6876,6 +6882,7 @@ case GOSSIP_SENDER_SPEC:
 
             //break;
             action = GOSSIP_ACTION_INFO_DEF;
+            [[fallthrough]];
         }
         case GOSSIP_SENDER_USEITEM:
         {
@@ -7191,6 +7198,7 @@ case GOSSIP_SENDER_SPEC:
                 player->GetBotMgr()->SetBotAttackRangeMode(BOT_ATTACK_RANGE_LONG);
             }
 
+            [[fallthrough]];
             //break; //return to menu
         }
         case GOSSIP_SENDER_FORMATION_ATTACK:
@@ -7251,6 +7259,7 @@ case GOSSIP_SENDER_SPEC:
 
             //break;
             action = GOSSIP_ACTION_INFO_DEF + 2; //return to the list and update
+            [[fallthrough]];
         }
         case GOSSIP_SENDER_TROUBLESHOOTING_FIX:
         {
@@ -7447,6 +7456,8 @@ case GOSSIP_SENDER_SPEC:
 
             if (close)
                 break;
+
+            [[fallthrough]];
         }
         case GOSSIP_SENDER_DEBUG:
         {
@@ -7917,7 +7928,7 @@ bool bot_ai::_canEquip(ItemTemplate const* item, uint8 slot, bool ignoreItemLeve
                             return false;
                         break;
                     case BOT_CLASS_SHAMAN:
-                        if (me->GetLevel() < 40)
+                        if (me->GetLevel() < 40 || _spec != BOT_SPEC_SHAMAN_ENHANCEMENT)
                             return false;
                         break;
                     case BOT_CLASS_SPHYNX:
