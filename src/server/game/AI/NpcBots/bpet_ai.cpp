@@ -2012,7 +2012,7 @@ void bot_pet_ai::OnBotPetSpellGo(Spell const* spell)
         SetSpellCategoryCooldown(curInfo->GetFirstRankSpell(), catrec);
     }
 
-    if ((!curInfo->CastTimeEntry || !curInfo->CastTimeEntry->CastTime) &&
+    if ((!curInfo->CastTimeEntry || !curInfo->CalcCastTime()) &&
         curInfo->StartRecoveryTime)
     {
         GC_Timer = curInfo->StartRecoveryTime;

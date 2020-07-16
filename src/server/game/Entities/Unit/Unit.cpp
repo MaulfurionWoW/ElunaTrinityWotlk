@@ -9120,9 +9120,9 @@ uint32 Unit::GetCreatureType() const
     else if (GetTypeId() == TYPEID_UNIT && ToCreature()->IsNPCBot())
     {
         ShapeshiftForm form = GetShapeshiftForm();
-        SpellShapeshiftEntry const* ssEntry = sSpellShapeshiftStore.LookupEntry(form);
-        if (ssEntry && ssEntry->creatureType > 0)
-            return ssEntry->creatureType;
+        SpellShapeshiftFormEntry const* ssEntry = sSpellShapeshiftFormStore.LookupEntry(form);
+        if (ssEntry && ssEntry->CreatureType > 0)
+            return ssEntry->CreatureType;
         else
             return CREATURE_TYPE_HUMANOID;
     }

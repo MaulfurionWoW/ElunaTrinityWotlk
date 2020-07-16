@@ -490,7 +490,7 @@ SpellCastResult bot_ai::CheckBotCast(Unit const* victim, uint32 spellId) const
             Unit::AuraEffectList const& healPctEffects = victim->GetAuraEffectsByType(SPELL_AURA_MOD_HEALING_PCT);
             if (!healPctEffects.empty())
             {
-                int32 castTime = spellInfo->CastTimeEntry ? spellInfo->CastTimeEntry->CastTime : 0;
+                int32 castTime = spellInfo->CastTimeEntry ? spellInfo->CalcCastTime() : 0;
                 if (castTime)
                     ApplyClassSpellCastTimeMods(spellInfo, castTime);
                 for (Unit::AuraEffectList::const_iterator itr = healPctEffects.begin(); itr != healPctEffects.end(); ++itr)
@@ -681,7 +681,7 @@ bool bot_ai::doCast(Unit* victim, uint32 spellId, TriggerCastFlags flags)
     //if cast time is lower than 1.5 sec it also reduces gcd but only if not instant
     if (m_botSpellInfo->CastTimeEntry)
     {
-        if (int32 castTime = m_botSpellInfo->CastTimeEntry->CastTime)
+        if (int32 castTime = m_botSpellInfo->CalcCastTime())
         {
             if (castTime > 0)
             {
@@ -1901,11 +1901,11 @@ void bot_ai::SetStats(bool force)
     if (_botclass == BOT_CLASS_DRUID && RespectEquipsAttackTime())
     {
         uint32 delay;
-        SpellShapeshiftEntry const* ssEntry = sSpellShapeshiftStore.LookupEntry(me->GetShapeshiftForm());
-        if (!ssEntry || !ssEntry->attackSpeed)
+        SpellShapeshiftFormEntry const* ssEntry = sSpellShapeshiftFormStore.LookupEntry(me->GetShapeshiftForm());
+        if (!ssEntry || !ssEntry->CombatRoundTime)
             delay = _equips[BOT_SLOT_MAINHAND] ? _equips[BOT_SLOT_MAINHAND]->GetTemplate()->Delay : me->GetCreatureTemplate()->BaseAttackTime;
         else
-            delay = ssEntry->attackSpeed;
+            delay = ssEntry->CombatRoundTime;
 
         me->SetAttackTime(BASE_ATTACK, delay);
     }
@@ -2422,13 +2422,13 @@ void bot_ai::SetStats(bool force)
         GtChanceToMeleeCritBaseEntry const* critBaseMelee  = sGtChanceToMeleeCritBaseStore.LookupEntry(GetPlayerClass()-1);
         GtChanceToMeleeCritEntry const* critRatioMelee = sGtChanceToMeleeCritStore.LookupEntry((GetPlayerClass()-1)*GT_MAX_LEVEL + mylevel-1);
         if (critBaseMelee && critRatioMelee)
-            value += (critBaseMelee->base + _getTotalBotStat(BOT_STAT_MOD_AGILITY) * critRatioMelee->ratio) * 100.0f;
+            value += (critBaseMelee->Data + _getTotalBotStat(BOT_STAT_MOD_AGILITY) * critBaseMelee->Data) * 100.0f;
 
         //crit from intellect
         GtChanceToSpellCritBaseEntry const* critBaseSpell  = sGtChanceToSpellCritBaseStore.LookupEntry(GetPlayerClass()-1);
         GtChanceToSpellCritEntry const* critRatioSpell = sGtChanceToSpellCritStore.LookupEntry((GetPlayerClass()-1)*GT_MAX_LEVEL + mylevel-1);
         if (critBaseSpell && critRatioSpell)
-            tempval += (critBaseSpell->base + _getTotalBotStat(BOT_STAT_MOD_INTELLECT) * critRatioSpell->ratio) * 100.f;
+            tempval += (critBaseSpell->Data + _getTotalBotStat(BOT_STAT_MOD_INTELLECT) * critBaseSpell->Data) * 100.f;
 
         value = std::max<float>(value, tempval);
 
@@ -2606,7 +2606,7 @@ void bot_ai::SetStats(bool force)
         value = 5.0f + (IAmFree() ? mylevel / 8 : 0); // +10%/+0% at 80
 
         if (GtChanceToMeleeCritEntry  const* dodgeRatio = sGtChanceToMeleeCritStore.LookupEntry((GetPlayerClass()-1)*GT_MAX_LEVEL + mylevel-1))
-            value += _getTotalBotStat(BOT_STAT_MOD_AGILITY) * dodgeRatio->ratio * 100.0f;
+            value += _getTotalBotStat(BOT_STAT_MOD_AGILITY) * dodgeRatio->Data * 100.0f;
 
         if (mylevel >= 10)
         {
@@ -4593,7 +4593,7 @@ void bot_ai::_OnManaRegenUpdate() const
         // Mana regen from spirit and intellect
         float spiregen = 0.001f;
         if (GtRegenMPPerSptEntry const* moreRatio = sGtRegenMPPerSptStore.LookupEntry((_botclass-1)*GT_MAX_LEVEL + mylevel-1))
-            spiregen = moreRatio->ratio * _getTotalBotStat(BOT_STAT_MOD_SPIRIT);
+            spiregen = moreRatio->Data * _getTotalBotStat(BOT_STAT_MOD_SPIRIT);
 
         // PCT bonus from SPELL_AURA_MOD_POWER_REGEN_PERCENT aura on spirit base regen
         value += sqrt(_getTotalBotStat(BOT_STAT_MOD_INTELLECT)) * spiregen * me->GetTotalAuraMultiplierByMiscValue(SPELL_AURA_MOD_POWER_REGEN_PERCENT, POWER_MANA);
@@ -8740,8 +8740,8 @@ void bot_ai::ApplyItemBonuses(uint8 slot)
     ScalingStatDistributionEntry const* ssd = proto->ScalingStatDistribution ? sScalingStatDistributionStore.LookupEntry(proto->ScalingStatDistribution) : nullptr;
 
     uint32 ssd_level = me->GetLevel();
-    if (ssd && ssd_level > ssd->MaxLevel)
-        ssd_level = ssd->MaxLevel;
+    if (ssd && ssd_level > ssd->Maxlevel)
+        ssd_level = ssd->Maxlevel;
 
     ScalingStatValuesEntry const* ssv = proto->ScalingStatValue ? sScalingStatValuesStore.LookupEntry(ssd_level) : nullptr;
 
@@ -8751,10 +8751,10 @@ void bot_ai::ApplyItemBonuses(uint8 slot)
         int32  val = 0;
         if (ssd && ssv)
         {
-            if (ssd->StatMod[i] < 0)
+            if (ssd->StatID[i] < 0)
                 continue;
-            statType = ssd->StatMod[i];
-            val = (ssv->getssdMultiplier(proto->ScalingStatValue) * ssd->Modifier[i]) / 10000;
+            statType = ssd->StatID[i];
+            val = (ssv->getssdMultiplier(proto->ScalingStatValue) * ssd->Bonus[i]) / 10000;
         }
         else
         {
@@ -8855,7 +8855,7 @@ void bot_ai::ApplyItemEnchantment(Item* item, EnchantmentSlot eslot, uint8 slot)
     if (!pEnchant)
         return;
 
-    if (pEnchant->requiredLevel > me->GetLevel())
+    if (pEnchant->MinLevel > me->GetLevel())
         return;
 
     uint32 enchant_display_type;
@@ -8864,9 +8864,9 @@ void bot_ai::ApplyItemEnchantment(Item* item, EnchantmentSlot eslot, uint8 slot)
 
     for (uint8 s = 0; s != MAX_ITEM_ENCHANTMENT_EFFECTS; ++s)
     {
-        enchant_display_type = pEnchant->type[s];
-        enchant_amount = pEnchant->amount[s];
-        enchant_spell_id = pEnchant->spellid[s];
+        enchant_display_type = pEnchant->Effect[s];
+        enchant_amount = pEnchant->EffectPointsMin[s];
+        enchant_spell_id = pEnchant->EffectArg[s];
 
         switch (enchant_display_type)
         {
@@ -8887,9 +8887,9 @@ void bot_ai::ApplyItemEnchantment(Item* item, EnchantmentSlot eslot, uint8 slot)
                             // Search enchant_amount
                             for (uint8 k = 0; k != MAX_ITEM_ENCHANTMENT_EFFECTS; ++k)
                             {
-                                if (item_rand->enchant_id[k] == enchant_id)
+                                if (item_rand->Enchantment[k] == enchant_id)
                                 {
-                                    basepoints = int32((item_rand->prefix[k] * item->GetItemSuffixFactor()) / 10000);
+                                    basepoints = int32((item_rand->AllocationPct[k] * item->GetItemSuffixFactor()) / 10000);
                                     break;
                                 }
                             }
@@ -8912,9 +8912,9 @@ void bot_ai::ApplyItemEnchantment(Item* item, EnchantmentSlot eslot, uint8 slot)
                     {
                         for (uint8 k = 0; k < MAX_ITEM_ENCHANTMENT_EFFECTS; ++k)
                         {
-                            if (item_rand->enchant_id[k] == enchant_id)
+                            if (item_rand->Enchantment[k] == enchant_id)
                             {
-                                enchant_amount = uint32((item_rand->prefix[k] * item->GetItemSuffixFactor()) / 10000);
+                                enchant_amount = uint32((item_rand->AllocationPct[k] * item->GetItemSuffixFactor()) / 10000);
                                 break;
                             }
                         }
@@ -8931,9 +8931,9 @@ void bot_ai::ApplyItemEnchantment(Item* item, EnchantmentSlot eslot, uint8 slot)
                     {
                         for (uint8 k = 0; k != MAX_ITEM_ENCHANTMENT_EFFECTS; ++k)
                         {
-                            if (item_rand_suffix->enchant_id[k] == enchant_id)
+                            if (item_rand_suffix->Enchantment[k] == enchant_id)
                             {
-                                enchant_amount = uint32((item_rand_suffix->prefix[k] * item->GetItemSuffixFactor()) / 10000);
+                                enchant_amount = uint32((item_rand_suffix->AllocationPct[k] * item->GetItemSuffixFactor()) / 10000);
                                 break;
                             }
                         }
@@ -9011,7 +9011,7 @@ void bot_ai::RemoveItemEnchantment(Item const* item, EnchantmentSlot eslot)
         return;
 
     ////skip level reqs
-    //if (pEnchant->requiredLevel > me->GetLevel())
+    //if (pEnchant->MinLevel > me->GetLevel())
     //    return;
 
     uint32 enchant_display_type;
@@ -9020,9 +9020,9 @@ void bot_ai::RemoveItemEnchantment(Item const* item, EnchantmentSlot eslot)
 
     for (uint8 s = 0; s != MAX_ITEM_ENCHANTMENT_EFFECTS; ++s)
     {
-        enchant_display_type = pEnchant->type[s];
-        //enchant_amount = pEnchant->amount[s];
-        enchant_spell_id = pEnchant->spellid[s];
+        enchant_display_type = pEnchant->Effect[s];
+        //enchant_amount = pEnchant->EffectPointsMin[s];
+        enchant_spell_id = pEnchant->EffectArg[s];
 
         switch (enchant_display_type)
         {
@@ -9118,7 +9118,7 @@ void bot_ai::ApplyItemEquipEnchantmentSpells(Item* item)
         SpellItemEnchantmentEntry const* pEnchant = sSpellItemEnchantmentStore.LookupEntry(enchant_id);
         if (!pEnchant)
             continue;
-        if (pEnchant->requiredLevel > me->GetLevel())
+        if (pEnchant->MinLevel > me->GetLevel())
             continue;
 
         uint32 enchant_display_type;
@@ -9127,9 +9127,9 @@ void bot_ai::ApplyItemEquipEnchantmentSpells(Item* item)
 
         for (uint8 s = 0; s != MAX_ITEM_ENCHANTMENT_EFFECTS; ++s)
         {
-            enchant_display_type = pEnchant->type[s];
-            enchant_amount = pEnchant->amount[s];
-            enchant_spell_id = pEnchant->spellid[s];
+            enchant_display_type = pEnchant->Effect[s];
+            enchant_amount = pEnchant->EffectPointsMin[s];
+            enchant_spell_id = pEnchant->EffectArg[s];
 
             switch (enchant_display_type)
             {
@@ -9147,9 +9147,9 @@ void bot_ai::ApplyItemEquipEnchantmentSpells(Item* item)
                             // Search enchant_amount
                             for (uint8 k = 0; k != MAX_ITEM_ENCHANTMENT_EFFECTS; ++k)
                             {
-                                if (item_rand->enchant_id[k] == enchant_id)
+                                if (item_rand->Enchantment[k] == enchant_id)
                                 {
-                                    basepoints = int32((item_rand->prefix[k] * item->GetItemSuffixFactor()) / 10000);
+                                    basepoints = int32((item_rand->AllocationPct[k] * item->GetItemSuffixFactor()) / 10000);
                                     break;
                                 }
                             }
@@ -9194,12 +9194,12 @@ void bot_ai::ApplyItemSetBonuses(Item* item, bool apply)
 
         for (uint8 i = 0; i != MAX_ITEM_SET_SPELLS; ++i)
         {
-            if (!itemSet->spells[i])
+            if (!itemSet->SetSpellID[i])
                 continue;
-            if (itemSet->items_to_triggerspell[i] != setItemCount)
+            if (itemSet->SetThreshold[i] != setItemCount)
                 continue;
 
-            SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(itemSet->spells[i]);
+            SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(itemSet->SetSpellID[i]);
             if (!spellInfo)
                 continue;
 
@@ -9252,17 +9252,17 @@ void bot_ai::ApplyItemSetBonuses(Item* item, bool apply)
 
         for (uint8 j = 0; j != MAX_ITEM_SET_SPELLS; ++j)
         {
-            if (!itemSet->spells[j])
+            if (!itemSet->SetSpellID[j])
                 continue;
-            if (itemSet->items_to_triggerspell[j] > setItemCount)
+            if (itemSet->SetThreshold[j] > setItemCount)
                 continue;
 
-            SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(itemSet->spells[j]);
+            SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(itemSet->SetSpellID[j]);
             if (!spellInfo)
                 continue;
 
             //TC_LOG_ERROR("entities.player", "ApplyItemSetBonusesB (all): %s's %s, %s (%u), %s (%u), c %u, req %u",
-            //    me->GetName().c_str(), apply ? "apply" : "remove", itemSet->name[0], *itr, spellInfo->SpellName[0], spellInfo->Id, uint32(setItemCount), itemSet->items_to_triggerspell[j]);
+            //    me->GetName().c_str(), apply ? "apply" : "remove", itemSet->name[0], *itr, spellInfo->SpellName[0], spellInfo->Id, uint32(setItemCount), itemSet->SetThreshold[j]);
 
             if (apply)
             {
@@ -9533,7 +9533,7 @@ inline float bot_ai::_getRatingMultiplier(CombatRating cr) const
     if (!Rating || !classRating)
         return 1.0f;
 
-    return classRating->ratio / Rating->ratio;
+    return classRating->Data / Rating->Data;
 }
 
 char const* bot_ai::_getNameForSlot(uint8 slot) const
@@ -9619,10 +9619,10 @@ void bot_ai::_castBotItemUseSpell(Item const* item, SpellCastTargets const& targ
 
         for (uint8 s = 0; s != MAX_ITEM_ENCHANTMENT_EFFECTS; ++s)
         {
-            if (pEnchant->type[s] != ITEM_ENCHANTMENT_TYPE_USE_SPELL)
+            if (pEnchant->Effect[s] != ITEM_ENCHANTMENT_TYPE_USE_SPELL)
                 continue;
 
-            spellInfo = sSpellMgr->GetSpellInfo(pEnchant->spellid[s]);
+            spellInfo = sSpellMgr->GetSpellInfo(pEnchant->EffectArg[s]);
             if (!spellInfo)
                 continue;
 
@@ -10302,12 +10302,14 @@ void bot_ai::_AddItemLink(Player const* forPlayer, Item const* item, std::ostrin
     std::string suffix = "";
 
     //icon
+    /*
     if (addIcon)
     {
         ItemDisplayInfoEntry const* itemDisplayEntry = sItemDisplayInfoStore.LookupEntry(item->GetTemplate()->DisplayInfoID);
         if (itemDisplayEntry)
             str << "|TInterface\\Icons\\" << itemDisplayEntry->InventoryIcon << ":16|t";
     }
+    */
 
     //color
     str << "|c";
@@ -10412,7 +10414,7 @@ void bot_ai::_AddProfessionLink(Player const* forPlayer, SpellInfo const* spellI
     {
         uint32 curValue = master->GetPureSkillValue(skillId);
         uint32 maxValue  = master->GetPureMaxSkillValue(skillId);
-        str << "|cffffd000|Htrade:" << spellInfo->Id << ':' << curValue << ':' << maxValue << ':' << master->GetGUID().GetCounter() << ":6AAAAAAAAAAAAAAAAAAAAAAOAADAAAAAAAAAAAAAAAAIAAAAAAAAA" << "|h[" << skillInfo->name[loc] << "]|h|r";
+        str << "|cffffd000|Htrade:" << spellInfo->Id << ':' << curValue << ':' << maxValue << ':' << master->GetGUID().GetCounter() << ":6AAAAAAAAAAAAAAAAAAAAAAOAADAAAAAAAAAAAAAAAAIAAAAAAAAA" << "|h[" << skillInfo->DisplayName[loc] << "]|h|r";
     }
 }
 //Localization
@@ -10455,7 +10457,7 @@ void bot_ai::_LocalizeItem(Player const* forPlayer, std::string &itemName, std::
     {
         if (ItemRandomPropertiesEntry const* item_rand = sItemRandomPropertiesStore.LookupEntry(randomPropId))
         {
-            char* const* suffs = item_rand->nameSuffix;
+            char* const* suffs = item_rand->Name;
             if (suffs)
             {
                 //for (uint8 i = 0; i != MAX_LOCALES; ++i)
@@ -10468,7 +10470,7 @@ void bot_ai::_LocalizeItem(Player const* forPlayer, std::string &itemName, std::
     {
         if (ItemRandomSuffixEntry const* item_rand = sItemRandomSuffixStore.LookupEntry(-randomPropId))
         {
-            char* const* suffs = item_rand->nameSuffix;
+            char* const* suffs = item_rand->Name;
             if (suffs)
             {
                 //for (uint8 i = 0; i != MAX_LOCALES; ++i)
@@ -10852,7 +10854,7 @@ void bot_ai::CastBotItemCombatSpell(Unit* target, WeaponAttackType attType, uint
 
         for (uint8 s = 0; s != MAX_ITEM_ENCHANTMENT_EFFECTS; ++s)
         {
-            if (pEnchant->type[s] != ITEM_ENCHANTMENT_TYPE_COMBAT_SPELL)
+            if (pEnchant->Effect[s] != ITEM_ENCHANTMENT_TYPE_COMBAT_SPELL)
                 continue;
 
             SpellEnchantProcEntry const* entry = sSpellMgr->GetSpellEnchantProcEvent(enchant_id);
@@ -10870,15 +10872,15 @@ void bot_ai::CastBotItemCombatSpell(Unit* target, WeaponAttackType attType, uint
                     continue;
             }
 
-            SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(pEnchant->spellid[s]);
+            SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(pEnchant->EffectArg[s]);
             if (!spellInfo)
             {
                 //TC_LOG_ERROR("entities.player.items", "Player::CastItemCombatSpell(GUID: %u, name: %s, enchant: %i): unknown spell %i is casted, ignoring...",
-                //    GetGUID().GetCounter(), GetName().c_str(), pEnchant->ID, pEnchant->spellid[s]);
+                //    GetGUID().GetCounter(), GetName().c_str(), pEnchant->ID, pEnchant->EffectArg[s]);
                 continue;
             }
 
-            float chance = pEnchant->amount[s] != 0 ? float(pEnchant->amount[s]) : me->GetWeaponProcChance();
+            float chance = pEnchant->EffectPointsMin[s] != 0 ? float(pEnchant->EffectPointsMin[s]) : me->GetWeaponProcChance();
 
             if (entry)
             {

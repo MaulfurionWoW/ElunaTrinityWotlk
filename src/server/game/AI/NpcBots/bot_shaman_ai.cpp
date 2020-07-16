@@ -2146,7 +2146,7 @@ public:
                 case SUMMON_SLOT_TOTEM_WATER:   slot = T_WATER; break;
                 case SUMMON_SLOT_TOTEM_AIR:     slot = T_AIR;   break;
                 default:
-                    TC_LOG_ERROR("entities.player", "OnBotDespawn(): Shaman bot %s has despawned totem %s in unknown slot %u", me->GetName().c_str(), summon->GetName().c_str(), totem->m_Properties->Id);
+                    TC_LOG_ERROR("entities.player", "OnBotDespawn(): Shaman bot %s has despawned totem %s in unknown slot %u", me->GetName().c_str(), summon->GetName().c_str(), totem->m_Properties->ID);
                     return;
             }
 
@@ -2182,7 +2182,7 @@ public:
                 case SUMMON_SLOT_TOTEM_WATER:   slot = T_WATER; break;
                 case SUMMON_SLOT_TOTEM_AIR:     slot = T_AIR;   break;
                 default:
-                    TC_LOG_ERROR("entities.player", "OnBotSummon(): Shaman bot %s has summoned totem %s with unknown type %u", me->GetName().c_str(), summon->GetName().c_str(), totem->m_Properties->Id);
+                    TC_LOG_ERROR("entities.player", "OnBotSummon(): Shaman bot %s has summoned totem %s with unknown type %u", me->GetName().c_str(), summon->GetName().c_str(), totem->m_Properties->ID);
                     return;
             }
 
@@ -2618,7 +2618,7 @@ public:
             if (InitSpell(me, HEALING_WAVE_1))
             {
                 spellInfo = sSpellMgr->GetSpellInfo(InitSpell(me, HEALING_WAVE_1));
-                _heals[HEALING_WAVE_1] = me->SpellHealingBonusDone(me, spellInfo, spellInfo->Effects[0].CalcValue(me), HEAL, 0, nullptr);
+                _heals[HEALING_WAVE_1] = me->SpellHealingBonusDone(me, spellInfo, spellInfo->Effects[0].CalcValue(me), HEAL, 0, { });
             }
             else
                 _heals[HEALING_WAVE_1] = 0;
@@ -2626,7 +2626,7 @@ public:
             if (InitSpell(me, LESSER_HEALING_WAVE_1))
             {
                 spellInfo = sSpellMgr->GetSpellInfo(InitSpell(me, LESSER_HEALING_WAVE_1));
-                _heals[LESSER_HEALING_WAVE_1] = me->SpellHealingBonusDone(me, spellInfo, spellInfo->Effects[0].CalcValue(me), HEAL, 0, nullptr);
+                _heals[LESSER_HEALING_WAVE_1] = me->SpellHealingBonusDone(me, spellInfo, spellInfo->Effects[0].CalcValue(me), HEAL, 0, { });
             }
             else
                 _heals[LESSER_HEALING_WAVE_1] = 0;
@@ -2634,7 +2634,7 @@ public:
             if (InitSpell(me, RIPTIDE_1))
             {
                 spellInfo = sSpellMgr->GetSpellInfo(InitSpell(me, RIPTIDE_1));
-                _heals[RIPTIDE_1] = me->SpellHealingBonusDone(me, spellInfo, spellInfo->Effects[0].CalcValue(me), HEAL, 0, nullptr);
+                _heals[RIPTIDE_1] = me->SpellHealingBonusDone(me, spellInfo, spellInfo->Effects[0].CalcValue(me), HEAL, 0, { });
             }
             else
                 _heals[RIPTIDE_1] = 0;
@@ -2642,7 +2642,7 @@ public:
             if (InitSpell(me, CHAIN_HEAL_1))
             {
                 spellInfo = sSpellMgr->GetSpellInfo(InitSpell(me, CHAIN_HEAL_1));
-                _heals[CHAIN_HEAL_1] = me->SpellHealingBonusDone(me, spellInfo, spellInfo->Effects[0].CalcValue(me), HEAL, 0, nullptr);
+                _heals[CHAIN_HEAL_1] = me->SpellHealingBonusDone(me, spellInfo, spellInfo->Effects[0].CalcValue(me), HEAL, 0, { });
             }
             else
                 _heals[CHAIN_HEAL_1] = 0;

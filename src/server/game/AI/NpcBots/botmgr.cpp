@@ -1213,7 +1213,7 @@ int32 BotMgr::GetHPSTaken(Unit const* unit) const
                         continue;
                 }
 
-                int32 healing = u->SpellHealingBonusDone(const_cast<Unit*>(unit), spellInfo, spellInfo->Effects[0].CalcValue(u), HEAL, 0, nullptr);
+                int32 healing = u->SpellHealingBonusDone(const_cast<Unit*>(unit), spellInfo, spellInfo->Effects[0].CalcValue(u), HEAL, 0, { });
                 healing = unit->SpellHealingBonusTaken(u, spellInfo, healing, HEAL);
 
                 if (i == CURRENT_CHANNELED_SPELL)

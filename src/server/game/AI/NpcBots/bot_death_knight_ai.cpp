@@ -266,7 +266,7 @@ public:
             //str << " left" << " " << runesLeft[0] << " " << runesLeft[1] << " " << runesLeft[2] << " " << runesLeft[3];
             //BotWhisper(str.str().c_str());
 
-            me->ModifyPower(POWER_RUNIC_POWER, int32(src->runePowerGain * runicpowerIncomeMult));
+            me->ModifyPower(POWER_RUNIC_POWER, int32(src->RunicPower * runicpowerIncomeMult));
 
             //BladeBarrier
             if (/*src->RuneCost[RUNE_BLOOD] > 0 && */GetCooledRunesCount(RUNE_BLOOD) > 1)

@@ -8928,10 +8928,10 @@ void ObjectMgr::LoadCreatureOutfits()
         switch (co.gender)
         {
             case GENDER_FEMALE:
-                _creatureTemplateStore[entry].Modelid1 = rEntry->model_f;
+                _creatureTemplateStore[entry].Modelid1 = rEntry->FemaleDisplayID;
                 break;
             case GENDER_MALE:
-                _creatureTemplateStore[entry].Modelid1 = rEntry->model_m;
+                _creatureTemplateStore[entry].Modelid1 = rEntry->MaleDisplayID;
                 break;
             default:
                 TC_LOG_ERROR("server.loading", ">> Creature entry %u in `creature_template_outfits` has invalid gender %u", entry, uint32(co.gender));
