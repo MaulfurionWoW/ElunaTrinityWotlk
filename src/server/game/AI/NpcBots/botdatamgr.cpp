@@ -3,8 +3,7 @@
 #include "Map.h"
 #include "MapManager.h"
 
-#include <boost/thread/shared_mutex.hpp>
-#include <boost/thread/locks.hpp>
+#include <shared_mutex>
 /*
 Npc Bot Data Manager by Trickerer (onlysuffering@gmail.com)
 NpcBots DB Data management
@@ -20,7 +19,7 @@ NpcBotAppearanceDataMap _botsAppearanceData;
 NpcBotExtrasMap _botsExtras;
 NpcBotRegistry _existingBots;
 
-static boost::shared_mutex _lock;
+static std::shared_mutex _lock;
 
 bool allBotsLoaded = false;
 
@@ -393,7 +392,7 @@ void BotDataMgr::RegisterBot(Creature const* bot)
         return;
     }
 
-    boost::unique_lock<boost::shared_mutex> lock(_lock);
+    std::unique_lock<std::shared_mutex> lock(_lock);
 
     _existingBots.insert(bot);
     //TC_LOG_ERROR("entities.unit", "BotDataMgr::RegisterBot: registered bot %u (%s)", bot->GetEntry(), bot->GetName().c_str());
@@ -407,7 +406,7 @@ void BotDataMgr::UnregisterBot(Creature const* bot)
         return;
     }
 
-    boost::unique_lock<boost::shared_mutex> lock(_lock);
+    std::unique_lock<std::shared_mutex> lock(_lock);
 
     _existingBots.erase(bot);
     //TC_LOG_ERROR("entities.unit", "BotDataMgr::UnregisterBot: unregistered bot %u (%s)", bot->GetEntry(), bot->GetName().c_str());
