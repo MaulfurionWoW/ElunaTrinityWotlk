@@ -6796,8 +6796,9 @@ bool bot_ai::OnGossipSelect(Player* player, Creature* creature/* == me*/, uint32
                 BotWhisper(specMsg.str().c_str());
                 break;
             }
+            [[fallthrough]];
         }
-case GOSSIP_SENDER_SPEC:
+        case GOSSIP_SENDER_SPEC:
         {
             subMenu = true;
 
@@ -10292,7 +10293,7 @@ void bot_ai::_AddItemTemplateLink(Player const* forPlayer, ItemTemplate const* i
 }
 // |TInterface\\Icons\\INV_<iconName>:<iconSize>|t|color|Hitem:item_id:perm_ench_id:gem1:gem2:gem3:0:random_property:suffix_factor:reporter_level|h[name]|h|r
 // |TInterface\\Icons\\INV_Misc_Staff_01:16|t|cffa335ee|Hitem:812:0:0:0:0:0:0:0:70|h[Glowing Brightwood Staff]|h|r
-void bot_ai::_AddItemLink(Player const* forPlayer, Item const* item, std::ostringstream &str, bool addIcon) const
+void bot_ai::_AddItemLink(Player const* forPlayer, Item const* item, std::ostringstream &str, bool /*addIcon*/) const
 {
     ItemTemplate const* proto = item->GetTemplate();
     //ItemRandomSuffixEntry const* item_rand = sItemRandomSuffixStore.LookupEntry(abs(item->GetItemRandomPropertyId()));

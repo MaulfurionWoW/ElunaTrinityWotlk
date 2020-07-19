@@ -414,7 +414,7 @@ void BotDataMgr::UnregisterBot(Creature const* bot)
 }
 Creature const* BotDataMgr::FindBotInWorld(uint32 entry)
 {
-    boost::shared_lock<boost::shared_mutex> lock(_lock);
+    std::shared_lock<std::shared_mutex> lock(_lock);
 
     for (NpcBotRegistry::const_iterator ci = _existingBots.begin(); ci != _existingBots.end(); ++ci)
     {
