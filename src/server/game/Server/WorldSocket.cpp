@@ -28,6 +28,7 @@
 #include "RBAC.h"
 #include "Realm.h"
 #include "ScriptMgr.h"
+#include "CryptoHash.h"
 #include "CryptoRandom.h"
 #ifdef ELUNA
 #include "LuaEngine.h"
