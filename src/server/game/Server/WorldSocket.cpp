@@ -28,7 +28,7 @@
 #include "RBAC.h"
 #include "Realm.h"
 #include "ScriptMgr.h"
-#include "SHA1.h"
+#include "CryptoRandom.h"
 #ifdef ELUNA
 #include "LuaEngine.h"
 #endif
