@@ -400,7 +400,7 @@ void bot_ai::ResetBotAI(uint8 resetType)
         //if no master - will teleport to spawn position
         //otherwise - will teleport to master
         teleHomeEvent = new TeleportHomeEvent(this);
-        Events.AddEvent(teleHomeEvent, Events.CalculateTime(0)); //make sure event will be deleted
+        Events.AddEvent(teleHomeEvent, Events.CalculateTime(0ms)); //make sure event will be deleted
         if (teleHomeEvent->IsActive())
             teleHomeEvent->ScheduleAbort(); //make sure event will not be executed twice
         teleHomeEvent->Execute(0,0);
@@ -11434,7 +11434,7 @@ void bot_ai::Evade()
         if (!teleHomeEvent || !teleHomeEvent->IsActive())
         {
             teleHomeEvent = new TeleportHomeEvent(this);
-            Events.AddEvent(teleHomeEvent, Events.CalculateTime(5000));
+            Events.AddEvent(teleHomeEvent, Events.CalculateTime(5000ms));
 
             //if bot has been removed manually and while in dungeon
             if (mapid != me->GetMapId())
@@ -11535,7 +11535,7 @@ bool bot_ai::FinishTeleport(/*uint32 mapId, uint32 instanceId, float x, float y,
         GetHomePosition(mapid, &pos);
 
         teleHomeEvent = new TeleportHomeEvent(this);
-        Events.AddEvent(teleHomeEvent, Events.CalculateTime(0)); //make sure event will be deleted
+        Events.AddEvent(teleHomeEvent, Events.CalculateTime(0ms)); //make sure event will be deleted
         if (teleHomeEvent->IsActive())
             teleHomeEvent->ScheduleAbort(); //make sure event will not be executed twice
         teleHomeEvent->Execute(0,0);
@@ -11551,7 +11551,7 @@ bool bot_ai::FinishTeleport(/*uint32 mapId, uint32 instanceId, float x, float y,
         //ChatHandler ch(master->GetSession());
         //ch.PSendSysMessage("Your bot %s cannot teleport to you. Restricted bot access on this map...", me->GetName().c_str());
         teleFinishEvent = new TeleportFinishEvent(this);
-        Events.AddEvent(teleFinishEvent, Events.CalculateTime(5000));
+        Events.AddEvent(teleFinishEvent, Events.CalculateTime(5000ms));
         return false;
     }
 

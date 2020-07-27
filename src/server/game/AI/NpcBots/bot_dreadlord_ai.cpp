@@ -302,7 +302,7 @@ public:
             {
                 me->CastSpell(_infernoPos, SPELL_INFERNO_METEOR_VISUAL, true);
                 DelayedPetSpawnEvent* spawnEvent = new DelayedPetSpawnEvent(me, &_infernoPos);
-                Events.AddEvent(spawnEvent, Events.CalculateTime(INFERNO_SPAWN_DELAY));
+                Events.AddEvent(spawnEvent, Events.CalculateTime(Milliseconds(INFERNO_SPAWN_DELAY)));
             }
         }
 
@@ -380,7 +380,7 @@ public:
 
             //Position pos;
 
-            Creature* myPet = me->SummonCreature(entry, *sPos, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 2000);
+            Creature* myPet = me->SummonCreature(entry, *sPos, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 2000ms);
             //me->GetNearPoint(myPet, pos.m_positionX, pos.m_positionY, pos.m_positionZ, 0, 2, me->GetOrientation());
             //myPet->GetMotionMaster()->MovePoint(me->GetMapId(), pos);
             myPet->SetCreatorGUID(master->GetGUID());

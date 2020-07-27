@@ -674,7 +674,7 @@ void BotMgr::_teleportBot(Creature* bot, Map* newMap, float x, float y, float z,
 
     //bot->Relocate(x, y, z);
     TeleportFinishEvent* finishEvent = new TeleportFinishEvent(bot->GetBotAI()/*, newMap->GetId(), newMap->GetInstanceId(), x, y, z, ori*/);
-    bot->GetBotAI()->GetEvents()->AddEvent(finishEvent, bot->GetBotAI()->GetEvents()->CalculateTime(urand(5000, 8000)));
+    bot->GetBotAI()->GetEvents()->AddEvent(finishEvent, bot->GetBotAI()->GetEvents()->CalculateTime(Milliseconds(urand(5000, 8000))));
     bot->GetBotAI()->SetTeleportFinishEvent(finishEvent);
 }
 

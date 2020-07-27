@@ -442,7 +442,7 @@ public:
 
             //prepare to disappear
             DisappearEvent* devent = new DisappearEvent(me);
-            Events.AddEvent(devent, Events.CalculateTime(300)); //immediatelly (almost)
+            Events.AddEvent(devent, Events.CalculateTime(300ms)); //immediatelly (almost)
         }
 
         void MirrorImageMid()
@@ -461,7 +461,7 @@ public:
             //INVISIBLE!
             //EVENT
             DelayedIllusionSummonEvent* disevent = new DelayedIllusionSummonEvent(me);
-            Events.AddEvent(disevent, Events.CalculateTime(1250)); //1000 ms disappear time + 250 ms buffer
+            Events.AddEvent(disevent, Events.CalculateTime(1250ms)); //1000 ms disappear time + 250 ms buffer
         }
 
         void MirrorImageFinish()
@@ -566,7 +566,7 @@ public:
 
             //EVENT
             IllusionUnsummonEvent* unsevent = new IllusionUnsummonEvent(me);
-            Events.AddEvent(unsevent, Events.CalculateTime(MIRROR_IMAGE_DURATION));
+            Events.AddEvent(unsevent, Events.CalculateTime(Milliseconds(MIRROR_IMAGE_DURATION)));
         }
 
         void CriticalStrike(Unit* target, bool windwalk = false)
@@ -598,7 +598,7 @@ public:
             me->SetFloatValue(UNIT_FIELD_MAXDAMAGE, maxdam);
 
             _dmdevent->SetDamageInfo(dinfo);
-            Events.AddEvent(_dmdevent, Events.CalculateTime(250));
+            Events.AddEvent(_dmdevent, Events.CalculateTime(250ms));
 
             BotJumpInPlaceInFrontOf(target, 0.25f, 4.1f); //jump - DO NOT CHANGE
             me->CastSpell(target, SPELL_COMBAT_SPECIAL_2H_ATTACK, true); //strike anim
@@ -608,7 +608,7 @@ public:
         void CriticalStrikeFinish(ObjectGuid targetGuid, CalcDamageInfo* calcdinfo, bool /*windwalk*/)
         {
             EventTerminateEvent* etevent = new EventTerminateEvent(me);
-            Events.AddEvent(etevent, Events.CalculateTime(750));
+            Events.AddEvent(etevent, Events.CalculateTime(750ms));
 
             if (!me->IsInWorld() || !me->IsAlive() || CCed(me))
             {
