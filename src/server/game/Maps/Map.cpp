@@ -4018,11 +4018,6 @@ void InstanceMap::CreateInstanceData(bool load)
     if (!i_data)
         return;
 
-    // use mangos behavior if we are dealing with Eluna AI
-    // initialize should then be called only if load is false
-    if (!isElunaAI || !load)
-        i_data->Initialize();
-
     if (load)
     {
         /// @todo make a global storage for this
