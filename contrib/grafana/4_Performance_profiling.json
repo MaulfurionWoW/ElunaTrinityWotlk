@@ -29,7 +29,7 @@
   "gnetId": null,
   "graphTooltip": 0,
   "id": 15,
-  "iteration": 1595854392473,
+  "iteration": 1595951047228,
   "links": [],
   "panels": [
     {
@@ -246,7 +246,7 @@
             },
             {
               "params": [
-                "none"
+                "0"
               ],
               "type": "fill"
             }
@@ -297,7 +297,7 @@
             },
             {
               "params": [
-                "none"
+                "0"
               ],
               "type": "fill"
             }
@@ -440,7 +440,7 @@
             },
             {
               "params": [
-                "none"
+                "0"
               ],
               "type": "fill"
             }
@@ -471,6 +471,12 @@
               "key": "realm",
               "operator": "=~",
               "value": "/^$realm$/"
+            },
+            {
+              "condition": "AND",
+              "key": "parent_type",
+              "operator": "!~",
+              "value": "/./"
             }
           ]
         }
@@ -825,15 +831,19 @@
       "hiddenSeries": false,
       "id": 9,
       "legend": {
+        "alignAsTable": true,
         "avg": false,
         "current": false,
         "hideEmpty": false,
         "hideZero": true,
-        "max": false,
+        "max": true,
         "min": false,
-        "show": false,
+        "rightSide": true,
+        "show": true,
+        "sort": "max",
+        "sortDesc": true,
         "total": false,
-        "values": false
+        "values": true
       },
       "lines": true,
       "linewidth": 2,
@@ -949,7 +959,6 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": null,
-      "description": "",
       "fieldConfig": {
         "defaults": {
           "custom": {}
@@ -965,12 +974,12 @@
         "y": 23
       },
       "hiddenSeries": false,
-      "id": 10,
+      "id": 11,
       "legend": {
         "alignAsTable": true,
         "avg": false,
         "current": false,
-        "hideEmpty": false,
+        "hideEmpty": true,
         "hideZero": true,
         "max": true,
         "min": false,
@@ -997,7 +1006,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "alias": "Account ID $tag_account_id",
+          "alias": "Opcode $tag_opcode",
           "groupBy": [
             {
               "params": [
@@ -1007,7 +1016,7 @@
             },
             {
               "params": [
-                "account_id"
+                "opcode"
               ],
               "type": "tag"
             },
@@ -1018,10 +1027,10 @@
               "type": "fill"
             }
           ],
-          "measurement": "world_update_sessions_time",
+          "measurement": "worldsession_update_opcode_time",
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "SELECT max(\"value\") FROM \"map_update_time_diff\" WHERE (\"realm\" =~ /^$realm$/) AND $timeFilter GROUP BY time($__interval), \"map_id\" fill(none)",
+          "query": "SELECT max(\"value\") FROM \"worldsession_update_opcode_time\" WHERE (\"realm\" =~ /^$realm$/) AND $timeFilter GROUP BY time($__interval), \"opcode\" fill(null)",
           "rawQuery": false,
           "refId": "A",
           "resultFormat": "time_series",
@@ -1044,12 +1053,6 @@
               "key": "realm",
               "operator": "=~",
               "value": "/^$realm$/"
-            },
-            {
-              "condition": "AND",
-              "key": "value",
-              "operator": ">",
-              "value": "100"
             }
           ]
         }
@@ -1058,7 +1061,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Update sessions - Above 100 ms",
+      "title": "Opcode handlers - Split",
       "tooltip": {
         "shared": false,
         "sort": 2,
@@ -1150,5 +1153,5 @@
   "timezone": "",
   "title": "Performance profiling",
   "uid": "IRRL03nMk",
-  "version": 5
+  "version": 7
 }
