@@ -1695,7 +1695,7 @@ class spell_hun_wyvern_sting : public AuraScript
 void AddSC_hunter_spell_scripts()
 {
     new spell_hun_aspect_of_the_beast();
-    RegisterAuraScript(spell_hun_aspect_of_the_beast_pet);
+    RegisterSpellScript(spell_hun_aspect_of_the_beast_pet);
     new spell_hun_ascpect_of_the_viper();
     new spell_hun_chimera_shot();
     new spell_hun_cobra_strikes();
@@ -1703,8 +1703,8 @@ void AddSC_hunter_spell_scripts()
     new spell_hun_disengage();
     new spell_hun_glyph_of_arcane_shot();
     new spell_hun_glyph_of_mend_pet();
-    RegisterAuraScript(spell_hun_explosive_shot);
-    RegisterAuraScript(spell_hun_feeding_frenzy);
+    RegisterSpellScript(spell_hun_explosive_shot);
+    RegisterSpellScript(spell_hun_feeding_frenzy);
     new spell_hun_hunting_party();
     new spell_hun_improved_mend_pet();
     new spell_hun_invigoration();
@@ -1728,5 +1728,5 @@ void AddSC_hunter_spell_scripts()
     new spell_hun_thrill_of_the_hunt();
     new spell_hun_t9_4p_bonus();
     new spell_hun_viper_attack_speed();
-    RegisterAuraScript(spell_hun_wyvern_sting);
+    RegisterSpellScript(spell_hun_wyvern_sting);
 }
