@@ -23,14 +23,14 @@
 namespace Trinity::Impl
 {
 
-/*************************************************************************\
-|* data for enum 'CreatureFlagsExtra' in 'CreatureData.h' auto-generated *|
-\*************************************************************************/
-template <>
-TC_API_EXPORT EnumText EnumUtils<CreatureFlagsExtra>::ToString(CreatureFlagsExtra value)
-{
-    switch (value)
+    /*************************************************************************\
+    |* data for enum 'CreatureFlagsExtra' in 'CreatureData.h' auto-generated *|
+    \*************************************************************************/
+    template <>
+    TC_API_EXPORT EnumText EnumUtils<CreatureFlagsExtra>::ToString(CreatureFlagsExtra value)
     {
+        switch (value)
+        {
         case CREATURE_FLAG_EXTRA_INSTANCE_BIND: return { "CREATURE_FLAG_EXTRA_INSTANCE_BIND", "CREATURE_FLAG_EXTRA_INSTANCE_BIND", "creature kill bind instance with killer and killer's group" };
         case CREATURE_FLAG_EXTRA_CIVILIAN: return { "CREATURE_FLAG_EXTRA_CIVILIAN", "CREATURE_FLAG_EXTRA_CIVILIAN", "not aggro (ignore faction/reputation hostility)" };
         case CREATURE_FLAG_EXTRA_NO_PARRY: return { "CREATURE_FLAG_EXTRA_NO_PARRY", "CREATURE_FLAG_EXTRA_NO_PARRY", "creature can't parry" };
@@ -57,24 +57,24 @@ TC_API_EXPORT EnumText EnumUtils<CreatureFlagsExtra>::ToString(CreatureFlagsExtr
         case CREATURE_FLAG_EXTRA_UNUSED_23: return { "CREATURE_FLAG_EXTRA_UNUSED_23", "CREATURE_FLAG_EXTRA_UNUSED_23", "" };
         case CREATURE_FLAG_EXTRA_UNUSED_24: return { "CREATURE_FLAG_EXTRA_UNUSED_24", "CREATURE_FLAG_EXTRA_UNUSED_24", "" };
         case CREATURE_FLAG_EXTRA_UNUSED_25: return { "CREATURE_FLAG_EXTRA_UNUSED_25", "CREATURE_FLAG_EXTRA_UNUSED_25", "" };
-        case CREATURE_FLAG_EXTRA_NPCBOT: return { "CREATURE_FLAG_EXTRA_NPCBOT", "CREATURE_FLAG_EXTRA_NPCBOT", "creature is a NPCBot" };
-        case CREATURE_FLAG_EXTRA_NPCBOT_PET: return { "CREATURE_FLAG_EXTRA_NPCBOT_PET", "CREATURE_FLAG_EXTRA_NPCBOT_PET", "creature is a NPCBot's pet" };
+        case CREATURE_FLAG_EXTRA_UNUSED_26: return { "CREATURE_FLAG_EXTRA_UNUSED_26", "CREATURE_FLAG_EXTRA_UNUSED_26", "" };
+        case CREATURE_FLAG_EXTRA_UNUSED_27: return { "CREATURE_FLAG_EXTRA_UNUSED_27", "CREATURE_FLAG_EXTRA_UNUSED_27", "" };
         case CREATURE_FLAG_EXTRA_DUNGEON_BOSS: return { "CREATURE_FLAG_EXTRA_DUNGEON_BOSS", "CREATURE_FLAG_EXTRA_DUNGEON_BOSS", "creature is a dungeon boss (SET DYNAMICALLY, DO NOT ADD IN DB)" };
         case CREATURE_FLAG_EXTRA_IGNORE_PATHFINDING: return { "CREATURE_FLAG_EXTRA_IGNORE_PATHFINDING", "CREATURE_FLAG_EXTRA_IGNORE_PATHFINDING", "creature ignore pathfinding" };
         case CREATURE_FLAG_EXTRA_IMMUNITY_KNOCKBACK: return { "CREATURE_FLAG_EXTRA_IMMUNITY_KNOCKBACK", "CREATURE_FLAG_EXTRA_IMMUNITY_KNOCKBACK", "creature is immune to knockback effects" };
         case CREATURE_FLAG_EXTRA_UNUSED_31: return { "CREATURE_FLAG_EXTRA_UNUSED_31", "CREATURE_FLAG_EXTRA_UNUSED_31", "" };
         default: throw std::out_of_range("value");
+        }
     }
-}
 
-template <>
-TC_API_EXPORT size_t EnumUtils<CreatureFlagsExtra>::Count() { return 32; }
+    template <>
+    TC_API_EXPORT size_t EnumUtils<CreatureFlagsExtra>::Count() { return 32; }
 
-template <>
-TC_API_EXPORT CreatureFlagsExtra EnumUtils<CreatureFlagsExtra>::FromIndex(size_t index)
-{
-    switch (index)
+    template <>
+    TC_API_EXPORT CreatureFlagsExtra EnumUtils<CreatureFlagsExtra>::FromIndex(size_t index)
     {
+        switch (index)
+        {
         case 0: return CREATURE_FLAG_EXTRA_INSTANCE_BIND;
         case 1: return CREATURE_FLAG_EXTRA_CIVILIAN;
         case 2: return CREATURE_FLAG_EXTRA_NO_PARRY;
@@ -101,21 +101,21 @@ TC_API_EXPORT CreatureFlagsExtra EnumUtils<CreatureFlagsExtra>::FromIndex(size_t
         case 23: return CREATURE_FLAG_EXTRA_UNUSED_23;
         case 24: return CREATURE_FLAG_EXTRA_UNUSED_24;
         case 25: return CREATURE_FLAG_EXTRA_UNUSED_25;
-        case 26: return CREATURE_FLAG_EXTRA_NPCBOT;
-        case 27: return CREATURE_FLAG_EXTRA_NPCBOT_PET;
+        case 26: return CREATURE_FLAG_EXTRA_UNUSED_26;
+        case 27: return CREATURE_FLAG_EXTRA_UNUSED_27;
         case 28: return CREATURE_FLAG_EXTRA_DUNGEON_BOSS;
         case 29: return CREATURE_FLAG_EXTRA_IGNORE_PATHFINDING;
         case 30: return CREATURE_FLAG_EXTRA_IMMUNITY_KNOCKBACK;
         case 31: return CREATURE_FLAG_EXTRA_UNUSED_31;
         default: throw std::out_of_range("index");
+        }
     }
-}
 
-template <>
-TC_API_EXPORT size_t EnumUtils<CreatureFlagsExtra>::ToIndex(CreatureFlagsExtra value)
-{
-    switch (value)
+    template <>
+    TC_API_EXPORT size_t EnumUtils<CreatureFlagsExtra>::ToIndex(CreatureFlagsExtra value)
     {
+        switch (value)
+        {
         case CREATURE_FLAG_EXTRA_INSTANCE_BIND: return 0;
         case CREATURE_FLAG_EXTRA_CIVILIAN: return 1;
         case CREATURE_FLAG_EXTRA_NO_PARRY: return 2;
@@ -149,6 +149,6 @@ TC_API_EXPORT size_t EnumUtils<CreatureFlagsExtra>::ToIndex(CreatureFlagsExtra v
         case CREATURE_FLAG_EXTRA_IMMUNITY_KNOCKBACK: return 30;
         case CREATURE_FLAG_EXTRA_UNUSED_31: return 31;
         default: throw std::out_of_range("value");
+        }
     }
-}
 }
