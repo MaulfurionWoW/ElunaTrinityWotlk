@@ -797,7 +797,7 @@ public:
 
         uint16 roleMask = BOT_ROLE_DPS;
 
-        uint8 m_class = _botExtras ? _botExtras->bclass : CLASS_WARRIOR;
+        uint8 m_class = _botExtras ? _botExtras->bclass : (uint8) CLASS_WARRIOR;
         if (!bot_ai::IsMeleeClass(m_class))
             roleMask |= BOT_ROLE_RANGED;
         if (bot_ai::IsHealingClass(m_class))
