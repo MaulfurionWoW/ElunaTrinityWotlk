@@ -9123,13 +9123,13 @@ void bot_ai::ApplyItemEquipEnchantmentSpells(Item* item)
             continue;
 
         uint32 enchant_display_type;
-        uint32 enchant_amount;
+        //uint32 enchant_amount;
         uint32 enchant_spell_id;
 
         for (uint8 s = 0; s != MAX_ITEM_ENCHANTMENT_EFFECTS; ++s)
         {
             enchant_display_type = pEnchant->Effect[s];
-            enchant_amount = pEnchant->EffectPointsMin[s];
+            //enchant_amount = pEnchant->EffectPointsMin[s];
             enchant_spell_id = pEnchant->EffectArg[s];
 
             switch (enchant_display_type)

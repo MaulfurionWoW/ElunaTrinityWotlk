@@ -1972,6 +1972,8 @@ public:
         uint32 mhEnchantExpireTimer, ohEnchantExpireTimer;
         uint32 mhEnchant, ohEnchant;
         bool needChooseMHEnchant, needChooseOHEnchant;
+
+        using bot_ai::ApplyClassDamageMultiplierMelee;
     };
 };
 

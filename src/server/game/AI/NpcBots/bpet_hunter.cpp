@@ -392,7 +392,7 @@ public:
             }
             else if (myType == BOT_PET_RAVAGER)
             {
-                if (IsSpellReady(RAVAGE_1, diff, false) && canDPS && focus >= 0 &&
+                if (IsSpellReady(RAVAGE_1, diff, false) && canDPS &&
                     me->IsWithinMeleeRange(opponent) && opponent->IsNonMeleeSpellCast(false, false, true))
                 {
                     me->CastSpell(opponent, GetSpell(RAVAGE_1), false);
@@ -411,7 +411,7 @@ public:
             }
             else if (myType == BOT_PET_SILITHID)
             {
-                if (IsSpellReady(VENOM_WEB_SPRAY_1, diff, false) && canDPS && focus >= 0 && dist < 30 &&
+                if (IsSpellReady(VENOM_WEB_SPRAY_1, diff, false) && canDPS && dist < 30 &&
                     !CCed(opponent, true))
                 {
                     me->CastSpell(opponent, GetSpell(VENOM_WEB_SPRAY_1), false);
@@ -421,7 +421,7 @@ public:
             }
             else if (myType == BOT_PET_SPIDER)
             {
-                if (IsSpellReady(WEB_1, diff, false) && focus >= 0 && dist < 30 && !CCed(opponent, true))
+                if (IsSpellReady(WEB_1, diff, false) && dist < 30 && !CCed(opponent, true))
                 {
                     me->CastSpell(opponent, GetSpell(WEB_1), false);
                     SetSpellCooldown(WEB_1, 28000);
@@ -459,7 +459,7 @@ public:
             else if (myType == BOT_PET_CAT)
             {
                 if (IsSpellReady(PROWL_1, diff, false) && !me->IsInCombat() && !me->HasStealthAura() &&
-                    focus >= 0 && dist < 20 && dist > 5)
+                    dist < 20 && dist > 5)
                 {
                     me->CastSpell(opponent, GetSpell(PROWL_1), false);
                     SetSpellCooldown(PROWL_1, 7000);
@@ -498,7 +498,7 @@ public:
             else if (myType == BOT_PET_TEROMOTH)
             {
                 if (IsSpellReady(SERENITY_DUST_1, diff, false) && (canDPS || GetHealthPCT(me) < 90) &&
-                    focus >= 0 && dist < 7)
+                    dist < 7)
                 {
                     me->CastSpell(me, GetSpell(SERENITY_DUST_1), false);
                     SetSpellCooldown(SERENITY_DUST_1, 42000);
@@ -518,7 +518,7 @@ public:
             else if (myType == BOT_PET_SPIRITBEAST)
             {
                 if (IsSpellReady(PROWL_1, diff, false) && !me->IsInCombat() && !me->HasStealthAura() &&
-                    focus >= 0 && dist < 30 && dist > 5)
+                    dist < 30 && dist > 5)
                 {
                     me->CastSpell(opponent, GetSpell(PROWL_1), false);
                     SetSpellCooldown(PROWL_1, 10000); //custom
@@ -582,7 +582,7 @@ public:
             }
             else if (myType == BOT_PET_CRAB)
             {
-                if (IsSpellReady(PIN_1, diff, false) && canDPS && focus >= 0 &&
+                if (IsSpellReady(PIN_1, diff, false) && canDPS &&
                     me->IsWithinMeleeRange(opponent) && !CCed(opponent, true))
                 {
                     me->CastSpell(opponent, GetSpell(PIN_1), false);
@@ -602,7 +602,7 @@ public:
             }
             else if (myType == BOT_PET_RHINO)
             {
-                if (IsSpellReady(STAMPEDE_1, diff, false) && canDPS && focus >= 0 &&
+                if (IsSpellReady(STAMPEDE_1, diff, false) && canDPS &&
                     me->IsWithinMeleeRange(opponent))
                 {
                     me->CastSpell(opponent, GetSpell(STAMPEDE_1), false);
@@ -622,7 +622,7 @@ public:
             }
             else if (myType == BOT_PET_TURTLE)
             {
-                if (IsSpellReady(SHELL_SHIELD_1, diff, false) && focus >= 0 && dist < 7 &&
+                if (IsSpellReady(SHELL_SHIELD_1, diff, false) && dist < 7 &&
                     !me->getAttackers().empty())
                 {
                     me->CastSpell(me, GetSpell(SHELL_SHIELD_1), false);
@@ -632,7 +632,7 @@ public:
             }
             else if (myType == BOT_PET_WARPSTALKER)
             {
-                if (IsSpellReady(WARP_1, diff, false) && focus >= 0 && dist < 10)
+                if (IsSpellReady(WARP_1, diff, false) && dist < 10)
                 {
                     me->CastSpell(opponent, GetSpell(WARP_1), false);
                     SetSpellCooldown(WARP_1, 10500);

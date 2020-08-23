@@ -2267,6 +2267,8 @@ public:
         uint32 myPetType;
         uint32 petSummonTimer;
 
+        using bot_ai::ApplyClassDamageMultiplierMelee;
+
         //Scans target for hunter's aspects
         //returns applied aspects mask
         //used for finding out which aspects target lacks

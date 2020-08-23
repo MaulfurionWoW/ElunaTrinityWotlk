@@ -585,6 +585,8 @@ public:
         uint64 _blackArrowKillGUID;
         typedef std::set<Unit*> Summons;
         Summons _minions;
+
+        using bot_ai::ApplyClassDamageMultiplierMelee;
     };
 };
 

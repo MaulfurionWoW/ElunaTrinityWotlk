@@ -485,6 +485,8 @@ public:
     private:
         uint32 checkAuraTimer;
         Position _infernoPos;
+
+        using bot_ai::ApplyClassDamageMultiplierMelee;
     };
 };
 

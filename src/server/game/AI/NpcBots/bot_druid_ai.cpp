@@ -2855,6 +2855,9 @@ public:
 
         typedef std::unordered_map<uint32 /*baseId*/, int32 /*amount*/> HealMap;
         HealMap _heals;
+
+        using bot_ai::ApplyClassDamageMultiplierMelee;
+        using bot_ai::ApplyClassEffectMods;
     };
 };
 

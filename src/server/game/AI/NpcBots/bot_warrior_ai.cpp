@@ -2166,6 +2166,10 @@ public:
         }
 
     private:
+
+        using bot_ai::ApplyClassDamageMultiplierMelee;
+        using bot_ai::ApplyClassEffectMods;
+
         bool _inStance(uint8 stance) const
         {
             switch (stance)

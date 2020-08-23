@@ -294,6 +294,8 @@ public:
 
         bool _doCrit;
 
+        using bot_ai::ApplyClassDamageMultiplierMelee;
+
         void ProcessSpellsteal(Unit* target)
         {
             DispelChargesList steal_list;

@@ -2603,6 +2603,8 @@ public:
         typedef std::unordered_map<uint32 /*baseId*/, int32 /*amount*/> HealMap;
         HealMap _heals;
 
+        using bot_ai::ApplyClassDamageMultiplierMelee;
+
         //uint32 _getBlessingsMask(Unit const*) const
         //Scans target for auras which are related to paladin's blessings
         //(even if aura is just incompatible with one)

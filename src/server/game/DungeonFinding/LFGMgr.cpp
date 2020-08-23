@@ -498,13 +498,13 @@ void LFGMgr::JoinLfg(Player* player, uint8 roles, LfgDungeonSet& dungeons, const
 
                         if (Creature* bot = ObjectAccessor::GetCreature(*plrg, itr->second->GetGUID()))
                         {
-                            //if (!(bot->GetBotRoles() & ( 1 | 2 | 4 ))) //(BOT_ROLE_TANK | BOT_ROLE_DPS | BOT_ROLE_HEAL)
-                            //{
-                            //    //no valid roles - reqs are not met
-                            //    (ChatHandler(plrg->GetSession())).PSendSysMessage("Your bot %s does not have any viable roles assigned.", bot->GetName().c_str());
-                            //    joinData.result = LFG_JOIN_PARTY_NOT_MEET_REQS;
-                            //    continue;
-                            //}
+                            if (!(bot->GetBotRoles() & ( 1 | 2 | 4 ))) //(BOT_ROLE_TANK | BOT_ROLE_DPS | BOT_ROLE_HEAL)
+                            {
+                                //no valid roles - reqs are not met
+                                //(ChatHandler(plrg->GetSession())).PSendSysMessage("Your bot %s does not have any viable roles assigned.", bot->GetName().c_str());
+                                //joinData.result = LFG_JOIN_PARTY_NOT_MEET_REQS;
+                                continue;
+                            }
 
                             ++memberCount;
                             players.insert(itr->second->GetGUID());

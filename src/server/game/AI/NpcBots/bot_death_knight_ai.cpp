@@ -1878,6 +1878,8 @@ public:
         //Pet
         uint32 petSummonTimer;
 
+        using bot_ai::ApplyClassDamageMultiplierMelee;
+
         bool HaveRunes(uint32 spellId)
         {
             SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellId);

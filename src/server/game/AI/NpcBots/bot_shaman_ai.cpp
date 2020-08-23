@@ -2678,6 +2678,8 @@ public:
         typedef std::unordered_map<uint32 /*baseId*/, int32 /*amount*/> HealMap;
         HealMap _heals;
 
+        using bot_ai::ApplyClassDamageMultiplierMelee;
+
         uint32 _getTotemsMask(std::map<uint32 /*type*/, uint32 /*curId*/>& idMap) const
         {
             uint32 mask = 0;
