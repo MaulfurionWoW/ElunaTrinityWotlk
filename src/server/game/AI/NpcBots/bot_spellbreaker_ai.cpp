@@ -295,6 +295,7 @@ public:
         bool _doCrit;
 
         using bot_ai::ApplyClassDamageMultiplierMelee;
+        using bot_ai::ApplyClassEffectMods;
 
         void ProcessSpellsteal(Unit* target)
         {

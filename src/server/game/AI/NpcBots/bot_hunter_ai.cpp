@@ -2268,6 +2268,7 @@ public:
         uint32 petSummonTimer;
 
         using bot_ai::ApplyClassDamageMultiplierMelee;
+        using bot_ai::ApplyClassEffectMods;
 
         //Scans target for hunter's aspects
         //returns applied aspects mask

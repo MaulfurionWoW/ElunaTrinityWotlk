@@ -763,7 +763,8 @@ public:
 
         Player* chr = handler->GetSession()->GetPlayer();
 
-        if (Transport* /*trans = chr->GetTransport()*/)
+        //Transport* trans = chr->GetTransport();
+        if (chr->GetTransport())
         {
             handler->SendSysMessage("Cannot spawn bots on transport!");
             handler->SetSentErrorMessage(true);

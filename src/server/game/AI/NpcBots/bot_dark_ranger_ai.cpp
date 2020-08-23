@@ -587,6 +587,7 @@ public:
         Summons _minions;
 
         using bot_ai::ApplyClassDamageMultiplierMelee;
+        using bot_ai::ApplyClassEffectMods;
     };
 };
 
