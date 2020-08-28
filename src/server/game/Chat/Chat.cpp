@@ -178,7 +178,7 @@ void ChatHandler::SendSysMessage(const char *str, bool escapeCharacters)
     // Replace every "|" with "||" in msg
     if (escapeCharacters && msg.find('|') != std::string::npos)
     {
-        Tokenizer tokens{msg, '|'};
+        std::vector<std::string_view> tokens = Trinity::Tokenize(msg, '|', true);
         std::ostringstream stream;
         for (size_t i = 0; i < tokens.size() - 1; ++i)
             stream << tokens[i] << "||";
@@ -188,7 +188,7 @@ void ChatHandler::SendSysMessage(const char *str, bool escapeCharacters)
     }
 
     WorldPacket data;
-    for (const auto& line : Tokenizer{msg, '\n'})
+    for (std::string_view line : Trinity::Tokenize(str, '\n', true))
     {
         BuildChatPacket(data, CHAT_MSG_SYSTEM, LANG_UNIVERSAL, nullptr, nullptr, line);
         m_session->SendPacket(&data);
@@ -198,7 +198,7 @@ void ChatHandler::SendSysMessage(const char *str, bool escapeCharacters)
 void ChatHandler::SendGlobalSysMessage(const char *str)
 {
     WorldPacket data;
-    for (const auto& line : Tokenizer{str, '\n'})
+    for (std::string_view line : Trinity::Tokenize(str, '\n', true))
     {
         BuildChatPacket(data, CHAT_MSG_SYSTEM, LANG_UNIVERSAL, nullptr, nullptr, line);
         sWorld->SendGlobalMessage(&data);
@@ -208,7 +208,7 @@ void ChatHandler::SendGlobalSysMessage(const char *str)
 void ChatHandler::SendGlobalGMSysMessage(const char *str)
 {
     WorldPacket data;
-    for (const auto& line : Tokenizer{str, '\n'})
+    for (std::string_view line : Trinity::Tokenize(str, '\n', true))
     {
         BuildChatPacket(data, CHAT_MSG_SYSTEM, LANG_UNIVERSAL, nullptr, nullptr, line);
         sWorld->SendGlobalGMMessage(&data);
@@ -521,7 +521,7 @@ bool ChatHandler::ShowHelpForCommand(std::vector<ChatCommand> const& table, char
     return ShowHelpForSubCommands(table, "", cmd);
 }
 
-size_t ChatHandler::BuildChatPacket(WorldPacket& data, ChatMsg chatType, Language language, ObjectGuid senderGUID, ObjectGuid receiverGUID, std::string const& message, uint8 chatTag,
+size_t ChatHandler::BuildChatPacket(WorldPacket& data, ChatMsg chatType, Language language, ObjectGuid senderGUID, ObjectGuid receiverGUID, std::string_view message, uint8 chatTag,
                                   std::string const& senderName /*= ""*/, std::string const& receiverName /*= ""*/,
                                   uint32 achievementId /*= 0*/, bool gmMessage /*= false*/, std::string const& channelName /*= ""*/)
 {
@@ -601,7 +601,7 @@ size_t ChatHandler::BuildChatPacket(WorldPacket& data, ChatMsg chatType, Languag
     return receiverGUIDPos;
 }
 
-size_t ChatHandler::BuildChatPacket(WorldPacket& data, ChatMsg chatType, Language language, WorldObject const* sender, WorldObject const* receiver, std::string const& message,
+size_t ChatHandler::BuildChatPacket(WorldPacket& data, ChatMsg chatType, Language language, WorldObject const* sender, WorldObject const* receiver, std::string_view message,
                                   uint32 achievementId /*= 0*/, std::string const& channelName /*= ""*/, LocaleConstant locale /*= DEFAULT_LOCALE*/)
 {
     ObjectGuid senderGUID;
