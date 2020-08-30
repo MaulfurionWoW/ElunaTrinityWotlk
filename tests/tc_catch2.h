@@ -15,27 +15,30 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "VMapFactory.h"
-#include "VMapManager2.h"
+#ifndef TRINITY_CATCH2_H
+#define TRINITY_CATCH2_H
 
-namespace VMAP
+#include "Optional.h"
+#include <iostream>
+#include <typeinfo>
+
+template <typename T>
+std::ostream& operator<<(std::ostream& os, Optional<T> const& value)
 {
-    VMapManager2* gVMapManager = nullptr;
-
-    //===============================================
-    // just return the instance
-    VMapManager2* VMapFactory::createOrGetVMapManager()
-    {
-        if (gVMapManager == nullptr)
-            gVMapManager= new VMapManager2();
-        return gVMapManager;
-    }
-
-    //===============================================
-    // delete all internal data structures
-    void VMapFactory::clear()
-    {
-        delete gVMapManager;
-        gVMapManager = nullptr;
-    }
+    os << "Opt";
+    if (value)
+        os << " { " << *value << " }";
+    else
+        os << " (<empty>)";
+    return os;
 }
+
+inline std::ostream& operator<<(std::ostream& os, std::nullopt_t)
+{
+    os << "<empty>";
+    return os;
+}
+
+#include "catch2/catch.hpp"
+
+#endif
