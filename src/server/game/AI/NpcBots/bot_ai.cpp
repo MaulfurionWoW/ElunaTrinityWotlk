@@ -10300,7 +10300,7 @@ void bot_ai::_AddItemLink(Player const* forPlayer, Item const* item, std::ostrin
     uint32 g1 = 0, g2 = 0, g3 = 0;
     //uint32 bpoints = 0;
     std::string name = proto->Name1;
-    std::string suffix = "";
+    std::array<char const*, 16> const* suffix = nullptr;
 
     //icon
     /*
@@ -10356,8 +10356,8 @@ void bot_ai::_AddItemLink(Player const* forPlayer, Item const* item, std::ostrin
     _LocalizeItem(forPlayer, name, suffix, item);
 
     str << "|h[" << name;
-    if (suffix.length() > 0)
-        str << ' ' << suffix;
+    if (suffix->size() > 0)
+        str << ' ' << &suffix;
     str <<"]|h|r";
 
     //quantity
@@ -10436,7 +10436,7 @@ void bot_ai::_LocalizeItem(Player const* forPlayer, std::string &itemName, uint3
     }
 }
 
-void bot_ai::_LocalizeItem(Player const* forPlayer, std::string &itemName, std::string &suffix, Item const* item) const
+void bot_ai::_LocalizeItem(Player const* forPlayer, std::string &itemName, std::array<char const*, 16> const* &suffix, Item const* item) const
 {
     uint32 loc = forPlayer->GetSession()->GetSessionDbLocaleIndex();
     std::wstring wnamepart;
@@ -10463,7 +10463,7 @@ void bot_ai::_LocalizeItem(Player const* forPlayer, std::string &itemName, std::
             {
                 //for (uint8 i = 0; i != MAX_LOCALES; ++i)
                 //    TC_LOG_ERROR("entities.player", "bot_ai::_LocalizeItem(): rand prop suffix for loc %u = %s", i, suffs[i]);
-                suffix = suffs[loc];
+                suffix = &suffs[loc];
             }
         }
     }
@@ -10476,7 +10476,7 @@ void bot_ai::_LocalizeItem(Player const* forPlayer, std::string &itemName, std::
             {
                 //for (uint8 i = 0; i != MAX_LOCALES; ++i)
                 //    TC_LOG_ERROR("entities.player", "bot_ai::_LocalizeItem(): rand suff suffix for loc %u = %s", i, suffs[i]);
-                suffix = suffs[loc];
+                suffix = &suffs[loc];
             }
         }
     }

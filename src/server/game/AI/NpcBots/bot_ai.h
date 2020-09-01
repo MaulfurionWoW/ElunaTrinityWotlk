@@ -431,7 +431,7 @@ class bot_ai : public CreatureAI
         void _AddSpellLink(Player const* forPlayer, SpellInfo const* spellInfo, std::ostringstream &str, bool color = true) const;
         void _AddProfessionLink(Player const* forPlayer, SpellInfo const* spellInfo, std::ostringstream &str, uint32 skillId) const;
         void _LocalizeItem(Player const* forPlayer, std::string &itemName, uint32 entry) const;
-        void _LocalizeItem(Player const* forPlayer, std::string &itemName, std::string &suffix, Item const* item) const;
+        void _LocalizeItem(Player const* forPlayer, std::string &itemName, std::array<char const*, 16> const* &suffix, Item const* item) const;
         void _LocalizeQuest(Player const* forPlayer, std::string &questTitle, uint32 entry) const;
         void _LocalizeCreature(Player const* forPlayer, std::string &creatureName, uint32 entry) const;
         void _LocalizeGameObject(Player const* forPlayer, std::string &gameobjectName, uint32 entry) const;
