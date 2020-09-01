@@ -10458,7 +10458,7 @@ void bot_ai::_LocalizeItem(Player const* forPlayer, std::string &itemName, std::
     {
         if (ItemRandomPropertiesEntry const* item_rand = sItemRandomPropertiesStore.LookupEntry(randomPropId))
         {
-            const char* const* suffs = item_rand->Name;
+            std::array<char const*, 16> const* suffs = &item_rand->Name;
             if (suffs)
             {
                 //for (uint8 i = 0; i != MAX_LOCALES; ++i)
@@ -10471,7 +10471,7 @@ void bot_ai::_LocalizeItem(Player const* forPlayer, std::string &itemName, std::
     {
         if (ItemRandomSuffixEntry const* item_rand = sItemRandomSuffixStore.LookupEntry(-randomPropId))
         {
-            const char* const* suffs = item_rand->Name;
+            std::array<char const*, 16> const* suffs = &item_rand->Name;
             if (suffs)
             {
                 //for (uint8 i = 0; i != MAX_LOCALES; ++i)
